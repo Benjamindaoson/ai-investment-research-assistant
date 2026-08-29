@@ -1,7 +1,7 @@
 ## 1. Workspace foundation
 
-- [ ] 1.1 Initialize the pnpm workspace and strict Next.js 16 application in `apps/web` with lint, typecheck, test, and build commands.
-- [ ] 1.2 Add the frontend dependencies and configuration for Tailwind 4, Radix primitives, CVA, Lucide, TanStack Query/Table/Virtual, Zustand, Motion, React Hook Form, Zod, MSW, Vitest, and React Testing Library.
+- [x] 1.1 Initialize the pnpm workspace and strict Next.js 16 application in `apps/web` with lint, typecheck, test, and build commands.
+- [x] 1.2 Add the frontend dependencies and configuration for Tailwind 4, Radix primitives, CVA, Lucide, TanStack Query/Table/Virtual, Zustand, Motion, React Hook Form, Zod, MSW, Vitest, and React Testing Library.
 - [ ] 1.3 Define Geist typography and product design tokens for surfaces, borders, motion, density, interaction states, and responsive breakpoints.
 
 ## 2. Shared application system
