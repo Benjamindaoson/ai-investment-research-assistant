@@ -32,10 +32,10 @@
 
 ## 6. Batch 3 — Evidence intelligence
 
-- [ ] 6.1 Implement the three-column Evidence Workspace with claim selection and separate supporting, counter, conflicting, and unverified evidence treatment.
-- [ ] 6.2 Expose complete source intelligence and citation context through the query/repository boundary.
-- [ ] 6.3 Implement evidence-status changes, claim approve/reject actions, and request-more-research interactions with audit records.
-- [ ] 6.4 Add evidence semantics, provenance, selection, mutation, and responsive drawer tests.
+- [x] 6.1 Implement the three-column Evidence Workspace with claim selection and separate supporting, counter, conflicting, and unverified evidence treatment.
+- [x] 6.2 Expose complete source intelligence and citation context through the query/repository boundary.
+- [x] 6.3 Implement evidence-status changes, claim approve/reject actions, and request-more-research interactions with audit records.
+- [x] 6.4 Add evidence semantics, provenance, selection, mutation, and responsive workspace tests.
 
 ## 7. Batch 4 — Decision workspaces
 

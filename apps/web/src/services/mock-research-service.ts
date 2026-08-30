@@ -3,10 +3,13 @@ import { buildMockResearchPlan, mockResearchSetupOptions } from "@/lib/mock/fixt
 import { createResearchCaseInputSchema, researchSetupSchema } from "@/domain/research";
 import { researchRunActionInputSchema, updatePlanInputSchema } from "@/domain/research";
 import { mockResearchCaseWorkspace } from "@/lib/mock/fixtures/research-case";
+import { mockEvidenceWorkspace } from "@/lib/mock/fixtures/evidence-workspace";
+import { requestMoreResearchInputSchema, reviewClaimInputSchema, updateEvidenceStatusInputSchema } from "@/domain/research";
 import type { ResearchService } from "./research-service";
 
 export class MockResearchService implements ResearchService {
   private researchCase = structuredClone(mockResearchCaseWorkspace);
+  private evidenceWorkspace = structuredClone(mockEvidenceWorkspace);
   async getToday() {
     await Promise.resolve();
     return structuredClone(mockTodayData);
@@ -57,5 +60,34 @@ export class MockResearchService implements ResearchService {
       this.researchCase.case.status = "in-research";
     }
     return structuredClone(this.researchCase);
+  }
+  async getEvidenceWorkspace(caseId: string) {
+    await Promise.resolve();
+    if (caseId !== this.evidenceWorkspace.caseId) throw new Error(`Mock evidence workspace ${caseId} was not found.`);
+    return structuredClone(this.evidenceWorkspace);
+  }
+  async updateEvidenceStatus(input: unknown) {
+    await Promise.resolve();
+    const parsed = updateEvidenceStatusInputSchema.parse(input);
+    const evidence = this.evidenceWorkspace.evidence.find((item) => item.id === parsed.evidenceId);
+    if (!evidence || parsed.caseId !== this.evidenceWorkspace.caseId) throw new Error("Mock evidence was not found.");
+    evidence.verificationStatus = parsed.status;
+    this.evidenceWorkspace.reviewLog.unshift({ id: `review-${this.evidenceWorkspace.reviewLog.length + 1}`, action: "evidence-status-changed", targetId: evidence.id, summary: `Evidence status changed to ${parsed.status}.`, actor: "Demo Analyst", occurredAt: "2026-08-30T10:00:00.000Z" });
+    return structuredClone(this.evidenceWorkspace);
+  }
+  async reviewClaim(input: unknown) {
+    await Promise.resolve();
+    const parsed = reviewClaimInputSchema.parse(input);
+    const claim = this.evidenceWorkspace.claims.find((item) => item.id === parsed.claimId);
+    if (!claim || parsed.caseId !== this.evidenceWorkspace.caseId) throw new Error("Mock claim was not found.");
+    claim.status = parsed.decision === "approve" ? "supported" : "rejected";
+    this.evidenceWorkspace.reviewLog.unshift({ id: `review-${this.evidenceWorkspace.reviewLog.length + 1}`, action: parsed.decision === "approve" ? "claim-approved" : "claim-rejected", targetId: claim.id, summary: `Claim ${parsed.decision === "approve" ? "approved" : "rejected"} by analyst.`, actor: "Demo Analyst", occurredAt: "2026-08-30T10:01:00.000Z" });
+    return structuredClone(this.evidenceWorkspace);
+  }
+  async requestMoreResearch(input: unknown) {
+    await Promise.resolve();
+    const parsed = requestMoreResearchInputSchema.parse(input);
+    this.evidenceWorkspace.reviewLog.unshift({ id: `review-${this.evidenceWorkspace.reviewLog.length + 1}`, action: "more-research-requested", targetId: parsed.claimId, summary: parsed.question, actor: "Demo Analyst", occurredAt: "2026-08-30T10:02:00.000Z" });
+    return structuredClone(this.evidenceWorkspace);
   }
 }

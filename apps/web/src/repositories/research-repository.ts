@@ -17,6 +17,14 @@ import {
   type ResearchCaseWorkspace,
   type ResearchRunActionInput,
   type UpdatePlanInput,
+  evidenceWorkspaceSchema,
+  requestMoreResearchInputSchema,
+  reviewClaimInputSchema,
+  updateEvidenceStatusInputSchema,
+  type EvidenceWorkspace,
+  type RequestMoreResearchInput,
+  type ReviewClaimInput,
+  type UpdateEvidenceStatusInput,
 } from "@/domain/research";
 import type { ResearchService } from "@/services/research-service";
 
@@ -28,6 +36,10 @@ export interface ResearchRepository {
   getResearchCase(caseId: string): Promise<ResearchCaseWorkspace>;
   updateResearchPlan(input: UpdatePlanInput): Promise<ResearchCaseWorkspace>;
   controlResearchRun(input: ResearchRunActionInput): Promise<ResearchCaseWorkspace>;
+  getEvidenceWorkspace(caseId: string): Promise<EvidenceWorkspace>;
+  updateEvidenceStatus(input: UpdateEvidenceStatusInput): Promise<EvidenceWorkspace>;
+  reviewClaim(input: ReviewClaimInput): Promise<EvidenceWorkspace>;
+  requestMoreResearch(input: RequestMoreResearchInput): Promise<EvidenceWorkspace>;
 }
 
 export class DefaultResearchRepository implements ResearchRepository {
@@ -47,4 +59,8 @@ export class DefaultResearchRepository implements ResearchRepository {
   async controlResearchRun(input: ResearchRunActionInput) {
     return researchCaseWorkspaceSchema.parse(await this.service.controlResearchRun(researchRunActionInputSchema.parse(input)));
   }
+  async getEvidenceWorkspace(caseId: string) { return evidenceWorkspaceSchema.parse(await this.service.getEvidenceWorkspace(caseId)); }
+  async updateEvidenceStatus(input: UpdateEvidenceStatusInput) { return evidenceWorkspaceSchema.parse(await this.service.updateEvidenceStatus(updateEvidenceStatusInputSchema.parse(input))); }
+  async reviewClaim(input: ReviewClaimInput) { return evidenceWorkspaceSchema.parse(await this.service.reviewClaim(reviewClaimInputSchema.parse(input))); }
+  async requestMoreResearch(input: RequestMoreResearchInput) { return evidenceWorkspaceSchema.parse(await this.service.requestMoreResearch(requestMoreResearchInputSchema.parse(input))); }
 }

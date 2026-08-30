@@ -47,4 +47,20 @@ describe("DefaultResearchRepository", () => {
     await expect(repository.controlResearchRun({ caseId: workspace.case.id, action: "restart" })).resolves.toMatchObject({ run: { status: "running" } });
     await expect(repository.controlResearchRun({ caseId: workspace.case.id, action: "complete" })).resolves.toMatchObject({ run: { status: "completed" }, evidenceCoverage: 78 });
   });
+
+  it("preserves evidence semantics, provenance, and analyst review mutations", async () => {
+    const repository = new DefaultResearchRepository(new MockResearchService());
+    const workspace = await repository.getEvidenceWorkspace("case-value-pools");
+    expect(new Set(workspace.evidence.map((item) => item.stance))).toEqual(new Set(["supporting", "counter"]));
+    expect(workspace.sources.every((source) => source.url && source.publishedAt)).toBe(true);
+    const conflicting = workspace.evidence.find((item) => item.verificationStatus === "conflicting");
+    expect(conflicting).toBeDefined();
+    const changed = await repository.updateEvidenceStatus({ caseId: workspace.caseId, evidenceId: conflicting!.id, status: "verified" });
+    expect(changed.evidence.find((item) => item.id === conflicting!.id)?.verificationStatus).toBe("verified");
+    expect(changed.reviewLog[0].action).toBe("evidence-status-changed");
+    const reviewed = await repository.reviewClaim({ caseId: workspace.caseId, claimId: workspace.claims[0].id, decision: "reject" });
+    expect(reviewed.claims[0].status).toBe("rejected");
+    const requested = await repository.requestMoreResearch({ caseId: workspace.caseId, claimId: workspace.claims[0].id, question: "Test whether synthetic data changes this conclusion." });
+    expect(requested.reviewLog[0]).toMatchObject({ action: "more-research-requested", targetId: workspace.claims[0].id });
+  });
 });

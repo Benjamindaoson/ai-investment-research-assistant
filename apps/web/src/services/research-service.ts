@@ -6,4 +6,8 @@ export interface ResearchService {
   getResearchCase(caseId: string): Promise<unknown>;
   updateResearchPlan(input: unknown): Promise<unknown>;
   controlResearchRun(input: unknown): Promise<unknown>;
+  getEvidenceWorkspace(caseId: string): Promise<unknown>;
+  updateEvidenceStatus(input: unknown): Promise<unknown>;
+  reviewClaim(input: unknown): Promise<unknown>;
+  requestMoreResearch(input: unknown): Promise<unknown>;
 }

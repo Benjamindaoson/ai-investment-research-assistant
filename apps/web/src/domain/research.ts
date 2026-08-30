@@ -19,7 +19,10 @@ export const sourceSchema = z.object({
   publisher: z.string(),
   url: z.string().url(),
   publishedAt: z.string().datetime(),
-  kind: z.enum(["filing", "paper", "news", "interview", "dataset", "website"]),
+  retrievedAt: z.string().datetime().optional(),
+  author: z.string().optional(),
+  kind: z.enum(["official", "filing", "paper", "patent", "github", "hiring", "interview", "news", "industry-report", "user-upload", "dataset", "website"]),
+  originalDocument: z.string().optional(),
 });
 export type Source = z.infer<typeof sourceSchema>;
 
@@ -29,7 +32,7 @@ export const evidenceSchema = z.object({
   excerpt: z.string(),
   citation: z.string(),
   stance: z.enum(["supporting", "counter", "neutral"]),
-  verificationStatus: z.enum(["unverified", "verified", "disputed"]),
+  verificationStatus: z.enum(["unverified", "verified", "partially-supported", "conflicting", "needs-review", "rejected"]),
 });
 export type Evidence = z.infer<typeof evidenceSchema>;
 
@@ -227,3 +230,27 @@ export const researchRunActionSchema = z.enum(["start", "cancel", "restart", "co
 export type ResearchRunAction = z.infer<typeof researchRunActionSchema>;
 export const researchRunActionInputSchema = z.object({ caseId: z.string(), action: researchRunActionSchema });
 export type ResearchRunActionInput = z.infer<typeof researchRunActionInputSchema>;
+
+export const evidenceWorkspaceSchema = z.object({
+  fixtureNotice: z.literal("Mock research data — for product demonstration only"),
+  caseId: z.string(),
+  claims: z.array(claimSchema),
+  evidence: z.array(evidenceSchema),
+  sources: z.array(sourceSchema),
+  reviewLog: z.array(z.object({
+    id: z.string(),
+    action: z.enum(["claim-approved", "claim-rejected", "evidence-status-changed", "more-research-requested"]),
+    targetId: z.string(),
+    summary: z.string(),
+    actor: z.string(),
+    occurredAt: z.string().datetime(),
+  })),
+});
+export type EvidenceWorkspace = z.infer<typeof evidenceWorkspaceSchema>;
+
+export const updateEvidenceStatusInputSchema = z.object({ caseId: z.string(), evidenceId: z.string(), status: evidenceSchema.shape.verificationStatus });
+export type UpdateEvidenceStatusInput = z.infer<typeof updateEvidenceStatusInputSchema>;
+export const reviewClaimInputSchema = z.object({ caseId: z.string(), claimId: z.string(), decision: z.enum(["approve", "reject"]) });
+export type ReviewClaimInput = z.infer<typeof reviewClaimInputSchema>;
+export const requestMoreResearchInputSchema = z.object({ caseId: z.string(), claimId: z.string(), question: z.string().min(5) });
+export type RequestMoreResearchInput = z.infer<typeof requestMoreResearchInputSchema>;
