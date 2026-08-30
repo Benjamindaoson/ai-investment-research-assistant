@@ -1,6 +1,8 @@
 import { describe, expect, it } from "vitest";
 import { DefaultResearchRepository } from "./research-repository";
 import { MockResearchService } from "@/services/mock-research-service";
+import type { ResearchService } from "@/services/research-service";
+import type { ResearchSetup } from "@/domain/research";
 
 describe("DefaultResearchRepository", () => {
   it("validates and returns clearly labelled mock Today data", async () => {
@@ -12,7 +14,26 @@ describe("DefaultResearchRepository", () => {
   });
 
   it("rejects an invalid service contract response", async () => {
-    const repository = new DefaultResearchRepository({ getToday: async () => ({ items: "invalid" }) });
+    const service = { getToday: async () => ({ items: "invalid" }) } as unknown as ResearchService;
+    const repository = new DefaultResearchRepository(service);
     await expect(repository.getToday()).rejects.toThrow();
+  });
+
+  it("creates an editable P0 plan through the typed mock boundary", async () => {
+    const repository = new DefaultResearchRepository(new MockResearchService());
+    const options = await repository.getResearchSetupOptions();
+    const setup: ResearchSetup = {
+      question: "Where will embodied intelligence create durable value over three years?",
+      scope: "deep" as const,
+      targetIds: [options.targets[0].id],
+      timeRange: "3-years" as const,
+      customTimeRange: "",
+      sourceTypes: ["official", "research-papers"],
+      attachmentNames: [],
+    };
+    const plan = await repository.proposeResearchPlan(setup);
+    expect(plan.sections.map((section) => section.title)).toEqual(["Market", "Technology", "Competition", "Value Chain", "Risk"]);
+    expect(plan.goal).toContain("disconfirming evidence");
+    await expect(repository.createResearchCase({ setup, plan })).resolves.toEqual({ caseId: "case-value-pools", runId: "run-value-pools-01" });
   });
 });

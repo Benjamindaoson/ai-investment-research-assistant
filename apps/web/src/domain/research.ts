@@ -110,3 +110,78 @@ export const todayDataSchema = z.object({
   overview: todayOverviewSchema,
 });
 export type TodayData = z.infer<typeof todayDataSchema>;
+
+export const researchScopeSchema = z.enum(["quick", "deep"]);
+export type ResearchScope = z.infer<typeof researchScopeSchema>;
+
+export const researchTargetKindSchema = z.enum(["company", "technology", "industry"]);
+export const researchTargetSchema = z.object({
+  id: z.string(),
+  label: z.string(),
+  kind: researchTargetKindSchema,
+});
+export type ResearchTarget = z.infer<typeof researchTargetSchema>;
+
+export const researchSourceTypeSchema = z.enum([
+  "official",
+  "research-papers",
+  "news",
+  "github",
+  "patents",
+  "hiring",
+  "uploaded-documents",
+]);
+export type ResearchSourceType = z.infer<typeof researchSourceTypeSchema>;
+
+export const researchSetupSchema = z.object({
+  question: z.string().trim().min(12, "Use at least 12 characters so the research goal is specific."),
+  scope: researchScopeSchema,
+  targetIds: z.array(z.string()).min(1, "Select at least one company, technology, or industry."),
+  timeRange: z.enum(["12-months", "3-years", "custom"]),
+  customTimeRange: z.string().optional(),
+  sourceTypes: z.array(researchSourceTypeSchema).min(1, "Select at least one source type."),
+  attachmentNames: z.array(z.string()),
+}).superRefine((value, context) => {
+  if (value.timeRange === "custom" && !value.customTimeRange?.trim()) {
+    context.addIssue({ code: "custom", path: ["customTimeRange"], message: "Describe the custom time range." });
+  }
+});
+export type ResearchSetup = z.infer<typeof researchSetupSchema>;
+
+export const planTaskStatusSchema = z.enum(["completed", "running", "pending", "needs-review"]);
+export const planTaskSchema = z.object({
+  id: z.string(),
+  question: z.string().min(3),
+  priority: z.number().int().min(1),
+  status: planTaskStatusSchema,
+});
+export type PlanTask = z.infer<typeof planTaskSchema>;
+
+export const researchPlanSectionSchema = z.object({
+  id: z.string(),
+  title: z.enum(["Market", "Technology", "Competition", "Value Chain", "Risk"]),
+  tasks: z.array(planTaskSchema).min(1),
+});
+export type ResearchPlanSection = z.infer<typeof researchPlanSectionSchema>;
+
+export const researchPlanSchema = z.object({
+  goal: z.string(),
+  sections: z.array(researchPlanSectionSchema).min(1),
+});
+export type ResearchPlan = z.infer<typeof researchPlanSchema>;
+
+export const researchSetupOptionsSchema = z.object({
+  fixtureNotice: z.literal("Mock research data — for product demonstration only"),
+  targets: z.array(researchTargetSchema),
+  recommendedSourceTypes: z.array(researchSourceTypeSchema),
+});
+export type ResearchSetupOptions = z.infer<typeof researchSetupOptionsSchema>;
+
+export const createResearchCaseInputSchema = z.object({
+  setup: researchSetupSchema,
+  plan: researchPlanSchema,
+});
+export type CreateResearchCaseInput = z.infer<typeof createResearchCaseInputSchema>;
+
+export const createResearchCaseResultSchema = z.object({ caseId: z.string(), runId: z.string() });
+export type CreateResearchCaseResult = z.infer<typeof createResearchCaseResultSchema>;

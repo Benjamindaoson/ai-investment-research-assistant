@@ -6,8 +6,8 @@ Research teams working on AI and embodied intelligence need a dense, evidence-fi
 
 - Initialize a pnpm workspace with a strict TypeScript Next.js 16 application at `apps/web`.
 - Establish a custom research design system: visual tokens, primitive UI controls, application shell, responsive layout, command palette, interaction states, and accessibility foundations.
-- Deliver mock-data-driven Today, company research, research case, research matrix, signal review, and living brief routes based on the supplied references and adapted to AI / embodied-intelligence research.
-- Add typed mock service, repository, query, and client-state boundaries so FastAPI can replace fixtures without page-level fetch coupling.
+- Deliver the complete mock-data-driven P0 flow defined by `docs/product/P0_PRODUCT_SPEC.md`: Today, New Research setup, editable plan, streaming research, Research Case and Findings, Evidence Intelligence, Company Research, Thesis, Risk / Catalyst, What to Monitor, Human Review, Living Brief, Versioning, and a basic Research Library.
+- Add backend-replaceable domain schemas and typed operation contracts behind mock service, repository, and query boundaries so a future backend can replace fixtures without page-level coupling.
 - Add mocked research progress / streaming states, route loading and error surfaces, and representative tests.
 
 ## Capabilities
@@ -16,7 +16,7 @@ Research teams working on AI and embodied intelligence need a dense, evidence-fi
 - `research-workspace-shell`: Provides the responsive desktop workspace frame, navigation, global search, command palette, and shared interaction states.
 - `research-design-system`: Provides product tokens and reusable UI / research presentation components.
 - `today-research-worklist`: Provides the Today research queue and operational summary view.
-- `research-analysis-workspaces`: Provides company, research-run, matrix, signal, and living-brief prototype routes with typed mock research data.
+- `research-analysis-workspaces`: Provides the end-to-end Research Case, findings, evidence, company, thesis, review, brief, versioning, and library workspaces with typed mock research data.
 
 ### Modified Capabilities
 

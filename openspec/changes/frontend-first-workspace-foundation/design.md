@@ -8,14 +8,29 @@ The supplied screens establish the design language: a fixed dark navigation rail
 
 **Goals:**
 - Produce a navigable Next.js 16 prototype under `apps/web` with custom visual tokens and reusable domain components.
-- Make each supplied research workflow available as a typed, mock-data-driven route with practical loading, empty, error, selected, and streaming states.
+- Make the entire P0 workflow in the Product Spec available as a typed, mock-data-driven demo with practical loading, empty, error, selected, mutation, review, version, and streaming states.
 - Use a service/repository/query boundary and local MSW handlers so a future FastAPI endpoint can replace fixtures without changing screens.
 - Maintain responsive and keyboard-accessible behavior while preserving a desktop-first high-information-density layout.
 
 **Non-Goals:**
 - Implementing any backend, data persistence, live search, market feed, exported documents, user management, RAG, LangGraph, or agent runtime.
 - Copying third-party logos, trademarks, or supplied Chinese-language financial content.
-- Building all potential workspace pages beyond the supplied reference workflows and the New Research entry point.
+- Building P1 monitoring automation, portfolio/trading features, production exports, or workspace pages beyond the frozen P0 Product Spec.
+
+## P0 Frontend Audit (2026-08-30)
+
+The current implementation provides the shared shell, keyboard command palette, Today worklist, responsive context pane, initial tokens, typed Today query boundary, and a staged research-progress utility. The remaining P0 product is not yet demoable: `/new-research` and all linked research routes are absent, the service exposes only `getToday`, and the current schemas do not cover plans, findings, review actions, risk/catalyst/monitor items, brief versions, or library filtering.
+
+The implementation is therefore organized into dependency-ordered batches:
+
+1. **Creation foundation:** complete P0 schemas/contracts and New Research → Setup → editable Plan → create-case handoff.
+2. **Research execution:** Research Case overview, plan task controls, cancellable/restartable streaming timeline, and progressively revealed Findings.
+3. **Evidence intelligence:** claim navigation, supporting/counter/conflicting evidence, source provenance, verification changes, and request-more-research actions.
+4. **Decision workspaces:** Company Research, structured Thesis, assumptions, disconfirming conditions, Risk / Catalyst, and What to Monitor.
+5. **Review and outputs:** Human Review audit trail, Living Brief sections and approval, version history/diff, and basic searchable/filterable Research Library.
+6. **End-to-end hardening:** complete navigation, responsive/keyboard/error/empty coverage, full demo-path tests, and final product-semantic audit.
+
+Each batch must preserve Page/Component → TanStack Query Hook → Repository → Typed Service Interface → Mock implementation. UI modules never import fixtures. All mutations are mock-only and deterministic for the session; the fixture notice remains visible wherever data could be mistaken for live research.
 
 ## Decisions
 
