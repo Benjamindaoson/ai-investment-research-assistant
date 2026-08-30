@@ -36,4 +36,15 @@ describe("DefaultResearchRepository", () => {
     expect(plan.goal).toContain("disconfirming evidence");
     await expect(repository.createResearchCase({ setup, plan })).resolves.toEqual({ caseId: "case-value-pools", runId: "run-value-pools-01" });
   });
+
+  it("persists plan changes and explicit run controls through the mock service", async () => {
+    const repository = new DefaultResearchRepository(new MockResearchService());
+    const workspace = await repository.getResearchCase("case-value-pools");
+    const changedPlan = { ...workspace.plan, goal: "Updated analyst-controlled research goal" };
+    await expect(repository.updateResearchPlan({ caseId: workspace.case.id, plan: changedPlan })).resolves.toMatchObject({ plan: { goal: changedPlan.goal } });
+    await expect(repository.controlResearchRun({ caseId: workspace.case.id, action: "start" })).resolves.toMatchObject({ run: { status: "running", stage: "planning" } });
+    await expect(repository.controlResearchRun({ caseId: workspace.case.id, action: "cancel" })).resolves.toMatchObject({ run: { status: "cancelled" } });
+    await expect(repository.controlResearchRun({ caseId: workspace.case.id, action: "restart" })).resolves.toMatchObject({ run: { status: "running" } });
+    await expect(repository.controlResearchRun({ caseId: workspace.case.id, action: "complete" })).resolves.toMatchObject({ run: { status: "completed" }, evidenceCoverage: 78 });
+  });
 });

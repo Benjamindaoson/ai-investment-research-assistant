@@ -25,10 +25,10 @@
 
 ## 5. Batch 2 — Research execution
 
-- [ ] 5.1 Implement Research Case overview with research question/goal, editable prioritized plan tasks, evidence coverage, and explicit mock status.
-- [ ] 5.2 Implement cancellable/restartable streaming research with named activity stages and progressively revealed structured Findings.
-- [ ] 5.3 Implement Finding expansion with confidence status, supporting signals, evidence counts, and counter-evidence counts.
-- [ ] 5.4 Add execution, plan-control, cancellation, restart, and progressive-finding tests.
+- [x] 5.1 Implement Research Case overview with research question/goal, editable prioritized plan tasks, evidence coverage, and explicit mock status.
+- [x] 5.2 Implement cancellable/restartable streaming research with named activity stages and progressively revealed structured Findings.
+- [x] 5.3 Implement Finding expansion with confidence status, supporting signals, evidence counts, and counter-evidence counts.
+- [x] 5.4 Add execution, plan-control, cancellation, restart, and progressive-finding tests.
 
 ## 6. Batch 3 — Evidence intelligence
 

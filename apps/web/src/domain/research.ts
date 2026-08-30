@@ -185,3 +185,45 @@ export type CreateResearchCaseInput = z.infer<typeof createResearchCaseInputSche
 
 export const createResearchCaseResultSchema = z.object({ caseId: z.string(), runId: z.string() });
 export type CreateResearchCaseResult = z.infer<typeof createResearchCaseResultSchema>;
+
+export const findingConfidenceSchema = z.enum(["high", "medium", "low", "needs-review"]);
+export const researchFindingSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  summary: z.string(),
+  confidence: findingConfidenceSchema,
+  supportingSignals: z.array(z.string()),
+  supportingEvidenceCount: z.number().int().nonnegative(),
+  counterEvidenceCount: z.number().int().nonnegative(),
+  revealedAtStage: researchRunSchema.shape.stage,
+});
+export type ResearchFinding = z.infer<typeof researchFindingSchema>;
+
+export const researchTimelineEventSchema = z.object({
+  id: z.string(),
+  stage: researchRunSchema.shape.stage,
+  label: z.string(),
+  detail: z.string(),
+});
+export type ResearchTimelineEvent = z.infer<typeof researchTimelineEventSchema>;
+
+export const researchCaseWorkspaceSchema = z.object({
+  fixtureNotice: z.literal("Mock research data — for product demonstration only"),
+  case: researchCaseSchema,
+  researchGoal: z.string(),
+  scope: researchScopeSchema,
+  evidenceCoverage: z.number().min(0).max(100),
+  plan: researchPlanSchema,
+  run: researchRunSchema,
+  timeline: z.array(researchTimelineEventSchema),
+  findings: z.array(researchFindingSchema),
+});
+export type ResearchCaseWorkspace = z.infer<typeof researchCaseWorkspaceSchema>;
+
+export const updatePlanInputSchema = z.object({ caseId: z.string(), plan: researchPlanSchema });
+export type UpdatePlanInput = z.infer<typeof updatePlanInputSchema>;
+
+export const researchRunActionSchema = z.enum(["start", "cancel", "restart", "complete"]);
+export type ResearchRunAction = z.infer<typeof researchRunActionSchema>;
+export const researchRunActionInputSchema = z.object({ caseId: z.string(), action: researchRunActionSchema });
+export type ResearchRunActionInput = z.infer<typeof researchRunActionInputSchema>;

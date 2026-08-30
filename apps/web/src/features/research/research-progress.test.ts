@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 
-import { createResearchProgress } from "./research-progress";
+import { createResearchProgress, getVisibleFindingIds } from "./research-progress";
 
 describe("createResearchProgress", () => {
   it("reveals research stages in the evidence-first workflow order", () => {
@@ -14,5 +14,16 @@ describe("createResearchProgress", () => {
       "human-review",
       "completed",
     ]);
+  });
+
+  it("reveals findings only after their evidence-producing stage", () => {
+    const findings = [
+      { id: "evidence", revealedAtStage: "extracting" as const },
+      { id: "analysis", revealedAtStage: "analyzing" as const },
+      { id: "counter", revealedAtStage: "counter-evidence" as const },
+    ];
+    expect(getVisibleFindingIds(findings, "reading")).toEqual([]);
+    expect(getVisibleFindingIds(findings, "analyzing")).toEqual(["evidence", "analysis"]);
+    expect(getVisibleFindingIds(findings, "completed")).toEqual(["evidence", "analysis", "counter"]);
   });
 });
