@@ -46,11 +46,11 @@
 
 ## 8. Batch 5 — Review, outputs, and library
 
-- [ ] 8.1 Implement Human Review queue and audit trail for claim, finding, evidence, thesis, note, more-research, and brief actions.
-- [ ] 8.2 Implement all Product Spec Living Brief sections with analyst notes and mock approval.
-- [ ] 8.3 Implement version history, What Changed, and structured version diff.
-- [ ] 8.4 Implement the basic Research Library with search, tag, company, industry, and source-type filters.
-- [ ] 8.5 Add review, approval, version diff, and library filter tests.
+- [x] 8.1 Implement Human Review queue and audit trail for claim, finding, evidence, thesis, note, more-research, and brief actions.
+- [x] 8.2 Implement all Product Spec Living Brief sections with analyst notes and mock approval.
+- [x] 8.3 Implement version history, What Changed, and structured version diff.
+- [x] 8.4 Implement the basic Research Library with search, tag, company, industry, and source-type filters.
+- [x] 8.5 Add review, approval, version diff, and library filter tests.
 
 ## 9. End-to-end quality verification
 

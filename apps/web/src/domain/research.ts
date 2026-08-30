@@ -303,3 +303,32 @@ export const updateThesisInputSchema = z.object({ companyId: z.string(), thesis:
 export type UpdateThesisInput = z.infer<typeof updateThesisInputSchema>;
 export const upsertDecisionItemInputSchema = z.object({ companyId: z.string(), item: decisionItemSchema });
 export type UpsertDecisionItemInput = z.infer<typeof upsertDecisionItemInputSchema>;
+
+export const reviewQueueItemSchema = z.object({
+  id: z.string(),
+  kind: z.enum(["claim", "finding", "evidence", "thesis", "conflict", "brief"]),
+  title: z.string(),
+  detail: z.string(),
+  status: z.enum(["pending", "approved", "rejected", "changes-requested"]),
+  priority: prioritySchema,
+  evidenceIds: z.array(z.string()),
+});
+export type ReviewQueueItem = z.infer<typeof reviewQueueItemSchema>;
+export const reviewAuditSchema = z.object({ id: z.string(), targetId: z.string(), action: z.enum(["approved", "rejected", "changes-requested", "note-added", "brief-approved"]), note: z.string().optional(), actor: z.string(), occurredAt: z.string().datetime() });
+export type ReviewAudit = z.infer<typeof reviewAuditSchema>;
+
+export const briefSectionKeySchema = z.enum(["executive-summary", "current-thesis", "key-findings", "industry-landscape", "competitive-landscape", "technology-landscape", "evidence", "counter-evidence", "risks", "catalysts", "open-questions", "analyst-notes"]);
+export const livingBriefSchema = z.object({ id: z.string(), title: z.string(), status: z.enum(["draft", "in-review", "approved"]), updatedAt: z.string().datetime(), sections: z.array(z.object({ key: briefSectionKeySchema, title: z.string(), content: z.string() })) });
+export type LivingBrief = z.infer<typeof livingBriefSchema>;
+export const briefVersionSchema = z.object({ id: z.string(), label: z.string(), createdAt: z.string().datetime(), summary: z.string(), changes: z.array(z.object({ kind: z.enum(["thesis", "evidence-added", "evidence-removed", "risk", "confidence"]), label: z.string(), before: z.string(), after: z.string() })) });
+export type BriefVersion = z.infer<typeof briefVersionSchema>;
+
+export const libraryItemSchema = z.object({ id: z.string(), title: z.string(), kind: z.enum(["uploaded-file", "report", "paper", "company-document", "evidence", "saved-source"]), company: z.string().optional(), industry: z.string(), sourceType: z.string(), tags: z.array(z.string()), date: z.string(), status: z.enum(["verified", "needs-review", "saved"]) });
+export type LibraryItem = z.infer<typeof libraryItemSchema>;
+
+export const outputWorkspaceSchema = z.object({ fixtureNotice: z.literal("Mock research data — for product demonstration only"), reviewQueue: z.array(reviewQueueItemSchema), reviewAudit: z.array(reviewAuditSchema), brief: livingBriefSchema, versions: z.array(briefVersionSchema), library: z.array(libraryItemSchema) });
+export type OutputWorkspace = z.infer<typeof outputWorkspaceSchema>;
+export const performReviewInputSchema = z.object({ targetId: z.string(), action: z.enum(["approved", "rejected", "changes-requested", "note-added", "brief-approved"]), note: z.string().optional() });
+export type PerformReviewInput = z.infer<typeof performReviewInputSchema>;
+export const updateBriefInputSchema = z.object({ brief: livingBriefSchema });
+export type UpdateBriefInput = z.infer<typeof updateBriefInputSchema>;

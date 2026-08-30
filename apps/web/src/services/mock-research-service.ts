@@ -8,11 +8,14 @@ import { requestMoreResearchInputSchema, reviewClaimInputSchema, updateEvidenceS
 import type { ResearchService } from "./research-service";
 import { mockDecisionWorkspace } from "@/lib/mock/fixtures/decision-workspace";
 import { updateThesisInputSchema, upsertDecisionItemInputSchema } from "@/domain/research";
+import { mockOutputWorkspace } from "@/lib/mock/fixtures/output-workspace";
+import { performReviewInputSchema, updateBriefInputSchema } from "@/domain/research";
 
 export class MockResearchService implements ResearchService {
   private researchCase = structuredClone(mockResearchCaseWorkspace);
   private evidenceWorkspace = structuredClone(mockEvidenceWorkspace);
   private decisionWorkspace = structuredClone(mockDecisionWorkspace);
+  private outputWorkspace = structuredClone(mockOutputWorkspace);
   async getToday() {
     await Promise.resolve();
     return structuredClone(mockTodayData);
@@ -113,5 +116,21 @@ export class MockResearchService implements ResearchService {
     if (index >= 0) this.decisionWorkspace.decisionItems[index] = structuredClone(parsed.item);
     else this.decisionWorkspace.decisionItems.unshift(structuredClone(parsed.item));
     return structuredClone(this.decisionWorkspace);
+  }
+  async getOutputWorkspace() { await Promise.resolve(); return structuredClone(this.outputWorkspace); }
+  async performReview(input: unknown) {
+    await Promise.resolve();
+    const parsed = performReviewInputSchema.parse(input);
+    const item = this.outputWorkspace.reviewQueue.find((entry) => entry.id === parsed.targetId);
+    if (item && parsed.action !== "note-added") item.status = parsed.action === "brief-approved" ? "approved" : parsed.action;
+    if (parsed.action === "brief-approved") this.outputWorkspace.brief.status = "approved";
+    this.outputWorkspace.reviewAudit.unshift({ id: `audit-${this.outputWorkspace.reviewAudit.length + 1}`, targetId: parsed.targetId, action: parsed.action, note: parsed.note, actor: "Demo Analyst", occurredAt: "2026-08-30T10:40:00.000Z" });
+    return structuredClone(this.outputWorkspace);
+  }
+  async updateBrief(input: unknown) {
+    await Promise.resolve();
+    const parsed = updateBriefInputSchema.parse(input);
+    this.outputWorkspace.brief = structuredClone(parsed.brief);
+    return structuredClone(this.outputWorkspace);
   }
 }

@@ -31,6 +31,12 @@ import {
   type DecisionWorkspace,
   type UpdateThesisInput,
   type UpsertDecisionItemInput,
+  outputWorkspaceSchema,
+  performReviewInputSchema,
+  updateBriefInputSchema,
+  type OutputWorkspace,
+  type PerformReviewInput,
+  type UpdateBriefInput,
 } from "@/domain/research";
 import type { ResearchService } from "@/services/research-service";
 
@@ -49,6 +55,9 @@ export interface ResearchRepository {
   getDecisionWorkspace(companyId: string): Promise<DecisionWorkspace>;
   updateThesis(input: UpdateThesisInput): Promise<DecisionWorkspace>;
   upsertDecisionItem(input: UpsertDecisionItemInput): Promise<DecisionWorkspace>;
+  getOutputWorkspace(): Promise<OutputWorkspace>;
+  performReview(input: PerformReviewInput): Promise<OutputWorkspace>;
+  updateBrief(input: UpdateBriefInput): Promise<OutputWorkspace>;
 }
 
 export class DefaultResearchRepository implements ResearchRepository {
@@ -75,4 +84,7 @@ export class DefaultResearchRepository implements ResearchRepository {
   async getDecisionWorkspace(companyId: string) { return decisionWorkspaceSchema.parse(await this.service.getDecisionWorkspace(companyId)); }
   async updateThesis(input: UpdateThesisInput) { return decisionWorkspaceSchema.parse(await this.service.updateThesis(updateThesisInputSchema.parse(input))); }
   async upsertDecisionItem(input: UpsertDecisionItemInput) { return decisionWorkspaceSchema.parse(await this.service.upsertDecisionItem(upsertDecisionItemInputSchema.parse(input))); }
+  async getOutputWorkspace() { return outputWorkspaceSchema.parse(await this.service.getOutputWorkspace()); }
+  async performReview(input: PerformReviewInput) { return outputWorkspaceSchema.parse(await this.service.performReview(performReviewInputSchema.parse(input))); }
+  async updateBrief(input: UpdateBriefInput) { return outputWorkspaceSchema.parse(await this.service.updateBrief(updateBriefInputSchema.parse(input))); }
 }

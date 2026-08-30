@@ -77,4 +77,20 @@ describe("DefaultResearchRepository", () => {
     const risk = workspace.decisionItems.find((item) => item.kind === "risk")!;
     await expect(repository.upsertDecisionItem({ companyId: "figure", item: { ...risk, status: "triggered" } })).resolves.toMatchObject({ decisionItems: expect.arrayContaining([expect.objectContaining({ id: risk.id, status: "triggered" })]) });
   });
+
+  it("supports human review, complete living briefs, versions, and library assets", async () => {
+    const repository = new DefaultResearchRepository(new MockResearchService());
+    const output = await repository.getOutputWorkspace();
+    expect(output.brief.sections.map((section) => section.key)).toEqual(["executive-summary", "current-thesis", "key-findings", "industry-landscape", "competitive-landscape", "technology-landscape", "evidence", "counter-evidence", "risks", "catalysts", "open-questions", "analyst-notes"]);
+    expect(output.versions[0].changes.some((change) => change.kind === "thesis")).toBe(true);
+    expect(new Set(output.library.map((item) => item.kind))).toEqual(new Set(["uploaded-file", "report", "paper", "company-document", "evidence", "saved-source"]));
+    const target = output.reviewQueue[0];
+    const reviewed = await repository.performReview({ targetId: target.id, action: "approved", note: "Evidence checked." });
+    expect(reviewed.reviewQueue.find((item) => item.id === target.id)?.status).toBe("approved");
+    expect(reviewed.reviewAudit[0]).toMatchObject({ targetId: target.id, action: "approved", note: "Evidence checked." });
+    const approved = await repository.performReview({ targetId: "review-brief-v3", action: "brief-approved" });
+    expect(approved.brief.status).toBe("approved");
+    const brief = { ...approved.brief, sections: approved.brief.sections.map((section) => section.key === "analyst-notes" ? { ...section, content: "Updated analyst judgment." } : section) };
+    await expect(repository.updateBrief({ brief })).resolves.toMatchObject({ brief: { sections: expect.arrayContaining([expect.objectContaining({ key: "analyst-notes", content: "Updated analyst judgment." })]) } });
+  });
 });

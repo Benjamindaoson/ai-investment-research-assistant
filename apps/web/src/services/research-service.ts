@@ -13,4 +13,7 @@ export interface ResearchService {
   getDecisionWorkspace(companyId: string): Promise<unknown>;
   updateThesis(input: unknown): Promise<unknown>;
   upsertDecisionItem(input: unknown): Promise<unknown>;
+  getOutputWorkspace(): Promise<unknown>;
+  performReview(input: unknown): Promise<unknown>;
+  updateBrief(input: unknown): Promise<unknown>;
 }
