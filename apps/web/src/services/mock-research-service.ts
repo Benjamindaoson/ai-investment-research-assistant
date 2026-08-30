@@ -10,6 +10,7 @@ import { mockDecisionWorkspace } from "@/lib/mock/fixtures/decision-workspace";
 import { updateThesisInputSchema, upsertDecisionItemInputSchema } from "@/domain/research";
 import { mockOutputWorkspace } from "@/lib/mock/fixtures/output-workspace";
 import { performReviewInputSchema, updateBriefInputSchema } from "@/domain/research";
+import { updateFindingInputSchema } from "@/domain/research";
 
 export class MockResearchService implements ResearchService {
   private researchCase = structuredClone(mockResearchCaseWorkspace);
@@ -30,7 +31,15 @@ export class MockResearchService implements ResearchService {
   }
   async createResearchCase(input: unknown) {
     await Promise.resolve();
-    createResearchCaseInputSchema.parse(input);
+    const parsed = createResearchCaseInputSchema.parse(input);
+    this.researchCase.case.question = parsed.setup.question;
+    this.researchCase.case.title = parsed.setup.question;
+    this.researchCase.researchGoal = parsed.plan.goal;
+    this.researchCase.plan = structuredClone(parsed.plan);
+    this.researchCase.scope = parsed.setup.scope;
+    this.researchCase.run.status = "queued";
+    this.researchCase.run.stage = "planning";
+    this.researchCase.evidenceCoverage = 0;
     return { caseId: "case-value-pools", runId: "run-value-pools-01" };
   }
   async getResearchCase(caseId: string) {
@@ -65,6 +74,15 @@ export class MockResearchService implements ResearchService {
       this.researchCase.run.completedAt = undefined;
       this.researchCase.case.status = "in-research";
     }
+    return structuredClone(this.researchCase);
+  }
+  async updateFinding(input: unknown) {
+    await Promise.resolve();
+    const parsed = updateFindingInputSchema.parse(input);
+    if (parsed.caseId !== this.researchCase.case.id) throw new Error("Mock research case was not found.");
+    const index = this.researchCase.findings.findIndex((finding) => finding.id === parsed.finding.id);
+    if (index < 0) throw new Error("Mock finding was not found.");
+    this.researchCase.findings[index] = structuredClone(parsed.finding);
     return structuredClone(this.researchCase);
   }
   async getEvidenceWorkspace(caseId: string) {

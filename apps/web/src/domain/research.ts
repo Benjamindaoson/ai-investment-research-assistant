@@ -104,6 +104,8 @@ export const todayOverviewSchema = z.object({
   stats: z.array(z.object({ label: z.string(), value: z.number(), kind: z.enum(["research", "progress", "review", "completed"]) })),
   coverage: z.array(z.object({ label: z.string(), value: z.number().min(0).max(100) })),
   triggers: z.array(z.object({ label: z.string(), value: z.number().min(0).max(100) })),
+  changes: z.array(z.object({ id: z.string(), label: z.string(), summary: z.string(), materiality: z.enum(["high", "medium", "low"]) })),
+  recent: z.array(z.object({ id: z.string(), title: z.string(), status: researchStatusSchema, updatedAtLabel: z.string() })),
 });
 export type TodayOverview = z.infer<typeof todayOverviewSchema>;
 
@@ -230,6 +232,8 @@ export const researchRunActionSchema = z.enum(["start", "cancel", "restart", "co
 export type ResearchRunAction = z.infer<typeof researchRunActionSchema>;
 export const researchRunActionInputSchema = z.object({ caseId: z.string(), action: researchRunActionSchema });
 export type ResearchRunActionInput = z.infer<typeof researchRunActionInputSchema>;
+export const updateFindingInputSchema = z.object({ caseId: z.string(), finding: researchFindingSchema });
+export type UpdateFindingInput = z.infer<typeof updateFindingInputSchema>;
 
 export const evidenceWorkspaceSchema = z.object({
   fixtureNotice: z.literal("Mock research data — for product demonstration only"),

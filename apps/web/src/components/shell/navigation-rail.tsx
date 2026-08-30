@@ -2,14 +2,15 @@
 
 import Link from "next/link";
 import { usePathname } from "next/navigation";
-import { BookOpen, ChevronDown, Clock3, FileText, Grid2X2, Home, Library, Menu, Plus, Target } from "lucide-react";
+import { BookOpen, ChevronDown, FileCheck2, FileText, Home, Library, Plus, Scale, ShieldCheck } from "lucide-react";
 
 const primaryItems = [
   { label: "Today", href: "/", icon: Home },
   { label: "Research", href: "/research", icon: FileText },
   { label: "Companies", href: "/companies", icon: BookOpen },
-  { label: "Industries", href: "/industries", icon: Grid2X2 },
-  { label: "Watchlist", href: "/watchlist", icon: Target },
+  { label: "Evidence", href: "/evidence", icon: ShieldCheck },
+  { label: "Human Review", href: "/review", icon: Scale },
+  { label: "Living Brief", href: "/brief", icon: FileCheck2 },
   { label: "Library", href: "/library", icon: Library },
 ] as const;
 
@@ -32,8 +33,7 @@ export function NavigationRail({ onNavigate }: { onNavigate?: () => void }) {
       </nav>
       <div className="atlas-rule" />
       <small>WORKSPACE</small>
-      <Link className="atlas-nav" href="/activity" onClick={onNavigate}><Clock3 size={18} aria-hidden="true" />Research activity</Link>
-      <button className="atlas-nav rail-collapse" type="button"><Menu size={18} aria-hidden="true" />Collapse sidebar</button>
+      <Link className="atlas-nav" href="/versions" onClick={onNavigate}><FileText size={18} aria-hidden="true" />Version history</Link>
     </div>
   );
 }

@@ -35,6 +35,7 @@ describe("DefaultResearchRepository", () => {
     expect(plan.sections.map((section) => section.title)).toEqual(["Market", "Technology", "Competition", "Value Chain", "Risk"]);
     expect(plan.goal).toContain("disconfirming evidence");
     await expect(repository.createResearchCase({ setup, plan })).resolves.toEqual({ caseId: "case-value-pools", runId: "run-value-pools-01" });
+    await expect(repository.getResearchCase("case-value-pools")).resolves.toMatchObject({ case: { question: setup.question }, plan, evidenceCoverage: 0 });
   });
 
   it("persists plan changes and explicit run controls through the mock service", async () => {
@@ -46,6 +47,8 @@ describe("DefaultResearchRepository", () => {
     await expect(repository.controlResearchRun({ caseId: workspace.case.id, action: "cancel" })).resolves.toMatchObject({ run: { status: "cancelled" } });
     await expect(repository.controlResearchRun({ caseId: workspace.case.id, action: "restart" })).resolves.toMatchObject({ run: { status: "running" } });
     await expect(repository.controlResearchRun({ caseId: workspace.case.id, action: "complete" })).resolves.toMatchObject({ run: { status: "completed" }, evidenceCoverage: 78 });
+    const finding = workspace.findings[0];
+    await expect(repository.updateFinding({ caseId: workspace.case.id, finding: { ...finding, summary: "Analyst-edited finding summary." } })).resolves.toMatchObject({ findings: expect.arrayContaining([expect.objectContaining({ id: finding.id, summary: "Analyst-edited finding summary." })]) });
   });
 
   it("preserves evidence semantics, provenance, and analyst review mutations", async () => {

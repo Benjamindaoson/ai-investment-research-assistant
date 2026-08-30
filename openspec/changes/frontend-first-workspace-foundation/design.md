@@ -32,6 +32,12 @@ The implementation is therefore organized into dependency-ordered batches:
 
 Each batch must preserve Page/Component → TanStack Query Hook → Repository → Typed Service Interface → Mock implementation. UI modules never import fixtures. All mutations are mock-only and deterministic for the session; the fixture notice remains visible wherever data could be mistaken for live research.
 
+## Final Frontend Verification (2026-08-30)
+
+The complete P0 demo path is implemented with mock data and browser-tested across Today → Research Setup → editable Plan → Research Case / streaming Findings → Evidence Intelligence → Company Research → Thesis → Risk / Catalyst → What to Monitor → Human Review → Living Brief → Versioning → Library. Production UI has no fixture imports or direct service/mock coupling, all mutable domain actions cross typed repository and service contracts, and no backend, database, RAG, LangGraph, or production agent runtime was introduced.
+
+Final gates include ESLint, strict TypeScript, 15 unit/component tests, a production Next.js build, a full Chromium P0 flow, and mobile navigation smoke coverage.
+
 ## Decisions
 
 ### Next.js workspace application

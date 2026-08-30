@@ -6,7 +6,7 @@
 
 ## 2. Shared application system
 
-- [ ] 2.1 Implement accessible primitive controls and research-domain presentation components using the token system.
+- [x] 2.1 Implement accessible primitive controls and research-domain presentation components using the token system.
 - [x] 2.2 Implement the responsive App Shell with top bar, navigation rail, context pane / drawer, route loading and error boundaries.
 - [x] 2.3 Implement Cmd/Ctrl+K command palette and keyboard-accessible navigation actions.
 
@@ -15,13 +15,13 @@
 - [x] 3.1 Define shared research, company, evidence, thesis, and activity types and realistic AI / embodied-intelligence fixtures.
 - [x] 3.2 Implement typed mock services, repository interfaces, TanStack Query hooks, MSW handlers, and Zustand UI state.
 - [x] 3.3 Add tests for mock service contracts, research progress sequencing, and command-palette state.
-- [ ] 3.4 Expand runtime schemas, service interfaces, repositories, and query/mutation hooks to cover every P0 read and domain operation without UI fixture imports.
+- [x] 3.4 Expand runtime schemas, service interfaces, repositories, and query/mutation hooks to cover every P0 read and domain operation without UI fixture imports.
 
 ## 4. Today and New Research
 
 - [x] 4.1 Implement the Today research worklist and operational context pane using the first supplied reference's layout and density.
 - [x] 4.2 Implement the New Research input workflow with validation, attachment mock state, and handoff to a Research Case.
-- [ ] 4.3 Add responsive and interaction tests for the Today navigation and New Research submission.
+- [x] 4.3 Add responsive and interaction tests for the Today navigation and New Research submission.
 
 ## 5. Batch 2 — Research execution
 
@@ -54,6 +54,6 @@
 
 ## 9. End-to-end quality verification
 
-- [ ] 9.1 Complete route/navigation coverage and tests for loading, error, empty, streaming, keyboard, review, and evidence states.
-- [ ] 9.2 Run lint, strict typecheck, tests, production build, and a local browser smoke check across the full P0 path.
-- [ ] 9.3 Review the final diff for Product Spec coverage, evidence semantics, token consistency, accessible focus states, mock-data labelling, responsive layout, and forbidden backend/runtime coupling.
+- [x] 9.1 Complete route/navigation coverage and tests for loading, error, empty, streaming, keyboard, review, and evidence states.
+- [x] 9.2 Run lint, strict typecheck, unit/component tests, production build, and Chromium smoke checks across the desktop and mobile P0 paths.
+- [x] 9.3 Review the final diff for Product Spec coverage, evidence semantics, token consistency, accessible focus states, mock-data labelling, responsive layout, and forbidden backend/runtime coupling.

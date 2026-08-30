@@ -29,13 +29,13 @@ const sourceLabels: Record<ResearchSourceType, string> = {
 
 const defaultQuestion = "未来三年具身智能产业最大的价值池在哪里？";
 
-export function NewResearchWorkspace() {
+export function NewResearchWorkspace({ initialQuestion = defaultQuestion }: { initialQuestion?: string }) {
   const router = useRouter();
   const options = useResearchSetupOptionsQuery();
   const proposePlan = useProposeResearchPlanMutation();
   const createCase = useCreateResearchCaseMutation();
   const [step, setStep] = useState<"setup" | "plan">("setup");
-  const [question, setQuestion] = useState(defaultQuestion);
+  const [question, setQuestion] = useState(initialQuestion);
   const [scope, setScope] = useState<ResearchScope>("deep");
   const [targetIds, setTargetIds] = useState<string[]>(["industry-embodied", "technology-robot-data"]);
   const [timeRange, setTimeRange] = useState<ResearchSetup["timeRange"]>("3-years");

@@ -38,5 +38,15 @@ export const mockTodayData: TodayData = {
     ],
     coverage: [["Humanoid robotics", 74], ["Agent infrastructure", 52], ["Foundation models", 47], ["Industrial AI", 36], ["Compute", 28]].map(([label, value]) => ({ label: String(label), value: Number(value) })),
     triggers: [["Deployment signal", 72], ["Capital / funding", 49], ["Technical release", 38], ["Policy / regulation", 20], ["Competition", 17]].map(([label, value]) => ({ label: String(label), value: Number(value) })),
+    changes: [
+      { id: "change-figure", label: "Figure", summary: "Mock deployment partnership expanded to a second workflow.", materiality: "high" },
+      { id: "change-vla", label: "VLA models", summary: "New paper reports improved synthetic-to-real transfer with material limitations.", materiality: "medium" },
+      { id: "change-hiring", label: "Robot data", summary: "Data operations and evaluation hiring increased across representative companies.", materiality: "medium" },
+    ],
+    recent: [
+      { id: "case-value-pools", title: "Embodied intelligence value pools", status: "awaiting-review", updatedAtLabel: "Updated 2m ago" },
+      { id: "case-figure-tesla", title: "Figure vs Tesla Optimus", status: "in-research", updatedAtLabel: "Updated 18m ago" },
+      { id: "case-agent-infra", title: "Agent infrastructure platform layers", status: "completed", updatedAtLabel: "Completed yesterday" },
+    ],
   },
 };
