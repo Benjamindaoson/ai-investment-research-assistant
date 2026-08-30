@@ -24,21 +24,31 @@ Do not optimize for:
 
 ## 1. Sources of Truth
 
+
 Use this priority order when determining what to build:
 
 1. The user's current explicit request.
-2. Active OpenSpec artifacts under `openspec/changes/`.
-3. Product and architecture documentation under `docs/`.
-4. Existing tests and executable behavior.
-5. Existing architecture and repository conventions.
-6. Existing implementation.
-7. Reasonable engineering judgment.
+2. `docs/product/P0_PRODUCT_SPEC.md` for the frozen P0 product direction,
+   scope, workflows, product semantics, information architecture, and design principles.
+3. Active OpenSpec artifacts under `openspec/changes/` for the currently
+   authorized implementation scope.
+4. Product, architecture, and engineering documentation under `docs/`.
+5. Existing tests and executable behavior.
+6. Existing architecture and repository conventions.
+7. Existing implementation.
+8. Reasonable engineering judgment.
 
-If implementation conflicts with an active specification, follow the
-specification unless the user's current request explicitly overrides it.
+`docs/product/P0_PRODUCT_SPEC.md` defines what the product is.
 
-Do not silently redefine product behavior because the existing code is easier
-to preserve.
+OpenSpec defines what subset of the product is currently authorized for implementation.
+
+Existing code does not override the Product Spec or active OpenSpec requirements.
+
+If implementation conflicts with the Product Spec, follow the Product Spec unless
+the user's current explicit request overrides it.
+
+Do not expand the current implementation scope merely because additional P0
+capabilities exist in the Product Spec.
 
 ---
 
