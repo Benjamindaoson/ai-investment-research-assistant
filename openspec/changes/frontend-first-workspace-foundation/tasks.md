@@ -2,23 +2,23 @@
 
 - [x] 1.1 Initialize the pnpm workspace and strict Next.js 16 application in `apps/web` with lint, typecheck, test, and build commands.
 - [x] 1.2 Add the frontend dependencies and configuration for Tailwind 4, Radix primitives, CVA, Lucide, TanStack Query/Table/Virtual, Zustand, Motion, React Hook Form, Zod, MSW, Vitest, and React Testing Library.
-- [ ] 1.3 Define Geist typography and product design tokens for surfaces, borders, motion, density, interaction states, and responsive breakpoints.
+- [x] 1.3 Define Geist typography and product design tokens for surfaces, borders, motion, density, interaction states, and responsive breakpoints.
 
 ## 2. Shared application system
 
 - [ ] 2.1 Implement accessible primitive controls and research-domain presentation components using the token system.
-- [ ] 2.2 Implement the responsive App Shell with top bar, navigation rail, context pane / drawer, route loading and error boundaries.
-- [ ] 2.3 Implement Cmd/Ctrl+K command palette and keyboard-accessible navigation actions.
+- [x] 2.2 Implement the responsive App Shell with top bar, navigation rail, context pane / drawer, route loading and error boundaries.
+- [x] 2.3 Implement Cmd/Ctrl+K command palette and keyboard-accessible navigation actions.
 
 ## 3. Mock research boundary
 
-- [ ] 3.1 Define shared research, company, evidence, thesis, and activity types and realistic AI / embodied-intelligence fixtures.
-- [ ] 3.2 Implement typed mock services, repository interfaces, TanStack Query hooks, MSW handlers, and Zustand UI state.
-- [ ] 3.3 Add tests for mock service contracts, research progress sequencing, and command-palette state.
+- [x] 3.1 Define shared research, company, evidence, thesis, and activity types and realistic AI / embodied-intelligence fixtures.
+- [x] 3.2 Implement typed mock services, repository interfaces, TanStack Query hooks, MSW handlers, and Zustand UI state.
+- [x] 3.3 Add tests for mock service contracts, research progress sequencing, and command-palette state.
 
 ## 4. Today and New Research
 
-- [ ] 4.1 Implement the Today research worklist and operational context pane using the first supplied reference's layout and density.
+- [x] 4.1 Implement the Today research worklist and operational context pane using the first supplied reference's layout and density.
 - [ ] 4.2 Implement the New Research input workflow with validation, attachment mock state, and handoff to a Research Case.
 - [ ] 4.3 Add responsive and interaction tests for the Today navigation and New Research submission.
 
