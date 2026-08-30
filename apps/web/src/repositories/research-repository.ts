@@ -25,6 +25,12 @@ import {
   type RequestMoreResearchInput,
   type ReviewClaimInput,
   type UpdateEvidenceStatusInput,
+  decisionWorkspaceSchema,
+  updateThesisInputSchema,
+  upsertDecisionItemInputSchema,
+  type DecisionWorkspace,
+  type UpdateThesisInput,
+  type UpsertDecisionItemInput,
 } from "@/domain/research";
 import type { ResearchService } from "@/services/research-service";
 
@@ -40,6 +46,9 @@ export interface ResearchRepository {
   updateEvidenceStatus(input: UpdateEvidenceStatusInput): Promise<EvidenceWorkspace>;
   reviewClaim(input: ReviewClaimInput): Promise<EvidenceWorkspace>;
   requestMoreResearch(input: RequestMoreResearchInput): Promise<EvidenceWorkspace>;
+  getDecisionWorkspace(companyId: string): Promise<DecisionWorkspace>;
+  updateThesis(input: UpdateThesisInput): Promise<DecisionWorkspace>;
+  upsertDecisionItem(input: UpsertDecisionItemInput): Promise<DecisionWorkspace>;
 }
 
 export class DefaultResearchRepository implements ResearchRepository {
@@ -63,4 +72,7 @@ export class DefaultResearchRepository implements ResearchRepository {
   async updateEvidenceStatus(input: UpdateEvidenceStatusInput) { return evidenceWorkspaceSchema.parse(await this.service.updateEvidenceStatus(updateEvidenceStatusInputSchema.parse(input))); }
   async reviewClaim(input: ReviewClaimInput) { return evidenceWorkspaceSchema.parse(await this.service.reviewClaim(reviewClaimInputSchema.parse(input))); }
   async requestMoreResearch(input: RequestMoreResearchInput) { return evidenceWorkspaceSchema.parse(await this.service.requestMoreResearch(requestMoreResearchInputSchema.parse(input))); }
+  async getDecisionWorkspace(companyId: string) { return decisionWorkspaceSchema.parse(await this.service.getDecisionWorkspace(companyId)); }
+  async updateThesis(input: UpdateThesisInput) { return decisionWorkspaceSchema.parse(await this.service.updateThesis(updateThesisInputSchema.parse(input))); }
+  async upsertDecisionItem(input: UpsertDecisionItemInput) { return decisionWorkspaceSchema.parse(await this.service.upsertDecisionItem(upsertDecisionItemInputSchema.parse(input))); }
 }

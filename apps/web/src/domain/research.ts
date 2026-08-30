@@ -254,3 +254,52 @@ export const reviewClaimInputSchema = z.object({ caseId: z.string(), claimId: z.
 export type ReviewClaimInput = z.infer<typeof reviewClaimInputSchema>;
 export const requestMoreResearchInputSchema = z.object({ caseId: z.string(), claimId: z.string(), question: z.string().min(5) });
 export type RequestMoreResearchInput = z.infer<typeof requestMoreResearchInputSchema>;
+
+export const companyResearchSectionSchema = z.object({
+  id: z.string(),
+  title: z.enum(["Technology", "Commercialization", "Competition", "Talent Signals", "Funding / Financial", "Risks"]),
+  summary: z.string(),
+  signals: z.array(z.string()),
+  evidenceCount: z.number().int().nonnegative(),
+});
+export type CompanyResearchSection = z.infer<typeof companyResearchSectionSchema>;
+
+export const structuredThesisSchema = z.object({
+  id: z.string(),
+  statement: z.string().min(10),
+  status: z.enum(["draft", "active", "challenged", "approved"]),
+  assumptions: z.array(z.object({ id: z.string(), statement: z.string(), status: z.enum(["supported", "uncertain", "challenged"]) })),
+  supportingEvidenceIds: z.array(z.string()),
+  counterEvidenceIds: z.array(z.string()),
+  disconfirmingConditions: z.array(z.object({ id: z.string(), statement: z.string(), triggered: z.boolean() })),
+  updatedAt: z.string().datetime(),
+});
+export type StructuredThesis = z.infer<typeof structuredThesisSchema>;
+
+export const decisionItemSchema = z.object({
+  id: z.string(),
+  kind: z.enum(["risk", "catalyst", "monitor"]),
+  category: z.string(),
+  title: z.string().min(3),
+  detail: z.string().min(3),
+  status: z.enum(["active", "watching", "triggered", "resolved"]),
+  importance: z.enum(["high", "medium", "low"]),
+  evidenceIds: z.array(z.string()),
+});
+export type DecisionItem = z.infer<typeof decisionItemSchema>;
+
+export const decisionWorkspaceSchema = z.object({
+  fixtureNotice: z.literal("Mock research data — for product demonstration only"),
+  company: companySchema,
+  currentThesis: structuredThesisSchema,
+  whatChanged: z.array(z.object({ id: z.string(), date: z.string(), kind: z.enum(["partnership", "product", "hiring", "technology", "funding"]), summary: z.string(), materiality: z.enum(["high", "medium", "low"]) })),
+  companySections: z.array(companyResearchSectionSchema),
+  evidenceCoverage: z.array(z.object({ label: z.string(), value: z.number().min(0).max(100) })),
+  decisionItems: z.array(decisionItemSchema),
+});
+export type DecisionWorkspace = z.infer<typeof decisionWorkspaceSchema>;
+
+export const updateThesisInputSchema = z.object({ companyId: z.string(), thesis: structuredThesisSchema });
+export type UpdateThesisInput = z.infer<typeof updateThesisInputSchema>;
+export const upsertDecisionItemInputSchema = z.object({ companyId: z.string(), item: decisionItemSchema });
+export type UpsertDecisionItemInput = z.infer<typeof upsertDecisionItemInputSchema>;

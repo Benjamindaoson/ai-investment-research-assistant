@@ -39,10 +39,10 @@
 
 ## 7. Batch 4 — Decision workspaces
 
-- [ ] 7.1 Implement Company Research with current thesis, What Changed, technology, commercialization, competition, talent, funding, risks, and coverage.
-- [ ] 7.2 Implement structured Thesis Workspace with key assumptions, linked supporting/counter evidence, and disconfirming conditions.
-- [ ] 7.3 Implement Risk / Catalyst and What to Monitor workspaces with analyst-editable mock items.
-- [ ] 7.4 Add company/thesis/risk/catalyst/monitor interaction and semantic-state tests.
+- [x] 7.1 Implement Company Research with current thesis, What Changed, technology, commercialization, competition, talent, funding, risks, and coverage.
+- [x] 7.2 Implement structured Thesis Workspace with key assumptions, linked supporting/counter evidence, and disconfirming conditions.
+- [x] 7.3 Implement Risk / Catalyst and What to Monitor workspaces with analyst-editable mock items.
+- [x] 7.4 Add company/thesis/risk/catalyst/monitor interaction and semantic-state tests.
 
 ## 8. Batch 5 — Review, outputs, and library
 

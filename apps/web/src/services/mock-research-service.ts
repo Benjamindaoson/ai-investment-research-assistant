@@ -6,10 +6,13 @@ import { mockResearchCaseWorkspace } from "@/lib/mock/fixtures/research-case";
 import { mockEvidenceWorkspace } from "@/lib/mock/fixtures/evidence-workspace";
 import { requestMoreResearchInputSchema, reviewClaimInputSchema, updateEvidenceStatusInputSchema } from "@/domain/research";
 import type { ResearchService } from "./research-service";
+import { mockDecisionWorkspace } from "@/lib/mock/fixtures/decision-workspace";
+import { updateThesisInputSchema, upsertDecisionItemInputSchema } from "@/domain/research";
 
 export class MockResearchService implements ResearchService {
   private researchCase = structuredClone(mockResearchCaseWorkspace);
   private evidenceWorkspace = structuredClone(mockEvidenceWorkspace);
+  private decisionWorkspace = structuredClone(mockDecisionWorkspace);
   async getToday() {
     await Promise.resolve();
     return structuredClone(mockTodayData);
@@ -89,5 +92,26 @@ export class MockResearchService implements ResearchService {
     const parsed = requestMoreResearchInputSchema.parse(input);
     this.evidenceWorkspace.reviewLog.unshift({ id: `review-${this.evidenceWorkspace.reviewLog.length + 1}`, action: "more-research-requested", targetId: parsed.claimId, summary: parsed.question, actor: "Demo Analyst", occurredAt: "2026-08-30T10:02:00.000Z" });
     return structuredClone(this.evidenceWorkspace);
+  }
+  async getDecisionWorkspace(companyId: string) {
+    await Promise.resolve();
+    if (companyId !== this.decisionWorkspace.company.id) throw new Error(`Mock company workspace ${companyId} was not found.`);
+    return structuredClone(this.decisionWorkspace);
+  }
+  async updateThesis(input: unknown) {
+    await Promise.resolve();
+    const parsed = updateThesisInputSchema.parse(input);
+    if (parsed.companyId !== this.decisionWorkspace.company.id) throw new Error("Mock company was not found.");
+    this.decisionWorkspace.currentThesis = structuredClone(parsed.thesis);
+    return structuredClone(this.decisionWorkspace);
+  }
+  async upsertDecisionItem(input: unknown) {
+    await Promise.resolve();
+    const parsed = upsertDecisionItemInputSchema.parse(input);
+    if (parsed.companyId !== this.decisionWorkspace.company.id) throw new Error("Mock company was not found.");
+    const index = this.decisionWorkspace.decisionItems.findIndex((item) => item.id === parsed.item.id);
+    if (index >= 0) this.decisionWorkspace.decisionItems[index] = structuredClone(parsed.item);
+    else this.decisionWorkspace.decisionItems.unshift(structuredClone(parsed.item));
+    return structuredClone(this.decisionWorkspace);
   }
 }

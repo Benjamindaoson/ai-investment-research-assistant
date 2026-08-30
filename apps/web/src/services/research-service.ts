@@ -10,4 +10,7 @@ export interface ResearchService {
   updateEvidenceStatus(input: unknown): Promise<unknown>;
   reviewClaim(input: unknown): Promise<unknown>;
   requestMoreResearch(input: unknown): Promise<unknown>;
+  getDecisionWorkspace(companyId: string): Promise<unknown>;
+  updateThesis(input: unknown): Promise<unknown>;
+  upsertDecisionItem(input: unknown): Promise<unknown>;
 }

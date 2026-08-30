@@ -63,4 +63,18 @@ describe("DefaultResearchRepository", () => {
     const requested = await repository.requestMoreResearch({ caseId: workspace.caseId, claimId: workspace.claims[0].id, question: "Test whether synthetic data changes this conclusion." });
     expect(requested.reviewLog[0]).toMatchObject({ action: "more-research-requested", targetId: workspace.claims[0].id });
   });
+
+  it("persists structured thesis and decision-workspace controls", async () => {
+    const repository = new DefaultResearchRepository(new MockResearchService());
+    const workspace = await repository.getDecisionWorkspace("figure");
+    expect(workspace.companySections.map((section) => section.title)).toEqual(["Technology", "Commercialization", "Competition", "Talent Signals", "Funding / Financial", "Risks"]);
+    expect(workspace.currentThesis.disconfirmingConditions.length).toBeGreaterThan(0);
+    expect(workspace.decisionItems.some((item) => item.kind === "risk")).toBe(true);
+    expect(workspace.decisionItems.some((item) => item.kind === "catalyst")).toBe(true);
+    expect(workspace.decisionItems.some((item) => item.kind === "monitor")).toBe(true);
+    const thesis = { ...workspace.currentThesis, status: "approved" as const, statement: `${workspace.currentThesis.statement} Analyst reviewed.` };
+    await expect(repository.updateThesis({ companyId: "figure", thesis })).resolves.toMatchObject({ currentThesis: { status: "approved", statement: thesis.statement } });
+    const risk = workspace.decisionItems.find((item) => item.kind === "risk")!;
+    await expect(repository.upsertDecisionItem({ companyId: "figure", item: { ...risk, status: "triggered" } })).resolves.toMatchObject({ decisionItems: expect.arrayContaining([expect.objectContaining({ id: risk.id, status: "triggered" })]) });
+  });
 });
