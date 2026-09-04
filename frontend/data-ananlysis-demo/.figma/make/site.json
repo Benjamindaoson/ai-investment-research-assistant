@@ -1,0 +1,10 @@
+{
+  "description": "提供基于AI的企业智能分析平台，自动解答业务问题，展示关键数据洞察，支持深入交互和持续追问，助力决策优化。",
+  "robots": {
+    "index": false
+  },
+  "accessibility": {
+    "addBypassLinks": false,
+    "ignoreReducedMotion": false
+  }
+}
