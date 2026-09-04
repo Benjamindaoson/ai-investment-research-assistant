@@ -1,5 +1,6 @@
 # Dependencies
 node_modules/
+**/node_modules/
 .venv/
 venv/
 env/
@@ -8,6 +9,8 @@ env/
 dist/
 build/
 *.egg-info/
+coverage/
+.next/
 
 # Python
 __pycache__/
@@ -33,6 +36,7 @@ logs/
 # Environment
 .env
 .env.local
+.env.*
 *.local
 
 # Temporary files
@@ -45,6 +49,8 @@ temp/
 *.key
 credentials.json
 secrets.json
+id_rsa
+id_ed25519
 
 # Artifacts (runtime generated)
 artifacts/

@@ -1,0 +1,81 @@
+## Context
+
+The repository is newly initialized and contains reference screenshots only. The product is an evidence-first AI and embodied-intelligence research workspace. The first release is a frontend-only product prototype: all data is intentional mock data and no database, server API, agent runtime, LangGraph, RAG, or authentication is in scope.
+
+The supplied screens establish the design language: a fixed dark navigation rail, white global header, dense structured workspace, restrained blue action color, subtle borders, compact data tables, and an optional right-hand context pane. The product adapts this language to research questions about AI, agents, robotics, and embodied intelligence without copying the reference brand or financial copy.
+
+## Goals / Non-Goals
+
+**Goals:**
+- Produce a navigable Next.js 16 prototype under `apps/web` with custom visual tokens and reusable domain components.
+- Make the entire P0 workflow in the Product Spec available as a typed, mock-data-driven demo with practical loading, empty, error, selected, mutation, review, version, and streaming states.
+- Use a service/repository/query boundary and local MSW handlers so a future FastAPI endpoint can replace fixtures without changing screens.
+- Maintain responsive and keyboard-accessible behavior while preserving a desktop-first high-information-density layout.
+
+**Non-Goals:**
+- Implementing any backend, data persistence, live search, market feed, exported documents, user management, RAG, LangGraph, or agent runtime.
+- Copying third-party logos, trademarks, or supplied Chinese-language financial content.
+- Building P1 monitoring automation, portfolio/trading features, production exports, or workspace pages beyond the frozen P0 Product Spec.
+
+## P0 Frontend Audit (2026-08-30)
+
+The current implementation provides the shared shell, keyboard command palette, Today worklist, responsive context pane, initial tokens, typed Today query boundary, and a staged research-progress utility. The remaining P0 product is not yet demoable: `/new-research` and all linked research routes are absent, the service exposes only `getToday`, and the current schemas do not cover plans, findings, review actions, risk/catalyst/monitor items, brief versions, or library filtering.
+
+The implementation is therefore organized into dependency-ordered batches:
+
+1. **Creation foundation:** complete P0 schemas/contracts and New Research → Setup → editable Plan → create-case handoff.
+2. **Research execution:** Research Case overview, plan task controls, cancellable/restartable streaming timeline, and progressively revealed Findings.
+3. **Evidence intelligence:** claim navigation, supporting/counter/conflicting evidence, source provenance, verification changes, and request-more-research actions.
+4. **Decision workspaces:** Company Research, structured Thesis, assumptions, disconfirming conditions, Risk / Catalyst, and What to Monitor.
+5. **Review and outputs:** Human Review audit trail, Living Brief sections and approval, version history/diff, and basic searchable/filterable Research Library.
+6. **End-to-end hardening:** complete navigation, responsive/keyboard/error/empty coverage, full demo-path tests, and final product-semantic audit.
+
+Each batch must preserve Page/Component → TanStack Query Hook → Repository → Typed Service Interface → Mock implementation. UI modules never import fixtures. All mutations are mock-only and deterministic for the session; the fixture notice remains visible wherever data could be mistaken for live research.
+
+## Final Frontend Verification (2026-08-30)
+
+The complete P0 demo path is implemented with mock data and browser-tested across Today → Research Setup → editable Plan → Research Case / streaming Findings → Evidence Intelligence → Company Research → Thesis → Risk / Catalyst → What to Monitor → Human Review → Living Brief → Versioning → Library. Production UI has no fixture imports or direct service/mock coupling, all mutable domain actions cross typed repository and service contracts, and no backend, database, RAG, LangGraph, or production agent runtime was introduced.
+
+Final gates include ESLint, strict TypeScript, 15 unit/component tests, a production Next.js build, a full Chromium P0 flow, and mobile navigation smoke coverage.
+
+## Decisions
+
+### Next.js workspace application
+Use a pnpm workspace with `apps/web` as a Next.js App Router application. This keeps the current frontend isolated and permits future API, shared types, or packages without a relocation. App Router route-level `loading.tsx` and `error.tsx` supply the base async experience.
+
+Alternative: use a single root Next.js application. Rejected because the requested structure explicitly anticipates `apps/web` and a workspace does not materially increase the client bundle.
+
+### Custom token-first component system
+Define CSS custom properties for color, typography, spacing, radius, shadows, borders, surfaces, motion, density, and focus / hover / selected states in `styles/tokens.css`. Tailwind consumes the CSS variables. Primitives in `components/ui` use CVA, Radix where interaction semantics matter, and Lucide icons; domain components sit in `components/research`, `components/evidence`, and `components/thesis`.
+
+Alternative: adopt a stock shadcn theme. Rejected because it would conflict with the provided reference's compact, institutional hierarchy and the explicit custom design-system requirement.
+
+### Typed mock boundary
+Page components call hooks in `queries/`, which call repositories. Repositories receive a typed service interface with MSW-backed handlers and fixtures under `lib/mock`. The initial app has no page-level `fetch` calls. Zustand owns cross-route UI state such as context-pane visibility and command palette state; TanStack Query owns async mock server state.
+
+Alternative: import fixtures directly into pages. Rejected because it cannot be swapped to FastAPI cleanly and makes loading/error states artificial.
+
+### Dense responsive shell
+Desktop widths render a 224px navigation rail, 56px top bar, flexible main column, and optional 320px context pane. At tablet widths, the context pane moves to an overlay drawer; at phone widths, navigation becomes a drawer and tables retain only critical columns. Split panes have min/max sizes and use CSS grid rather than continuous layout JS.
+
+### Streaming research simulation
+The research run repository returns a stream of named stages with timed fixture events. A client `ResearchProgress` progressively appends events and reveals findings. The simulation is explicitly labelled as a prototype and is cancellable / restartable in client state.
+
+## Risks / Trade-offs
+
+- [Reference screens are large, desktop-only images] → Preserve their density on desktop and introduce measured breakpoints without pretending the screenshots define mobile behavior.
+- [Mock results can be mistaken for live research] → Label sample status and locate all fixture data under `lib/mock/fixtures`.
+- [Rich design system could overgrow the first release] → Only add primitives used by the reference workflows; defer editors, PDFs, graph visualization, Storybook, and advanced virtualisation to later change sets.
+- [Animation can reduce institutional feel] → Limit transforms and opacity transitions to 150–220ms, respecting `prefers-reduced-motion`.
+
+## Migration Plan
+
+1. Bootstrap the workspace and establish token / component contracts.
+2. Implement routes exclusively through typed mock repositories and validate the prototype locally.
+3. When the backend phase begins, replace MSW handlers with FastAPI service implementations while retaining repository interfaces and query hooks.
+4. If a new frontend deployment is unsuccessful, revert to the prior static deployment because this release introduces no data migration or persistent state.
+
+## Open Questions
+
+- The supplied screenshots do not define mobile behavior; this implementation will use the responsive behavior documented above until a mobile reference is provided.
+- Company brand marks will be represented as typographic or geometric placeholders unless the user supplies licensed assets.
