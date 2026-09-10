@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Decision OS - US Stock AI</title>
+  <link rel="preconnect" href="https://fonts.googleapis.com">
+  <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+  <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;500;700&family=IBM+Plex+Sans:wght@400;500;600&display=swap" rel="stylesheet">
+  <link rel="stylesheet" href="/decision-os/styles.css" />
+</head>
+<body>
+  <div class="bg-shape bg-a"></div>
+  <div class="bg-shape bg-b"></div>
+  <main class="app">
+    <header class="hero">
+      <div>
+        <p class="eyebrow">Trading Decision Operating System</p>
+        <h1>美股异动监控与 AI 决策中枢</h1>
+        <p class="subtitle">把“观点”变成“可执行交易计划”，并持续验证策略是否有效。</p>
+      </div>
+      <div class="session-box">
+        <label for="sessionId">Session</label>
+        <input id="sessionId" value="demo-user" />
+        <button id="refreshAllBtn">刷新全局视图</button>
+      </div>
+    </header>
+
+    <section class="kpi-grid" id="kpiGrid">
+      <article class="kpi-card">
+        <p class="label">周有效信号数 NSM</p>
+        <p class="value" id="kpiWeekly">-</p>
+      </article>
+      <article class="kpi-card">
+        <p class="label">信号总数</p>
+        <p class="value" id="kpiTotal">-</p>
+      </article>
+      <article class="kpi-card">
+        <p class="label">Sharpe 近似</p>
+        <p class="value" id="kpiSharpe">-</p>
+      </article>
+      <article class="kpi-card">
+        <p class="label">Max Drawdown</p>
+        <p class="value" id="kpiMdd">-</p>
+      </article>
+      <article class="kpi-card">
+        <p class="label">Profit Factor</p>
+        <p class="value" id="kpiPf">-</p>
+      </article>
+    </section>
+
+    <section class="panel-grid">
+      <article class="panel signal-panel">
+        <h2>批量扫描执行面板</h2>
+        <div class="form-row">
+          <div>
+            <label for="strategy">策略模板</label>
+            <select id="strategy">
+              <option value="volatility">volatility</option>
+              <option value="earnings">earnings</option>
+              <option value="regulatory">regulatory</option>
+              <option value="ma">ma</option>
+            </select>
+          </div>
+          <div>
+            <label for="limit">批量上限</label>
+            <input id="limit" type="number" min="1" max="50" value="10" />
+          </div>
+        </div>
+        <div class="form-col">
+          <label for="symbols">股票代码（逗号分隔）</label>
+          <textarea id="symbols" rows="2">AAPL,NVDA,TSLA,MSFT,AMD</textarea>
+        </div>
+        <div class="form-col">
+          <label for="message">策略任务</label>
+          <textarea id="message" rows="2">生成可执行交易计划，给出触发、失效、仓位、风险预算与预期R。</textarea>
+        </div>
+        <button id="batchRunBtn" class="primary">执行批量信号生成</button>
+        <p class="status" id="batchStatus">等待执行</p>
+      </article>
+
+      <article class="panel credit-panel">
+        <h2>信用分卡片</h2>
+        <div id="creditEmpty" class="empty">执行批量扫描后显示</div>
+        <div id="creditCard" class="credit-card hidden">
+          <div class="credit-top">
+            <div>
+              <p class="credit-symbol" id="creditSymbol">-</p>
+              <p class="credit-direction" id="creditDirection">-</p>
+            </div>
+            <div class="credit-score-wrap">
+              <p class="credit-score" id="creditScore">-</p>
+              <p class="credit-score-label">Signal Credit</p>
+            </div>
+          </div>
+          <div class="credit-meta" id="creditMeta"></div>
+          <div class="credit-bars" id="creditBars"></div>
+        </div>
+      </article>
+
+      <article class="panel gov-panel">
+        <h2>策略治理面板</h2>
+        <div class="table-wrap">
+          <table>
+            <thead>
+              <tr>
+                <th>策略</th>
+                <th>状态</th>
+                <th>权重</th>
+                <th>命中率</th>
+                <th>样本数</th>
+                <th>原因</th>
+              </tr>
+            </thead>
+            <tbody id="govTableBody"></tbody>
+          </table>
+        </div>
+      </article>
+    </section>
+
+    <section class="chart-grid">
+      <article class="panel">
+        <h2>策略命中率排名</h2>
+        <div class="chart" id="strategyChart"></div>
+      </article>
+      <article class="panel">
+        <h2>Market Regime 表现</h2>
+        <div class="chart" id="regimeChart"></div>
+      </article>
+      <article class="panel wide">
+        <h2>分周期命中率 T+1/T+5/T+20</h2>
+        <div class="chart" id="horizonChart"></div>
+      </article>
+    </section>
+
+    <section class="panel">
+      <h2>批量信号结果</h2>
+      <div class="table-wrap">
+        <table>
+          <thead>
+            <tr>
+              <th>Symbol</th>
+              <th>方向</th>
+              <th>信用分</th>
+              <th>风险预算%</th>
+              <th>预期R</th>
+              <th>仓位建议</th>
+              <th>触发条件</th>
+              <th>失效条件</th>
+            </tr>
+          </thead>
+          <tbody id="signalTableBody"></tbody>
+        </table>
+      </div>
+    </section>
+  </main>
+
+  <script src="https://cdn.jsdelivr.net/npm/echarts@5.5.1/dist/echarts.min.js"></script>
+  <script src="/decision-os/app.js"></script>
+</body>
+</html>

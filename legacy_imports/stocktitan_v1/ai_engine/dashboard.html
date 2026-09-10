@@ -1,0 +1,643 @@
+<!DOCTYPE html>
+<html lang="zh-CN">
+
+<head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>StockTitan AI Engine</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link
+        href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600;700;800&family=Inter:wght@300;400;500;600;700&family=JetBrains+Mono:wght@400;500&display=swap"
+        rel="stylesheet">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        :root {
+            --bg-page: #f8fafc;
+            --bg-card: rgba(255, 255, 255, 0.85);
+            --bg-side: #ffffff;
+            --primary: #0f172a;
+            --accent: #3b82f6;
+            --accent-lt: #eff6ff;
+            --border: rgba(15, 23, 42, 0.08);
+            --text-0: #0f172a;
+            --text-1: #475569;
+            --text-2: #94a3b8;
+            --green: #10b981;
+            --red: #ef4444;
+            --yellow: #f59e0b;
+            --purple: #8b5cf6;
+            --shadow: 0 8px 32px -4px rgba(15, 23, 42, 0.04);
+            --f-title: 'Outfit', sans-serif;
+            --f-body: 'Inter', sans-serif;
+            --f-mono: 'JetBrains Mono', monospace;
+        }
+
+        *,
+        *::before,
+        *::after {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--f-body);
+            background: var(--bg-page);
+            color: var(--text-0);
+            height: 100vh;
+            display: grid;
+            grid-template-rows: 64px 1fr;
+            overflow: hidden;
+        }
+
+        /* ═══ TOPBAR ═══ */
+        .topbar {
+            grid-row: 1;
+            display: flex;
+            align-items: center;
+            padding: 0 24px;
+            background: rgba(255, 255, 255, 0.7);
+            backdrop-filter: blur(20px);
+            border-bottom: 1px solid var(--border);
+            z-index: 100;
+        }
+
+        .logo {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            font-family: var(--f-title);
+            font-size: 1.2rem;
+            font-weight: 800;
+            color: var(--primary);
+            min-width: 240px;
+        }
+
+        .logo-mark {
+            width: 32px;
+            height: 32px;
+            background: linear-gradient(135deg, var(--accent), var(--purple));
+            border-radius: 9px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 4px 12px rgba(59, 130, 246, 0.2);
+        }
+
+        .ticker-strip {
+            flex: 1;
+            margin: 0 32px;
+            display: flex;
+            gap: 32px;
+            overflow: hidden;
+            mask-image: linear-gradient(to right, transparent, black 10%, black 90%, transparent);
+        }
+
+        .ticker-item {
+            white-space: nowrap;
+            font-size: 0.85rem;
+            font-weight: 600;
+            font-family: var(--f-mono);
+            display: flex;
+            gap: 8px;
+            align-items: center;
+        }
+
+        /* ═══ APP LAYOUT ═══ */
+        .app-layout {
+            display: grid;
+            grid-template-columns: 240px 1fr;
+            height: 100%;
+            overflow: hidden;
+        }
+
+        /* ── SIDEBAR ── */
+        .sidebar {
+            background: var(--bg-side);
+            border-right: 1px solid var(--border);
+            padding: 24px 12px;
+            display: flex;
+            flex-direction: column;
+            gap: 6px;
+        }
+
+        .nav-item {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+            padding: 12px 16px;
+            border-radius: 12px;
+            cursor: pointer;
+            color: var(--text-1);
+            font-weight: 600;
+            font-size: 0.9rem;
+            transition: all 0.2s;
+        }
+
+        .nav-item:hover {
+            background: var(--bg-page);
+            color: var(--text-0);
+        }
+
+        .nav-item.active {
+            background: var(--accent-lt);
+            color: var(--accent);
+        }
+
+        .nav-ic {
+            font-size: 1.1rem;
+        }
+
+        .nav-label {
+            flex: 1;
+        }
+
+        /* ── MAIN CONTENT ── */
+        .main-content {
+            overflow-y: auto;
+            background: var(--bg-page);
+            position: relative;
+        }
+
+        .page {
+            display: none;
+            padding: 24px 32px;
+            animation: fadeIn 0.4s ease forwards;
+            height: 100%;
+        }
+
+        .page.active {
+            display: block;
+        }
+
+        @keyframes fadeIn {
+            from {
+                opacity: 0;
+                transform: translateY(8px);
+            }
+
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        /* LOBBY SPECIFIC */
+        .lobby-tab {
+            padding: 14px 24px;
+            font-size: 0.9rem;
+            font-weight: 700;
+            color: var(--text-2);
+            cursor: pointer;
+            transition: all 0.2s;
+            position: relative;
+        }
+
+        .lobby-tab:hover {
+            color: var(--primary);
+        }
+
+        .lobby-tab.active {
+            color: var(--primary);
+            background: #fff;
+        }
+
+        .lobby-tab.active::after {
+            content: '';
+            position: absolute;
+            bottom: 0;
+            left: 20%;
+            right: 20%;
+            height: 3px;
+            background: var(--primary);
+            border-radius: 10px;
+        }
+
+        .idx-card {
+            padding: 20px;
+            border-radius: 12px;
+            border: 1px solid var(--border);
+            transition: transform 0.2s;
+        }
+
+        .idx-status-up {
+            background: rgba(34, 197, 94, 0.05);
+            border-color: rgba(34, 197, 94, 0.2);
+        }
+
+        .idx-status-dn {
+            background: rgba(239, 68, 68, 0.05);
+            border-color: rgba(239, 68, 68, 0.2);
+        }
+
+        .stock-row {
+            display: grid;
+            grid-template-columns: 2fr 1.5fr 1.5fr 1fr;
+            padding: 16px 24px;
+            border-bottom: 1px solid rgba(0, 0, 0, 0.03);
+            cursor: pointer;
+            transition: background 0.2s;
+        }
+
+        .stock-row:hover {
+            background: rgba(var(--accent-rgb), 0.03);
+        }
+
+        /* ── SHARED COMPONENTS ── */
+        .card {
+            background: #fff;
+            border-radius: 20px;
+            border: 1px solid var(--border);
+            padding: 24px;
+            box-shadow: var(--shadow);
+        }
+
+        .sec-header {
+            display: flex;
+            align-items: center;
+            justify-content: space-between;
+            margin-bottom: 24px;
+        }
+
+        .sec-title {
+            font-family: var(--f-title);
+            font-size: 1.5rem;
+            font-weight: 800;
+            letter-spacing: -0.02em;
+        }
+
+        .sec-sub {
+            font-size: 0.9rem;
+            color: var(--text-2);
+            margin-top: 4px;
+        }
+
+        .btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 8px;
+            padding: 10px 20px;
+            border-radius: 12px;
+            border: none;
+            font-weight: 700;
+            cursor: pointer;
+            transition: all 0.2s;
+            font-family: var(--f-body);
+        }
+
+        .btn-p {
+            background: var(--accent);
+            color: #fff;
+        }
+
+        .btn-p:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 8px 20px rgba(59, 130, 246, 0.3);
+        }
+
+        .btn-g {
+            background: #fff;
+            border: 1px solid var(--border);
+            color: var(--text-1);
+        }
+
+        /* ── HOME (DECISION) ── */
+        .home-grid {
+            display: grid;
+            grid-template-columns: 320px 1fr 340px;
+            gap: 1.5rem;
+            height: calc(100vh - 130px);
+        }
+
+        .col-feed {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            overflow-y: auto;
+            padding-right: 4px;
+        }
+
+        .event-card {
+            padding: 16px;
+            border-radius: 16px;
+            background: #fff;
+            border: 1px solid var(--border);
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .event-card.active {
+            border-color: var(--accent);
+            background: var(--accent-lt);
+            border-width: 2px;
+        }
+
+        /* ── ANALYST ── */
+        .analyst-grid {
+            display: grid;
+            grid-template-columns: 400px 1fr;
+            gap: 1.5rem;
+        }
+
+        /* ── BACKTEST ── */
+        .form-grid {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 16px;
+            margin-bottom: 24px;
+        }
+
+        .field {
+            margin-bottom: 16px;
+        }
+
+        .label {
+            display: block;
+            font-size: 0.75rem;
+            font-weight: 700;
+            color: var(--text-2);
+            text-transform: uppercase;
+            margin-bottom: 6px;
+        }
+
+        .input {
+            width: 100%;
+            padding: 12px 16px;
+            border-radius: 10px;
+            border: 1px solid var(--border);
+            background: #fdfdfd;
+            font-size: 0.9rem;
+            outline: none;
+        }
+
+        .input:focus {
+            border-color: var(--accent);
+            background: #fff;
+        }
+
+        /* ── UTILS ── */
+        .up {
+            color: var(--green);
+        }
+
+        .dn {
+            color: var(--red);
+        }
+
+        .badge {
+            display: inline-block;
+            padding: 4px 10px;
+            border-radius: 6px;
+            font-size: 0.7rem;
+            font-weight: 800;
+            text-transform: uppercase;
+        }
+
+        .badge-b {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .badge-g {
+            background: #dcfce7;
+            color: #166534;
+        }
+
+        /* SCROLLBAR */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+
+        ::-webkit-scrollbar-thumb {
+            background: rgba(0, 0, 0, 0.05);
+            border-radius: 10px;
+        }
+    </style>
+</head>
+
+<body>
+
+    <header class="topbar">
+        <div class="logo">
+            <div class="logo-mark">💎</div>
+            StockTitan AI Engine
+        </div>
+        <div class="ticker-strip" id="tickerStrip"></div>
+        <div style="font-family:var(--f-mono); font-weight:600; font-size:0.9rem;" id="clock">00:00:00</div>
+    </header>
+
+    <div class="app-layout">
+        <!-- SIDEBAR NAV -->
+        <nav class="sidebar">
+            <div class="nav-item active" onclick="go('lobby', this)">
+                <span class="nav-ic">📊</span>
+                <span class="nav-label">行情大厅</span>
+            </div>
+            <div class="nav-item" onclick="go('home', this)">
+                <span class="nav-ic">🏠</span>
+                <span class="nav-label">因子分析</span>
+            </div>
+            <div class="nav-item" onclick="go('analyst', this)">
+                <span class="nav-ic">🔬</span>
+                <span class="nav-label">研报智能体</span>
+            </div>
+            <div class="nav-item" onclick="go('backtest', this)">
+                <span class="nav-ic">🧪</span>
+                <span class="nav-label">量化实验室</span>
+            </div>
+            <div class="nav-item" onclick="go('rerank', this)">
+                <span class="nav-ic">📚</span>
+                <span class="nav-label">智能情报库</span>
+            </div>
+            <div class="nav-item" onclick="go('diag', this)">
+                <span class="nav-ic">📡</span>
+                <span class="nav-label">管理员端</span>
+            </div>
+        </nav>
+
+        <main class="main-content">
+            <!-- ⓪ LOBBY: PROFESSIONAL MARKET OVERVIEW (TongHuashun Style) -->
+            <div id="page-lobby" class="page active">
+                <!-- TOP INDEX BAR -->
+                <div id="lobby-indices"
+                    style="display:grid; grid-template-columns:repeat(3, 1fr); gap:1rem; margin-bottom:2rem;">
+                    <!-- High-density index cards rendered here -->
+                </div>
+
+                <!-- MARKET TAB SYSTEM -->
+                <div class="card" style="padding:0; overflow:hidden;">
+                    <div class="lobby-tabs"
+                        style="display:flex; border-bottom:1px solid var(--border); background:rgba(0,0,0,0.02);">
+                        <div class="lobby-tab active" onclick="switchMarket('CN', this)">🇨🇳 A股市场</div>
+                        <div class="lobby-tab" onclick="switchMarket('HK', this)">🇭🇰 港股市场</div>
+                        <div class="lobby-tab" onclick="switchMarket('US', this)">🇺🇸 美股市场</div>
+                    </div>
+
+                    <div style="padding:0;">
+                        <!-- Table-like Header -->
+                        <div
+                            style="display:grid; grid-template-columns:2fr 1.5fr 1.5fr 1fr; padding:12px 24px; background:var(--bg-page); font-size:0.75rem; font-weight:700; color:var(--text-2); border-bottom:1px solid var(--border);">
+                            <span>代码 / 名称</span>
+                            <span style="text-align:right;">最新价</span>
+                            <span style="text-align:right;">涨跌额</span>
+                            <span style="text-align:right;">涨跌幅</span>
+                        </div>
+                        <div id="lobby-list" style="min-height:400px;">
+                            <!-- Dynamic list items -->
+                        </div>
+                    </div>
+                </div>
+            </div>
+
+            <!-- ① HOME: FACTOR ANALYSIS (Previously Decision Cockpit) -->
+            <div id="page-home" class="page">
+                <div class="home-grid">
+                    <div class="col-feed" id="feedScroll"></div>
+                    <div class="col-workspace">
+                        <div class="sec-header">
+                            <div>
+                                <h1 class="sec-title" id="workspaceTitle">因子分析与推演</h1>
+                                <p class="sec-sub">多维因子探测系统 (Multifactor Sensing)</p>
+                            </div>
+                        </div>
+                        <div class="card"
+                            style="height:100%; display:flex; flex-direction:column; padding:0; overflow:hidden;">
+                            <div id="workspaceHeader" style="padding:24px 32px; border-bottom:1px solid var(--border)">
+                            </div>
+                            <div id="workspaceContent" style="padding:24px 32px; flex:1; overflow-y:auto;"></div>
+                        </div>
+                    </div>
+                    <div class="col-impact" id="impactPanel"></div>
+                </div>
+            </div>
+
+            <!-- ② ANALYST: REPORT AGENT -->
+            <div id="page-analyst" class="page">
+                <div class="sec-header">
+                    <div>
+                        <h1 class="sec-title">研报智能体 (Report Agent)</h1>
+                        <p class="sec-sub">基于 LangGraph 的生成式深度投研报告</p>
+                    </div>
+                </div>
+                <div class="analyst-grid">
+                    <div class="card">
+                        <div class="field">
+                            <label class="label">股票代码</label>
+                            <input id="an-sym" class="input" value="AAPL">
+                        </div>
+                        <div class="field">
+                            <label class="label">参考价格 ($)</label>
+                            <input id="an-price" class="input" value="185.50">
+                        </div>
+                        <div class="field">
+                            <label class="label">最新动态 / 新闻</label>
+                            <textarea id="an-news" class="input" style="height:120px;">苹果 Q1 财报超预期，服务业务增长强劲。</textarea>
+                        </div>
+                        <button class="btn btn-p" style="width:100%; justify-content:center" onclick="runAnalyst()">
+                            ▶ 运行多智能体分析 (LangGraph)
+                        </button>
+                        <div id="an-status" style="margin-top:20px; font-size:0.85rem; color:var(--text-1);"></div>
+                    </div>
+                    <div class="card" id="an-result"
+                        style="min-height:400px; display:flex; align-items:center; justify-content:center; color:var(--text-2)">
+                        等待分析指令...
+                    </div>
+                </div>
+            </div>
+
+            <!-- ③ BACKTEST: QUANT LAB -->
+            <div id="page-backtest" class="page">
+                <div class="sec-header">
+                    <div>
+                        <h1 class="sec-title">量化实验室 (Quant Lab)</h1>
+                        <p class="sec-sub">基于向量化引擎的高速策略收益回测</p>
+                    </div>
+                    <button class="btn btn-p" onclick="runBacktest()">▶&nbsp; 执行策略回测</button>
+                </div>
+                <div style="display:grid; grid-template-columns:320px 1fr; gap:24px;">
+                    <div class="card">
+                        <div style="font-weight:700; margin-bottom:12px;">量化参数配置</div>
+                        <div class="form-grid">
+                            <div class="field">
+                                <label class="label">股票代码</label>
+                                <input id="bt-sym" class="input" value="AAPL">
+                            </div>
+                            <div class="field">
+                                <label class="label">信号方向</label>
+                                <select id="bt-dir" class="input">
+                                    <option value="BULLISH">看多 (BULLISH)</option>
+                                    <option value="BEARISH">看空 (BEARISH)</option>
+                                </select>
+                            </div>
+                            <div class="field">
+                                <label class="label">模拟信号数量</label>
+                                <input id="bt-num" type="number" class="input" value="20">
+                            </div>
+                            <div class="field">
+                                <label class="label">当前建仓价 ($)</label>
+                                <input id="bt-price" type="number" class="input" value="185.50">
+                            </div>
+                        </div>
+                    </div>
+                    <div id="bt-result"></div>
+                </div>
+            </div>
+
+            <!-- ④ RERANK: INTELLIGENCE LIBRARY -->
+            <div id="page-rerank" class="page">
+                <div class="sec-header">
+                    <div>
+                        <h1 class="sec-title">智能情报库 (Intelligence Library)</h1>
+                        <p class="sec-sub">基于深度语义重排的 RAG 研报检索系统</p>
+                    </div>
+                </div>
+                <div class="card" style="margin-bottom:24px;">
+                    <div class="field">
+                        <label class="label">查询关键词</label>
+                        <input id="rk-query" class="input"
+                            placeholder="例如: Apple Q1 earnings service revenue growth...">
+                    </div>
+                    <button class="btn btn-p" onclick="runRerank()">▶ 执行深度检索与重排</button>
+                </div>
+                <div id="rk-result"></div>
+            </div>
+
+            <!-- ⑤ DIAG: ADMIN TERMINAL -->
+            <div id="page-diag" class="page">
+                <div class="sec-header">
+                    <div>
+                        <h1 class="sec-title">管理员端 (Admin Terminal)</h1>
+                        <p class="sec-sub">后端服务健康监测与节点拓扑</p>
+                    </div>
+                </div>
+                <div class="analyst-grid">
+                    <div class="card">
+                        <h3 style="margin-bottom:16px;">API 节点状态</h3>
+                        <div id="diag-nodes"></div>
+                    </div>
+                    <div class="card">
+                        <h3 style="margin-bottom:16px;">架构图谱</h3>
+                        <div style="font-size:0.9rem; line-height:1.8; color:var(--text-1)">
+                            <div
+                                style="padding:12px; background:var(--bg-page); border-radius:10px; border-left:4px solid var(--accent); margin-bottom:12px;">
+                                <strong>🎨 Frontend</strong>: HTML5 / Modern CSS / Vanilla JS (Crystal Theme)
+                            </div>
+                            <div
+                                style="padding:12px; background:var(--bg-page); border-radius:10px; border-left:4px solid var(--purple); margin-bottom:12px;">
+                                <strong>⚡ AI Engine (Python)</strong>: FastAPI / LangGraph / Pandas / RAG
+                            </div>
+                            <div
+                                style="padding:12px; background:var(--bg-page); border-radius:10px; border-left:4px solid var(--green);">
+                                <strong>🏗️ Backend (Java)</strong>: Spring Boot / MyBatis / Redis
+                            </div>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </main>
+    </div>
+
+    <script src="dashboard.js"></script>
+</body>
+
+</html>

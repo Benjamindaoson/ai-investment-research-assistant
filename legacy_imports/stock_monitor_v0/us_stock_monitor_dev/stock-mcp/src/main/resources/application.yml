@@ -1,0 +1,39 @@
+spring:
+  application:
+    name: us-stock-monitor-mcp
+  profiles:
+    active: dev
+  ai:
+    mcp:
+      server:
+        name: stock-mcp-server                  # MCP服务器名称
+        version: 1.0.0                          # 服务器版本号
+        sse-endpoint: /sse
+        type: async                             #异步
+  mail:
+    host: smtp.163.com                # 邮箱host
+    port: 465                         # 邮箱固定端口
+    username: <your email address>
+    password: <your password>
+    protocol: smtp                  # 邮箱协议
+    default-encoding: UTF-8         # 默认编码
+    properties:
+      mail:
+        smtp:
+          socketFactory:
+            port: 465
+            class: javax.net.ssl.SSLSocketFactory
+          ssl:
+            enable: true
+
+# MyBatisPlus 的配置
+mybatis-plus:
+  global-config:
+    db-config:
+      id-type:
+      update-strategy: not_empty
+  mapper-locations: classpath*:/mappers/*.xml
+
+logging:
+  level:
+    root: info

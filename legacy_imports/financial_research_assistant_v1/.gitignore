@@ -1,0 +1,13 @@
+# Local runtime configuration and generated data
+.env
+.DS_Store
+output/
+app/data/*.db
+
+# Python cache files
+__pycache__/
+*.py[cod]
+
+# Frontend dependencies and build output
+node_modules/
+dist/

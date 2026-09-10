@@ -1,0 +1,62 @@
+spring:
+  application:
+    name: us-stock-monitor-mcp
+  profiles:
+    active: dev
+  ai:
+    mcp:
+      server:
+        name: stock-mcp-server
+        version: 1.0.0
+        sse-endpoint: /sse
+        type: async
+  mail:
+    host: ${MAIL_HOST:smtp.163.com}
+    port: ${MAIL_PORT:465}
+    username: ${MAIL_USERNAME:}
+    password: ${MAIL_PASSWORD:}
+    protocol: smtp
+    default-encoding: UTF-8
+    properties:
+      mail:
+        smtp:
+          auth: true
+          socketFactory:
+            port: ${MAIL_PORT:465}
+            class: javax.net.ssl.SSLSocketFactory
+          ssl:
+            enable: true
+
+app:
+  security:
+    enabled: ${APP_SECURITY_ENABLED:false}
+    api-key-header: ${APP_SECURITY_API_KEY_HEADER:X-API-KEY}
+    api-key: ${APP_SECURITY_API_KEY:}
+    permit-all-paths:
+      - /actuator/health
+      - /actuator/health/**
+      - /error
+
+management:
+  endpoints:
+    web:
+      exposure:
+        include: health,info
+  endpoint:
+    health:
+      probes:
+        enabled: true
+      show-details: always
+  health:
+    mail:
+      enabled: false
+
+mybatis-plus:
+  global-config:
+    db-config:
+      update-strategy: not_empty
+  mapper-locations: classpath*:/mappers/*.xml
+
+logging:
+  level:
+    root: info

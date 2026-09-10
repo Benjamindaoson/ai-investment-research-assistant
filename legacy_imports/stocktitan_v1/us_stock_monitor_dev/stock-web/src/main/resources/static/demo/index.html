@@ -1,0 +1,134 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>US Stock AI Monitor Demo</title>
+  <style>
+    :root {
+      --bg: #0f172a;
+      --card: #111827;
+      --panel: #1f2937;
+      --text: #e5e7eb;
+      --muted: #94a3b8;
+      --ok: #10b981;
+      --accent: #f59e0b;
+    }
+    * { box-sizing: border-box; }
+    body {
+      margin: 0; padding: 24px;
+      font-family: "Segoe UI", "PingFang SC", sans-serif;
+      color: var(--text);
+      background: radial-gradient(1200px 500px at -10% -10%, #1d4ed8 0%, transparent 60%),
+                  radial-gradient(900px 500px at 110% -10%, #ea580c 0%, transparent 55%),
+                  var(--bg);
+    }
+    .wrap { max-width: 980px; margin: 0 auto; }
+    .title { font-size: 28px; font-weight: 700; margin-bottom: 6px; }
+    .sub { color: var(--muted); margin-bottom: 22px; }
+    .card {
+      background: linear-gradient(180deg, rgba(255,255,255,0.04), rgba(255,255,255,0.01));
+      border: 1px solid rgba(255,255,255,0.15);
+      border-radius: 14px;
+      padding: 16px;
+      margin-bottom: 14px;
+      backdrop-filter: blur(8px);
+    }
+    .row { display: flex; gap: 10px; flex-wrap: wrap; }
+    input, select, button {
+      border-radius: 10px; border: 1px solid rgba(255,255,255,0.2);
+      background: var(--panel); color: var(--text);
+      padding: 10px 12px; font-size: 14px;
+    }
+    input, select { min-width: 160px; }
+    button {
+      cursor: pointer;
+      background: linear-gradient(90deg, #2563eb, #0ea5e9);
+      border: none; font-weight: 600;
+    }
+    .status { color: var(--ok); font-size: 13px; margin-top: 8px; }
+    pre {
+      margin: 0; padding: 12px; border-radius: 10px;
+      background: #0b1220; color: #d1d5db; overflow: auto;
+      max-height: 420px;
+      border: 1px solid rgba(255,255,255,0.08);
+      font-size: 12px;
+    }
+    .kpi { display: flex; gap: 10px; flex-wrap: wrap; margin-top: 10px; }
+    .kpi .item {
+      background: rgba(255,255,255,0.04);
+      border: 1px solid rgba(255,255,255,0.12);
+      border-radius: 10px;
+      padding: 10px 12px; min-width: 140px;
+    }
+    .kpi .label { color: var(--muted); font-size: 12px; }
+    .kpi .value { font-size: 20px; font-weight: 700; color: var(--accent); }
+  </style>
+</head>
+<body>
+  <div class="wrap">
+    <div class="title">US Stock AI Monitor - Demo Console</div>
+    <div class="sub">一键演示 Watchlist / 订阅 / 可执行信号 / 命中率回看</div>
+
+    <div class="card">
+      <div class="row">
+        <input id="sessionId" value="demo-user" placeholder="sessionId" />
+        <input id="symbol" value="AAPL" placeholder="symbol" />
+        <select id="strategy">
+          <option value="volatility">volatility</option>
+          <option value="earnings">earnings</option>
+          <option value="regulatory">regulatory</option>
+          <option value="ma">ma</option>
+        </select>
+        <button id="runBtn">Run One-Click Demo</button>
+      </div>
+      <div class="status" id="status">准备就绪</div>
+      <div class="kpi">
+        <div class="item"><div class="label">Watchlist</div><div class="value" id="kWatch">-</div></div>
+        <div class="item"><div class="label">Subscriptions</div><div class="value" id="kSub">-</div></div>
+        <div class="item"><div class="label">Signal Direction</div><div class="value" id="kDir">-</div></div>
+        <div class="item"><div class="label">Confidence</div><div class="value" id="kConf">-</div></div>
+      </div>
+    </div>
+
+    <div class="card">
+      <pre id="output">{}</pre>
+    </div>
+  </div>
+
+  <script>
+    const statusEl = document.getElementById("status");
+    const outEl = document.getElementById("output");
+    const kWatch = document.getElementById("kWatch");
+    const kSub = document.getElementById("kSub");
+    const kDir = document.getElementById("kDir");
+    const kConf = document.getElementById("kConf");
+
+    document.getElementById("runBtn").addEventListener("click", async () => {
+      const payload = {
+        sessionId: document.getElementById("sessionId").value,
+        symbol: document.getElementById("symbol").value,
+        strategyTemplateId: document.getElementById("strategy").value
+      };
+      statusEl.textContent = "运行中...";
+      try {
+        const res = await fetch("/api/demo/one-click", {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify(payload)
+        });
+        const json = await res.json();
+        outEl.textContent = JSON.stringify(json, null, 2);
+        const d = json.data || {};
+        kWatch.textContent = d.watchlistSize ?? "-";
+        kSub.textContent = d.subscriptionSize ?? "-";
+        kDir.textContent = d.signal?.direction ?? "-";
+        kConf.textContent = d.signal?.confidence ?? "-";
+        statusEl.textContent = "完成";
+      } catch (e) {
+        statusEl.textContent = "失败: " + e.message;
+      }
+    });
+  </script>
+</body>
+</html>

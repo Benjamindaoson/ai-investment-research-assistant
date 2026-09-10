@@ -1,0 +1,35 @@
+# RAG系统配置示例
+# 将此配置添加到 application.yml
+
+rag:
+  # 多路召回权重配置
+  recall-weights:
+    vector: 0.5        # 向量召回权重
+    same-stock: 0.3    # 同股票召回权重
+    same-event: 0.2    # 同事件召回权重
+
+  # 质量评分配置
+  quality:
+    min-score: 60.0           # 最低质量分数
+    fallback-score: 40.0      # 降级质量分数
+    completeness-weight: 0.4  # 完整性权重
+    accuracy-weight: 0.3      # 准确性权重
+    impact-weight: 0.3        # 影响程度权重
+
+  # 时间衰减配置
+  time-decay:
+    factor: 0.5              # 衰减因子（0.1-1.0）
+    similarity-weight: 0.7   # 相似度权重
+    time-weight: 0.3         # 时间权重
+
+  # 案例库管理配置
+  library:
+    low-quality-threshold: 30.0        # 低质量案例删除阈值
+    archive-days: 1095                 # 案例归档天数（3年）
+    merge-similarity-threshold: 0.95   # 相似案例合并阈值
+    cleanup-cron: "0 0 3 * * ?"       # 定时清理cron表达式
+
+  # 追踪配置
+  tracking:
+    tracking-days: 7              # 追踪天数
+    update-cron: "0 0 * * * ?"   # 更新频率cron表达式
