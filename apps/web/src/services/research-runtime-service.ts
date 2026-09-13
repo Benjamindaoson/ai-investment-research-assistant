@@ -74,13 +74,13 @@ const decimalStringSchema = z.string().regex(/^-?\d+(\.\d+)?$/, "Expected a deci
 const financialSnapshotSchema = z.object({
   period: z.string().min(1),
   revenue: z.string().regex(/^\d+(\.\d+)?$/, "Expected a non-negative decimal string."),
-  prior_revenue: z.string().regex(/^\d+(\.\d+)?$/).optional(),
-  gross_profit: decimalStringSchema.optional(),
-  operating_income: decimalStringSchema.optional(),
-  operating_cash_flow: decimalStringSchema.optional(),
-  capex: z.string().regex(/^\d+(\.\d+)?$/).optional(),
-  cash: z.string().regex(/^\d+(\.\d+)?$/).optional(),
-  debt: z.string().regex(/^\d+(\.\d+)?$/).optional(),
+  prior_revenue: z.string().regex(/^\d+(\.\d+)?$/).nullable().optional(),
+  gross_profit: decimalStringSchema.nullable().optional(),
+  operating_income: decimalStringSchema.nullable().optional(),
+  operating_cash_flow: decimalStringSchema.nullable().optional(),
+  capex: z.string().regex(/^\d+(\.\d+)?$/).nullable().optional(),
+  cash: z.string().regex(/^\d+(\.\d+)?$/).nullable().optional(),
+  debt: z.string().regex(/^\d+(\.\d+)?$/).nullable().optional(),
 });
 export type FinancialSnapshotInput = z.infer<typeof financialSnapshotSchema>;
 
@@ -109,7 +109,7 @@ const runtimeRunSchema = z.object({
   case_id: z.string(),
   state: z.enum(["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED"]),
   tasks: z.array(z.object({ id: z.string(), title: z.string(), state: z.enum(["PENDING", "RUNNING", "COMPLETED", "FAILED"]) })),
-  evidence: z.array(z.object({ id: z.string(), stance: z.enum(["SUPPORTING", "COUNTER", "CONFLICTING"]), qualification: z.enum(["QUALIFIED", "NEEDS_REVIEW", "UNQUALIFIED"]) })),
+  evidence: z.array(z.object({ id: z.string(), source_title: z.string().optional(), stance: z.enum(["SUPPORTING", "COUNTER", "CONFLICTING"]), qualification: z.enum(["QUALIFIED", "NEEDS_REVIEW", "UNQUALIFIED"]) })),
   claims: z.array(z.object({ id: z.string(), status: z.enum(["DRAFT", "QUALIFIED", "NEEDS_REVIEW", "REJECTED"]), evidence_ids: z.array(z.string()) })),
   thesis: z.object({ id: z.string(), statement: z.string(), bull: z.string(), base: z.string(), bear: z.string(), claim_ids: z.array(z.string()), review_status: z.enum(["PENDING_REVIEW", "APPROVED", "NEEDS_REVIEW"]) }).nullable(),
   memo: runtimeMemoSchema.nullable(),

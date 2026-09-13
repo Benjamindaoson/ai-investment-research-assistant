@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { researchRuntimeRepository } from "@/repositories";
-import type { RuntimeCaseInput } from "@/services/research-runtime-service";
+import type { EvidenceLinkedFinancialAnalysisInput, RuntimeCaseInput, RuntimeRun } from "@/services/research-runtime-service";
 
 export const runtimeRunQueryKey = (runId: string) => ["runtime", "run", runId] as const;
 export const runtimeMemoryQueryKey = (runId: string) => ["runtime", "memory", runId] as const;
@@ -46,5 +46,15 @@ export function useCancelRuntimeRunMutation(runId: string) {
   return useMutation({
     mutationFn: (reason: string) => researchRuntimeRepository.cancelRun(runId, reason),
     onSuccess: () => queryClient.invalidateQueries({ queryKey: runtimeRunQueryKey(runId) }),
+  });
+}
+
+export function useAnalyzeRuntimeFinancialsMutation(runId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: EvidenceLinkedFinancialAnalysisInput) => researchRuntimeRepository.analyzeFinancialsForRun(runId, input),
+    onSuccess: (analysis) => {
+      queryClient.setQueryData<RuntimeRun>(runtimeRunQueryKey(runId), (current) => current ? { ...current, financial_analysis: analysis } : current);
+    },
   });
 }
