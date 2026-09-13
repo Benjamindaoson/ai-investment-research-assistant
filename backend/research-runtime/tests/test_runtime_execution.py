@@ -1,4 +1,9 @@
-from deepresearch.domain.models import EvidenceRequirement, ResearchCase, ResearchTask
+from deepresearch.domain.models import (
+    EvidenceRecord,
+    EvidenceRequirement,
+    ResearchCase,
+    ResearchTask,
+)
 from deepresearch.persistence.store import SQLiteStore
 from deepresearch.runtime.engine import ResearchEngine
 from deepresearch.runtime.evidence import DeterministicEvidenceProvider
@@ -70,6 +75,42 @@ def test_engine_marks_missing_evidence_partial(tmp_path) -> None:
     assert result.memo.unresolved_requirement_ids == ["risk:req-risk"]
     assert {"risk:req-risk"} <= set(result.memo.sections[0].unresolved_requirement_ids)
     assert all(section.body for section in result.memo.sections)
+
+
+def test_engine_requires_complete_provenance_before_qualifying_evidence(tmp_path) -> None:
+    class IncompleteProvider:
+        def collect(self, task, case):
+            return [
+                EvidenceRecord(
+                    task_id=task.id,
+                    requirement_id=task.evidence_requirements[0].id,
+                    stance="SUPPORTING",
+                    source_id="source-without-locator",
+                    source_title="Unresolved source",
+                    excerpt="The source identity is not sufficiently anchored.",
+                    provider="test-provider",
+                )
+            ]
+
+    engine = ResearchEngine(SQLiteStore(tmp_path / "runtime.sqlite3"), IncompleteProvider())
+    run = engine.create_run(
+        ResearchCase(id="case-provenance", question="Assess ACME evidence quality", target="ACME"),
+        [make_task("market")],
+    )
+
+    result = engine.execute(run.id)
+
+    assert result.state == "PARTIAL"
+    assert result.evidence[0].qualification == "NEEDS_REVIEW"
+    assert result.claims[0].evidence_ids == []
+    assert result.memo is not None
+    assert result.memo.unresolved_requirement_ids == ["market:req-market"]
+    assert engine.trace(run.id)["evidence"] == {
+        "total": 1,
+        "by_qualification": {"QUALIFIED": 0, "NEEDS_REVIEW": 1, "UNQUALIFIED": 0},
+        "provenance_complete": 0,
+        "provenance_incomplete": 1,
+    }
 
 
 def test_engine_records_provider_failure_without_successful_tool_execution(tmp_path) -> None:

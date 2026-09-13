@@ -267,7 +267,11 @@ class ResearchEngine:
 
     def _qualify(self, record: EvidenceRecord, task: ResearchTask) -> EvidenceRecord:
         requirement = next(item for item in task.evidence_requirements if item.id == record.requirement_id)
-        record.qualification = "QUALIFIED" if record.stance in requirement.required_stances else "NEEDS_REVIEW"
+        record.qualification = (
+            "QUALIFIED"
+            if record.provenance_complete and record.stance in requirement.required_stances
+            else "NEEDS_REVIEW"
+        )
         return record
 
     def _task_is_qualified(self, run: ResearchRun, task: ResearchTask) -> bool:
