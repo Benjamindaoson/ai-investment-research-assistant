@@ -56,6 +56,24 @@ pnpm dev
 
 The workspace is available at `http://localhost:3000`.
 
+To use the connected runtime workspace, start the backend first, configure its
+allowed browser origin, and start Next.js with the runtime URL:
+
+```powershell
+# Terminal 1, from backend/research-runtime
+Set-Location backend/research-runtime
+$env:RESEARCH_RUNTIME_CORS_ORIGINS = "http://localhost:3000"
+.\.venv\Scripts\python -m uvicorn deepresearch.api:app --reload --port 8000
+
+# Terminal 2, from the repository root
+Set-Location ../..
+$env:NEXT_PUBLIC_RESEARCH_RUNTIME_URL = "http://127.0.0.1:8000"
+pnpm dev
+```
+
+Open `http://localhost:3000/runtime` for the live case/run workflow. Without
+the runtime URL, the existing design workspace stays explicitly synthetic.
+
 Run the backend from `backend/research-runtime`:
 
 ```powershell

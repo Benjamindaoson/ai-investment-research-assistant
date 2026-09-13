@@ -6,6 +6,7 @@ from typing import Any
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, status
+from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field
 
 from deepresearch.domain.models import DecisionRecord, FinancialSnapshot, ResearchCase
@@ -49,6 +50,20 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
     engine = ResearchEngine(runtime_store, configured_provider, planner=planner or create_configured_research_planner())
     financial_analysis = FinancialAnalysisTool()
     app = FastAPI(title="Financial DeepResearch Runtime", version="0.1.0")
+    cors_origins = [
+        origin.strip()
+        for origin in os.environ.get(
+            "RESEARCH_RUNTIME_CORS_ORIGINS", "http://localhost:3000,http://127.0.0.1:3000"
+        ).split(",")
+        if origin.strip()
+    ]
+    app.add_middleware(
+        CORSMiddleware,
+        allow_origins=cors_origins,
+        allow_credentials=False,
+        allow_methods=["GET", "POST", "OPTIONS"],
+        allow_headers=["*"],
+    )
 
     @app.get("/api/v1/health")
     def health() -> dict[str, str]:

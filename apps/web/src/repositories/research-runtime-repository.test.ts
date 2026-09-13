@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ResearchRuntimeRepository } from "./research-runtime-repository";
-import { createResearchRuntimeService, type InvestmentMemory, type RuntimeMemo, type RuntimeTrace } from "@/services/research-runtime-service";
+import { createResearchRuntimeService, type InvestmentMemory, type RuntimeMemo, type RuntimeRun, type RuntimeTrace } from "@/services/research-runtime-service";
 
 const trace: RuntimeTrace = {
   run_id: "run-1",
@@ -24,11 +24,29 @@ const memory: InvestmentMemory = {
   unresolved_requirement_ids: [], decision_ids: [], updated_at: "2026-09-14T00:00:00.000Z",
 };
 
+const run: RuntimeRun = {
+  id: "run-1", case_id: "case-1", state: "CREATED", tasks: [{ id: "market", title: "Market", state: "PENDING" }],
+  evidence: [], claims: [], thesis: null, memo: null,
+};
+
 describe("ResearchRuntimeRepository", () => {
   it("parses the runtime trace through the HTTP service boundary", async () => {
     const fetchImpl = (async () => new Response(JSON.stringify(trace), { status: 200 })) as typeof fetch;
     const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
     await expect(repository.getTrace("run-1")).resolves.toEqual(trace);
+  });
+
+  it("creates, reads, and executes a runtime run through the repository", async () => {
+    const fetchImpl = (async (input) => {
+      const url = String(input);
+      if (url.endsWith("/research-cases")) return new Response(JSON.stringify({ case_id: "case-1", run_id: "run-1" }), { status: 201 });
+      return new Response(JSON.stringify({ ...run, state: url.endsWith("/execute") ? "COMPLETED" : "CREATED" }), { status: 200 });
+    }) as typeof fetch;
+    const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+
+    await expect(repository.createCase({ question: "Assess ACME risk", target: "ACME" })).resolves.toEqual({ case_id: "case-1", run_id: "run-1" });
+    await expect(repository.getRun("run-1")).resolves.toMatchObject({ state: "CREATED" });
+    await expect(repository.executeRun("run-1")).resolves.toMatchObject({ state: "COMPLETED" });
   });
 
   it("surfaces runtime HTTP errors", async () => {

@@ -106,3 +106,20 @@ def test_api_cancels_run_and_prevents_execution(tmp_path) -> None:
     assert cancelled.json()["state"] == "CANCELLED"
     assert executed.status_code == 200
     assert executed.json()["state"] == "CANCELLED"
+
+
+def test_api_allows_only_configured_local_cors_origin(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("RESEARCH_RUNTIME_CORS_ORIGINS", "http://localhost:3000")
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+
+    allowed = client.options(
+        "/api/v1/health",
+        headers={"Origin": "http://localhost:3000", "Access-Control-Request-Method": "GET"},
+    )
+    denied = client.options(
+        "/api/v1/health",
+        headers={"Origin": "http://evil.example", "Access-Control-Request-Method": "GET"},
+    )
+
+    assert allowed.headers["access-control-allow-origin"] == "http://localhost:3000"
+    assert "access-control-allow-origin" not in denied.headers

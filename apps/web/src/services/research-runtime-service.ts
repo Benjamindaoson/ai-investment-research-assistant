@@ -30,6 +30,12 @@ const runtimeTraceSchema = z.object({
 export type RuntimeTrace = z.infer<typeof runtimeTraceSchema>;
 export type FetchLike = typeof fetch;
 
+const runtimeCaseInputSchema = z.object({ question: z.string().min(3), target: z.string().min(1) });
+export type RuntimeCaseInput = z.infer<typeof runtimeCaseInputSchema>;
+
+const runtimeCaseResultSchema = z.object({ case_id: z.string(), run_id: z.string() });
+export type RuntimeCaseResult = z.infer<typeof runtimeCaseResultSchema>;
+
 const runtimeRunControlSchema = z.object({
   id: z.string(),
   case_id: z.string(),
@@ -53,6 +59,18 @@ const runtimeMemoSchema = z.object({
   generated_at: z.string().datetime(),
 });
 export type RuntimeMemo = z.infer<typeof runtimeMemoSchema>;
+
+const runtimeRunSchema = z.object({
+  id: z.string(),
+  case_id: z.string(),
+  state: z.enum(["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED"]),
+  tasks: z.array(z.object({ id: z.string(), title: z.string(), state: z.enum(["PENDING", "RUNNING", "COMPLETED", "FAILED"]) })),
+  evidence: z.array(z.object({ id: z.string(), stance: z.enum(["SUPPORTING", "COUNTER", "CONFLICTING"]), qualification: z.enum(["QUALIFIED", "NEEDS_REVIEW", "UNQUALIFIED"]) })),
+  claims: z.array(z.object({ id: z.string(), status: z.enum(["DRAFT", "QUALIFIED", "NEEDS_REVIEW", "REJECTED"]), evidence_ids: z.array(z.string()) })),
+  thesis: z.object({ id: z.string(), statement: z.string(), bull: z.string(), base: z.string(), bear: z.string(), claim_ids: z.array(z.string()), review_status: z.enum(["PENDING_REVIEW", "APPROVED", "NEEDS_REVIEW"]) }).nullable(),
+  memo: runtimeMemoSchema.nullable(),
+}).passthrough();
+export type RuntimeRun = z.infer<typeof runtimeRunSchema>;
 
 const investmentMemorySchema = z.object({
   id: z.string(),
@@ -98,6 +116,9 @@ const financialAnalysisResultSchema = z.object({
 export type FinancialAnalysisResult = z.infer<typeof financialAnalysisResultSchema>;
 
 export interface ResearchRuntimeService {
+  createCase(input: RuntimeCaseInput): Promise<RuntimeCaseResult>;
+  getRun(runId: string): Promise<RuntimeRun>;
+  executeRun(runId: string): Promise<RuntimeRun>;
   getTrace(runId: string): Promise<RuntimeTrace>;
   cancelRun(runId: string, reason: string): Promise<RuntimeRunControl>;
   getMemo(runId: string): Promise<RuntimeMemo>;
@@ -114,6 +135,27 @@ export class HttpResearchRuntimeService implements ResearchRuntimeService {
     const response = await this.fetchImpl(`${this.baseUrl.replace(/\/$/, "")}${path}`, init);
     if (!response.ok) throw new Error(`Research Runtime request failed with HTTP ${response.status}.`);
     return response.json();
+  }
+
+  async createCase(input: RuntimeCaseInput): Promise<RuntimeCaseResult> {
+    const body = runtimeCaseInputSchema.parse(input);
+    return runtimeCaseResultSchema.parse(await this.requestJson("/api/v1/research-cases", {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }));
+  }
+
+  async getRun(runId: string): Promise<RuntimeRun> {
+    return runtimeRunSchema.parse(await this.requestJson(`/api/v1/research-runs/${encodeURIComponent(runId)}`, { headers: { accept: "application/json" } }));
+  }
+
+  async executeRun(runId: string): Promise<RuntimeRun> {
+    return runtimeRunSchema.parse(await this.requestJson(`/api/v1/research-runs/${encodeURIComponent(runId)}/execute`, {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/json" },
+      body: JSON.stringify({}),
+    }));
   }
 
   async getTrace(runId: string): Promise<RuntimeTrace> {
@@ -152,6 +194,9 @@ class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
     throw new Error("Research Runtime URL is not configured; local UI is using synthetic workspace data.");
   }
 
+  async createCase(): Promise<RuntimeCaseResult> { return this.unavailable(); }
+  async getRun(): Promise<RuntimeRun> { return this.unavailable(); }
+  async executeRun(): Promise<RuntimeRun> { return this.unavailable(); }
   async getTrace(): Promise<RuntimeTrace> { return this.unavailable(); }
   async cancelRun(): Promise<RuntimeRunControl> { return this.unavailable(); }
   async getMemo(): Promise<RuntimeMemo> { return this.unavailable(); }
@@ -159,6 +204,6 @@ class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
   async analyzeFinancials(): Promise<FinancialAnalysisResult> { return this.unavailable(); }
 }
 
-export function createResearchRuntimeService(baseUrl: string | undefined, fetchImpl: FetchLike = fetch): ResearchRuntimeService {
+export function createResearchRuntimeService(baseUrl: string | undefined, fetchImpl: FetchLike = fetch.bind(globalThis)): ResearchRuntimeService {
   return baseUrl?.trim() ? new HttpResearchRuntimeService(baseUrl, fetchImpl) : new UnconfiguredResearchRuntimeService();
 }
