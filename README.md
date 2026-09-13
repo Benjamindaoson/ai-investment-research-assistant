@@ -106,7 +106,7 @@ Implemented: typed domain contracts, deterministic and opt-in structured LLM
 planner boundaries, validated ResearchPlan provenance, DAG validation, durable
 SQLite state, append-only events, checkpoints, resumable execution, explicit
 cancellation, evidence qualification, evidence-grounded claim/thesis
-synthesis, durable investment memos with structured evidence-linked review
+synthesis, durable uniquely identified research runs, investment memos with structured evidence-linked review
 sections, target-level Investment Memory with observed ThesisDelta and run-scoped
 memory reads, Decimal financial analysis, decision endpoints, typed
 Next.js runtime transport, live runtime workspace, and an honest evaluation

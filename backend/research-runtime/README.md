@@ -26,7 +26,7 @@ DAG 校验；调用失败不会静默回退为另一份 plan。
 
 ## 当前能力边界
 
-- 已真实实现：Pydantic domain contracts、deterministic planner boundary、带
+- 已真实实现：Pydantic domain contracts、deterministic planner boundary、unique durable run identity、带
   planner provenance 的 ResearchPlan、依赖 DAG 校验、SQLite durable state、
   append-only events、checkpoint read-back、resume 去重、带完整 provenance gate 的
   evidence qualification、evidence-grounded claims/thesis、human decision API、

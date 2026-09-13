@@ -53,6 +53,22 @@ def test_engine_executes_dag_and_resumes_without_duplicate_tools(tmp_path) -> No
     assert set(resumed.memo.sections[0].evidence_ids) <= {record.id for record in resumed.evidence}
 
 
+def test_engine_keeps_same_case_runs_independent(tmp_path) -> None:
+    engine = ResearchEngine(SQLiteStore(tmp_path / "runtime.sqlite3"), DeterministicEvidenceProvider())
+    case = ResearchCase(id="case-repeat", question="Reassess ACME", target="ACME")
+
+    first = engine.create_run(case, [make_task("market")])
+    second = engine.create_run(case, [make_task("market")])
+    first_result = engine.execute(first.id)
+    second_result = engine.execute(second.id)
+
+    assert first.id != second.id
+    assert engine.get_run(first.id).case_id == case.id
+    assert engine.get_run(second.id).case_id == case.id
+    assert first_result.state == second_result.state == "COMPLETED"
+    assert engine.get_memory("ACME").run_ids == [first.id, second.id]
+
+
 def test_engine_marks_missing_evidence_partial(tmp_path) -> None:
     class EmptyProvider(DeterministicEvidenceProvider):
         def collect(self, task, case):

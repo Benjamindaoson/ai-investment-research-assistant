@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from datetime import UTC, datetime
 from hashlib import sha256
+from uuid import uuid4
 
 from deepresearch.domain.models import (
     Checkpoint,
@@ -72,7 +73,7 @@ class ResearchEngine:
         )
         self._validate_plan(plan, case)
         task_list = [ResearchTask.model_validate(task.model_dump()) for task in plan.tasks]
-        run = ResearchRun(id=f"run-{case.id}", case_id=case.id, plan=plan, tasks=task_list)
+        run = ResearchRun(id=f"run-{uuid4().hex}", case_id=case.id, plan=plan, tasks=task_list)
         self.store.save_case(case.model_dump(mode="json"))
         self.store.save_run(run.model_dump(mode="json"))
         self.store.append_event(run.id, "CASE_CREATED", {"case_id": case.id, "question": case.question})
