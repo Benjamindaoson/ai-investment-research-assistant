@@ -95,6 +95,13 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
         except KeyError as error:
             raise HTTPException(status_code=404, detail="research run not found") from error
 
+    @app.get("/api/v1/research-runs/{run_id}/memo")
+    def memo(run_id: str) -> dict[str, Any]:
+        try:
+            return engine.get_memo(run_id).model_dump(mode="json")
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research memo not found") from error
+
     @app.post("/api/v1/research-runs/{run_id}/decisions")
     def decision(run_id: str, request: DecisionRequest) -> dict[str, Any]:
         try:

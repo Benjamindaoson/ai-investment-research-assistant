@@ -59,6 +59,9 @@ def test_engine_marks_missing_evidence_partial(tmp_path) -> None:
     assert result.claims[0].evidence_ids == []
     assert result.claims[0].confidence == 0.0
     assert "unresolved" in result.thesis.bear.lower()
+    assert result.memo is not None
+    assert result.memo.status == "DRAFT"
+    assert result.memo.unresolved_requirement_ids == ["risk:req-risk"]
 
 
 def test_engine_records_provider_failure_without_successful_tool_execution(tmp_path) -> None:

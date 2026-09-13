@@ -113,6 +113,22 @@ class Thesis(DomainModel):
     review_status: Literal["PENDING_REVIEW", "APPROVED", "NEEDS_REVIEW"] = "PENDING_REVIEW"
 
 
+class InvestmentMemo(DomainModel):
+    id: str = Field(default_factory=lambda: f"memo-{uuid4().hex}")
+    run_id: str
+    case_id: str
+    title: str = Field(min_length=1, max_length=300)
+    status: Literal["DRAFT", "READY_FOR_REVIEW", "APPROVED"] = "DRAFT"
+    executive_summary: str = Field(min_length=3, max_length=5000)
+    thesis_id: str
+    claim_ids: list[str] = Field(default_factory=list)
+    evidence_ids: list[str] = Field(default_factory=list)
+    counter_evidence_ids: list[str] = Field(default_factory=list)
+    unresolved_requirement_ids: list[str] = Field(default_factory=list)
+    provenance: dict[str, Any] = Field(default_factory=dict)
+    generated_at: datetime = Field(default_factory=utc_now)
+
+
 class DecisionRecord(DomainModel):
     id: str = Field(default_factory=lambda: f"decision-{uuid4().hex}")
     actor: str = Field(min_length=1, max_length=200)
@@ -141,6 +157,7 @@ class ResearchRun(DomainModel):
     evidence: list[EvidenceRecord] = Field(default_factory=list)
     claims: list[Claim] = Field(default_factory=list)
     thesis: Thesis | None = None
+    memo: InvestmentMemo | None = None
     decisions: list[DecisionRecord] = Field(default_factory=list)
     checkpoint: Checkpoint | None = None
     state_version: int = Field(default=1, ge=1)

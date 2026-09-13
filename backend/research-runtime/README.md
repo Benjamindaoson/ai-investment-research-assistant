@@ -30,8 +30,9 @@ DAG 校验；调用失败不会静默回退为另一份 plan。
   planner provenance 的 ResearchPlan、依赖 DAG 校验、SQLite durable state、
   append-only events、checkpoint read-back、resume 去重、evidence
   qualification、evidence-grounded claims/thesis、human decision API、
-  plan/trace API、可执行 scorer。`python -m deepresearch.evaluation` 会独立
-  输出 planner quality 和 runtime execution 两组结果。
+  durable investment memo projection、plan/trace/memo API、可执行 scorer。
+  `python -m deepresearch.evaluation` 会独立输出 planner quality 和 runtime
+  execution 两组结果。
 - Deterministic provider 是本地演示数据，不是 live market data，也不是 FinEvidence。
 - 已实现 provider transport boundary：`HttpEvidenceProvider` 只消费
   FinEvidence-compatible payload，不实现 FinEvidence 本身；协议版本、来源

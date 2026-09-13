@@ -21,6 +21,26 @@ def test_api_creates_and_executes_case(tmp_path) -> None:
     executed = client.post(f"/api/v1/research-runs/{run_id}/execute")
     assert executed.status_code == 200
     assert executed.json()["state"] == "COMPLETED"
+    thesis_id = executed.json()["thesis"]["id"]
+
+    memo = client.get(f"/api/v1/research-runs/{run_id}/memo")
+    assert memo.status_code == 200
+    assert memo.json()["status"] == "READY_FOR_REVIEW"
+    assert memo.json()["unresolved_requirement_ids"] == []
+    assert len(memo.json()["evidence_ids"]) == 3
+    assert len(memo.json()["counter_evidence_ids"]) == 3
+
+    approved = client.post(
+        f"/api/v1/research-runs/{run_id}/decisions",
+        json={
+            "actor": "analyst@example.com",
+            "action": "APPROVE_THESIS",
+            "target_id": thesis_id,
+            "rationale": "Reviewed the linked evidence and assumptions.",
+        },
+    )
+    assert approved.status_code == 200
+    assert approved.json()["memo"]["status"] == "APPROVED"
 
     events = client.get(f"/api/v1/research-runs/{run_id}/events")
     assert events.status_code == 200
@@ -31,3 +51,4 @@ def test_api_creates_and_executes_case(tmp_path) -> None:
     assert trace.json()["evidence"]["provenance_complete"] == 6
     assert all(not claim["unresolved_evidence_ids"] for claim in trace.json()["claims"])
     assert client.get("/api/v1/research-runs/missing/trace").status_code == 404
+    assert client.get("/api/v1/research-runs/missing/memo").status_code == 404

@@ -11,6 +11,7 @@ from deepresearch.domain.models import (
     Claim,
     DecisionRecord,
     EvidenceRecord,
+    InvestmentMemo,
     ResearchCase,
     ResearchPlan,
     ResearchRun,
@@ -205,6 +206,7 @@ class ResearchEngine:
         self._synthesize(run)
         run.completed_at = datetime.now(UTC)
         run.state = "COMPLETED" if all(self._task_is_qualified(run, task) for task in run.tasks) else "PARTIAL"
+        self._build_memo(run)
         self._persist(run, "RUN_COMPLETED" if run.state == "COMPLETED" else "RUN_PARTIAL", {"claim_count": len(run.claims)})
         return run
 
@@ -216,11 +218,21 @@ class ResearchEngine:
             if run.thesis is None or run.state != "COMPLETED":
                 raise ValueError("only a completed run can approve a thesis")
             run.thesis.review_status = "APPROVED"
+            if run.memo is not None:
+                run.memo.status = "APPROVED"
         elif decision.action == "REJECT_THESIS" and run.thesis is not None:
             run.thesis.review_status = "NEEDS_REVIEW"
+            if run.memo is not None:
+                run.memo.status = "READY_FOR_REVIEW" if run.state == "COMPLETED" else "DRAFT"
         run.decisions.append(decision)
         self._persist(run, "HUMAN_DECISION", decision.model_dump(mode="json"))
         return run
+
+    def get_memo(self, run_id: str) -> InvestmentMemo:
+        run = self.get_run(run_id)
+        if run.memo is None:
+            raise KeyError(f"memo missing for {run_id}")
+        return run.memo
 
     def _qualify(self, record: EvidenceRecord, task: ResearchTask) -> EvidenceRecord:
         requirement = next(item for item in task.evidence_requirements if item.id == record.requirement_id)
@@ -301,6 +313,44 @@ class ResearchEngine:
             and record.qualification == "QUALIFIED"
             for record in run.evidence
         ) >= requirement.minimum_records
+
+    def _build_memo(self, run: ResearchRun) -> None:
+        if run.thesis is None:
+            raise ValueError("cannot build a memo without a thesis")
+        unresolved = [
+            f"{task.id}:{requirement.id}"
+            for task in run.tasks
+            for requirement in task.evidence_requirements
+            if not self._requirement_is_qualified(run, task, requirement.id)
+        ]
+        qualified_evidence_ids = [
+            record.id for record in run.evidence if record.qualification == "QUALIFIED"
+        ]
+        counter_evidence_ids = [
+            record.id
+            for record in run.evidence
+            if record.stance in {"COUNTER", "CONFLICTING"}
+        ]
+        run.memo = InvestmentMemo(
+            run_id=run.id,
+            case_id=run.case_id,
+            title=f"Research memo for {run.case_id}",
+            status="READY_FOR_REVIEW" if run.state == "COMPLETED" else "DRAFT",
+            executive_summary=(
+                f"Observed evidence qualified {len(qualified_evidence_ids)} records across "
+                f"{len(run.tasks)} task claims; unresolved requirements: {', '.join(unresolved) or 'none'}. "
+                "This memo is a review artifact, not a trade instruction."
+            ),
+            thesis_id=run.thesis.id,
+            claim_ids=[claim.id for claim in run.claims],
+            evidence_ids=list(dict.fromkeys(qualified_evidence_ids)),
+            counter_evidence_ids=list(dict.fromkeys(counter_evidence_ids)),
+            unresolved_requirement_ids=unresolved,
+            provenance={
+                "generator": "deterministic-evidence-synthesis",
+                "run_state": run.state,
+            },
+        )
 
     def _checkpoint(self, run: ResearchRun, completed: set[str]) -> None:
         run.state_version += 1
