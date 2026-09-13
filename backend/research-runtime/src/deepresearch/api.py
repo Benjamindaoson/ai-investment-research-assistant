@@ -18,7 +18,11 @@ from deepresearch.runtime.evidence import (
     HttpEvidenceProvider,
 )
 from deepresearch.runtime.financial import FinancialAnalysisTool
-from deepresearch.runtime.planner import ResearchPlanner, create_configured_research_planner
+from deepresearch.runtime.planner import (
+    PlannerProviderError,
+    ResearchPlanner,
+    create_configured_research_planner,
+)
 
 
 class CreateCaseRequest(BaseModel):
@@ -76,7 +80,12 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
     @app.post("/api/v1/research-cases", status_code=status.HTTP_201_CREATED)
     def create_case(request: CreateCaseRequest) -> dict[str, str]:
         case = ResearchCase(id=f"case-{uuid4().hex[:10]}", question=request.question, target=request.target)
-        run = engine.create_run(case)
+        try:
+            run = engine.create_run(case)
+        except PlannerProviderError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
         return {"case_id": case.id, "run_id": run.id}
 
     @app.get("/api/v1/research-cases/{case_id}")

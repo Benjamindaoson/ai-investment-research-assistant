@@ -1,7 +1,27 @@
+import sqlite3
+
 from fastapi.testclient import TestClient
 
 from deepresearch.api import create_app
 from deepresearch.persistence.store import SQLiteStore
+from deepresearch.runtime.planner import DeterministicResearchPlanner, PlannerProviderError
+
+
+class FailingPlanner:
+    name = "llm:failing"
+    version = "v1"
+
+    def plan(self, case):
+        raise PlannerProviderError("planner provider unavailable")
+
+
+class InvalidPlanPlanner:
+    name = "invalid-planner"
+    version = "v1"
+
+    def plan(self, case):
+        plan = DeterministicResearchPlanner().plan(case)
+        return plan.model_copy(update={"input_hash": "0" * 64})
 
 
 def test_api_creates_and_executes_case(tmp_path) -> None:
@@ -123,3 +143,35 @@ def test_api_allows_only_configured_local_cors_origin(tmp_path, monkeypatch) -> 
 
     assert allowed.headers["access-control-allow-origin"] == "http://localhost:3000"
     assert "access-control-allow-origin" not in denied.headers
+
+
+def test_api_maps_planner_provider_failure_without_persisting_case(tmp_path) -> None:
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    client = TestClient(create_app(store, planner=FailingPlanner()))
+
+    response = client.post(
+        "/api/v1/research-cases",
+        json={"question": "Assess ACME's downside risk", "target": "ACME"},
+    )
+
+    assert response.status_code == 503
+    assert response.json()["detail"] == "planner provider unavailable"
+    with sqlite3.connect(store.path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM cases").fetchone()[0] == 0
+        assert connection.execute("SELECT COUNT(*) FROM runs").fetchone()[0] == 0
+
+
+def test_api_maps_invalid_plan_without_persisting_case(tmp_path) -> None:
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    client = TestClient(create_app(store, planner=InvalidPlanPlanner()))
+
+    response = client.post(
+        "/api/v1/research-cases",
+        json={"question": "Assess ACME's downside risk", "target": "ACME"},
+    )
+
+    assert response.status_code == 422
+    assert "input hash does not match" in response.json()["detail"]
+    with sqlite3.connect(store.path) as connection:
+        assert connection.execute("SELECT COUNT(*) FROM cases").fetchone()[0] == 0
+        assert connection.execute("SELECT COUNT(*) FROM runs").fetchone()[0] == 0
