@@ -49,7 +49,10 @@ Research Question
 ## P0 objects and invariants
 
 - `ResearchCase` is the durable user-owned research question and scope.
-- `ResearchRun` is an execution attempt with explicit state and timestamps.
+- `ResearchPlan` records the planner identity, input hash, validation state, and
+  evidence-bearing task DAG before execution.
+- `ResearchRun` is an execution attempt with explicit state and timestamps; its
+  mutable task state remains separate from the validated plan.
 - `ResearchTask` is a typed unit in a dependency DAG; task completion is not
   inferred from model text.
 - `EvidenceRequirement` states what must be observed before a claim qualifies.
@@ -77,6 +80,8 @@ recovery, trace, and evaluation.
 FinEvidence is an independent Evidence Infrastructure. This repository owns a
 typed provider boundary and evidence qualification, but does not reimplement a
 document store, web crawler, multimodal RAG index, or source-ingestion system.
+The planner is also a replaceable boundary: the current deterministic planner
+is a local contract implementation, not an LLM claim.
 
 ## P0 experience
 

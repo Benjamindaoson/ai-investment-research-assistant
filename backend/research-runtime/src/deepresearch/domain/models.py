@@ -49,6 +49,18 @@ class ResearchTask(DomainModel):
     state: TaskState = "PENDING"
 
 
+class ResearchPlan(DomainModel):
+    id: str = Field(default_factory=lambda: f"plan-{uuid4().hex}")
+    case_id: str = Field(min_length=1, max_length=120)
+    question: str = Field(min_length=3, max_length=5000)
+    planner_name: str = Field(min_length=1, max_length=200)
+    planner_version: str = Field(min_length=1, max_length=100)
+    input_hash: str = Field(min_length=64, max_length=64)
+    status: Literal["PROPOSED", "VALIDATED", "REJECTED"] = "PROPOSED"
+    tasks: list[ResearchTask] = Field(min_length=1)
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class ToolExecution(DomainModel):
     id: str = Field(default_factory=lambda: f"tool-{uuid4().hex}")
     task_id: str
@@ -121,6 +133,7 @@ class Checkpoint(DomainModel):
 class ResearchRun(DomainModel):
     id: str = Field(min_length=1, max_length=120)
     case_id: str = Field(min_length=1, max_length=120)
+    plan: ResearchPlan | None = None
     state: RunState = "CREATED"
     tasks: list[ResearchTask] = Field(min_length=1)
     tool_executions: list[ToolExecution] = Field(default_factory=list)

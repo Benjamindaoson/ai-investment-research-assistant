@@ -24,6 +24,9 @@ def test_engine_executes_dag_and_resumes_without_duplicate_tools(tmp_path) -> No
     interrupted = engine.execute(run.id, stop_after_tasks=1)
     assert interrupted.state == "RUNNING"
     assert interrupted.tasks[0].state == "COMPLETED"
+    assert interrupted.plan is not None
+    assert interrupted.plan.status == "VALIDATED"
+    assert interrupted.plan.tasks[0].state == "PENDING"
     assert len(interrupted.tool_executions) == 1
 
     resumed = engine.execute(run.id)

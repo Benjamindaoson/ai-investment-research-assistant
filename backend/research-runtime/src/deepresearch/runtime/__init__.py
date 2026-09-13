@@ -5,5 +5,6 @@ from deepresearch.runtime.evidence import (
     EvidenceProviderError,
     HttpEvidenceProvider,
 )
+from deepresearch.runtime.planner import DeterministicResearchPlanner, ResearchPlanner
 
-__all__ = ["DeterministicEvidenceProvider", "EvidenceProvider", "EvidenceProviderError", "HttpEvidenceProvider", "ResearchEngine", "validate_task_dag"]
+__all__ = ["DeterministicEvidenceProvider", "EvidenceProvider", "EvidenceProviderError", "HttpEvidenceProvider", "DeterministicResearchPlanner", "ResearchPlanner", "ResearchEngine", "validate_task_dag"]

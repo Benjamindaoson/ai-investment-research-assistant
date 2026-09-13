@@ -16,7 +16,7 @@ external evidence infrastructure; this project consumes it through an explicit
 Next.js Research Workspace
   → typed service / repository boundary
   → FastAPI Research Runtime
-  → ResearchCase / ResearchRun / Task DAG
+  → ResearchCase / ResearchPlan / ResearchRun / Task DAG
   → Evidence Requirements / FinEvidence Provider
   → Claims / Thesis / Bull-Base-Bear / Decision
   → SQLite events + checkpoints / Evaluation
@@ -83,7 +83,8 @@ pnpm build
 
 ## Scope and limitations
 
-Implemented: typed domain contracts, DAG validation, durable SQLite state,
+Implemented: typed domain contracts, deterministic planner boundary, validated
+ResearchPlan provenance, DAG validation, durable SQLite state,
 append-only events, checkpoints, resume without duplicate completed work,
 evidence qualification, claim/thesis synthesis, decision endpoints, and an
 honest evaluation scorer.

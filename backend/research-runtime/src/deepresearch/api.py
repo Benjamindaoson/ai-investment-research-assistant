@@ -67,6 +67,13 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
         except KeyError as error:
             raise HTTPException(status_code=404, detail="research run not found") from error
 
+    @app.get("/api/v1/research-runs/{run_id}/plan")
+    def plan(run_id: str) -> dict[str, Any]:
+        try:
+            return engine.get_plan(run_id).model_dump(mode="json")
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research run not found") from error
+
     @app.post("/api/v1/research-runs/{run_id}/execute")
     def execute(run_id: str, request: ExecuteRequest | None = None) -> dict[str, Any]:
         try:

@@ -11,8 +11,8 @@ from deepresearch.domain.models import (
     Claim,
     DecisionRecord,
     EvidenceRecord,
-    EvidenceRequirement,
     ResearchCase,
+    ResearchPlan,
     ResearchRun,
     ResearchTask,
     Thesis,
@@ -20,6 +20,11 @@ from deepresearch.domain.models import (
 )
 from deepresearch.persistence.store import SQLiteStore
 from deepresearch.runtime.evidence import EvidenceProvider, evidence_hash
+from deepresearch.runtime.planner import (
+    DeterministicResearchPlanner,
+    ResearchPlanner,
+    research_input_hash,
+)
 
 
 def validate_task_dag(tasks: Iterable[ResearchTask]) -> list[str]:
@@ -46,19 +51,46 @@ def validate_task_dag(tasks: Iterable[ResearchTask]) -> list[str]:
 
 
 class ResearchEngine:
-    def __init__(self, store: SQLiteStore, provider: EvidenceProvider) -> None:
+    def __init__(self, store: SQLiteStore, provider: EvidenceProvider, planner: ResearchPlanner | None = None) -> None:
         self.store = store
         self.provider = provider
+        self.planner = planner or DeterministicResearchPlanner()
 
     def create_run(self, case: ResearchCase, tasks: list[ResearchTask] | None = None) -> ResearchRun:
-        task_list = tasks or self._default_tasks()
-        validate_task_dag(task_list)
-        run = ResearchRun(id=f"run-{case.id}", case_id=case.id, tasks=task_list)
+        plan = self.planner.plan(case) if tasks is None else ResearchPlan(
+            case_id=case.id,
+            question=case.question,
+            planner_name="explicit-input",
+            planner_version="v1",
+            input_hash=research_input_hash(case),
+            tasks=tasks,
+            status="VALIDATED",
+        )
+        self._validate_plan(plan, case)
+        task_list = [ResearchTask.model_validate(task.model_dump()) for task in plan.tasks]
+        run = ResearchRun(id=f"run-{case.id}", case_id=case.id, plan=plan, tasks=task_list)
         self.store.save_case(case.model_dump(mode="json"))
         self.store.save_run(run.model_dump(mode="json"))
         self.store.append_event(run.id, "CASE_CREATED", {"case_id": case.id, "question": case.question})
         self.store.append_event(run.id, "RUN_CREATED", {"task_ids": [task.id for task in task_list]})
         return run
+
+    def get_plan(self, run_id: str) -> ResearchPlan:
+        run = self.get_run(run_id)
+        if run.plan is None:
+            raise KeyError(f"plan missing for {run_id}")
+        return run.plan
+
+    def _validate_plan(self, plan: ResearchPlan, case: ResearchCase) -> None:
+        validate_task_dag(plan.tasks)
+        if plan.case_id != case.id or plan.question != case.question:
+            raise ValueError("plan input does not match research case")
+        if plan.input_hash != research_input_hash(case):
+            raise ValueError("plan input hash does not match research case")
+        for task in plan.tasks:
+            if not task.evidence_requirements:
+                raise ValueError(f"task {task.id} must declare evidence requirements")
+        plan.status = "VALIDATED"
 
     def get_run(self, run_id: str) -> ResearchRun:
         payload = self.store.get_run(run_id)
@@ -189,13 +221,6 @@ class ResearchEngine:
         run.decisions.append(decision)
         self._persist(run, "HUMAN_DECISION", decision.model_dump(mode="json"))
         return run
-
-    def _default_tasks(self) -> list[ResearchTask]:
-        return [
-            ResearchTask(id="market", title="Market structure", purpose="Assess market growth and competitive structure", tool_name="deterministic-research", evidence_requirements=[EvidenceRequirement(id="market-signal", description="market evidence")]),
-            ResearchTask(id="fundamentals", title="Financial fundamentals", purpose="Assess revenue, margin, cash flow and balance-sheet durability", tool_name="deterministic-research", evidence_requirements=[EvidenceRequirement(id="fundamental-signal", description="financial evidence")]),
-            ResearchTask(id="risk", title="Downside and disconfirming evidence", purpose="Test risks and conditions that would invalidate the thesis", depends_on=["market", "fundamentals"], tool_name="deterministic-research", evidence_requirements=[EvidenceRequirement(id="risk-signal", description="risk evidence", required_stances=["COUNTER"])]),
-        ]
 
     def _qualify(self, record: EvidenceRecord, task: ResearchTask) -> EvidenceRecord:
         requirement = next(item for item in task.evidence_requirements if item.id == record.requirement_id)

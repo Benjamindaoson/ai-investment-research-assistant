@@ -13,6 +13,11 @@ def test_api_creates_and_executes_case(tmp_path) -> None:
     assert created.status_code == 201
     run_id = created.json()["run_id"]
 
+    plan = client.get(f"/api/v1/research-runs/{run_id}/plan")
+    assert plan.status_code == 200
+    assert plan.json()["status"] == "VALIDATED"
+    assert plan.json()["planner_name"] == "deterministic-financial-planner"
+
     executed = client.post(f"/api/v1/research-runs/{run_id}/execute")
     assert executed.status_code == 200
     assert executed.json()["state"] == "COMPLETED"
