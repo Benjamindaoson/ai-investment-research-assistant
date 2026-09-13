@@ -100,6 +100,44 @@ def score_run(run: ResearchRun, case: dict[str, Any]) -> EvaluationResult:
     checks.append(EvaluationCheck(name="qualified_evidence", status="PASS" if qualified_count >= minimum else "FAIL", detail=f"observed={qualified_count}, minimum={minimum}"))
     if case.get("requires_claim", False):
         checks.append(EvaluationCheck(name="evidence_linked_claim", status="PASS" if any(claim.evidence_ids for claim in run.claims) else "FAIL", detail="at least one claim must link to evidence"))
+    if run.state in {"COMPLETED", "PARTIAL"}:
+        required_sections = {"thesis", "evidence", "risks", "scenarios", "decision"}
+        sections = run.memo.sections if run.memo is not None else []
+        section_keys = [section.section_key for section in sections]
+        missing_sections = sorted(required_sections - set(section_keys))
+        duplicate_sections = sorted({key for key in section_keys if section_keys.count(key) > 1})
+        empty_sections = sorted(section.section_key for section in sections if not section.body.strip())
+        checks.append(
+            EvaluationCheck(
+                name="memo_sections",
+                status="PASS" if not missing_sections and not duplicate_sections and not empty_sections else "FAIL",
+                detail=f"missing={missing_sections}, duplicates={duplicate_sections}, empty={empty_sections}",
+            )
+        )
+        claim_ids = {claim.id for claim in run.claims}
+        evidence_ids = {record.id for record in run.evidence}
+        requirement_ids = {
+            f"{task.id}:{requirement.id}"
+            for task in run.tasks
+            for requirement in task.evidence_requirements
+        }
+        dangling_claims = sorted({item for section in sections for item in section.claim_ids if item not in claim_ids})
+        dangling_evidence = sorted({item for section in sections for item in section.evidence_ids if item not in evidence_ids})
+        dangling_requirements = sorted(
+            {
+                item
+                for section in sections
+                for item in section.unresolved_requirement_ids
+                if item not in requirement_ids
+            }
+        )
+        checks.append(
+            EvaluationCheck(
+                name="memo_artifact_links",
+                status="PASS" if not dangling_claims and not dangling_evidence and not dangling_requirements else "FAIL",
+                detail=f"dangling_claims={dangling_claims}, dangling_evidence={dangling_evidence}, dangling_requirements={dangling_requirements}",
+            )
+        )
     statuses = {check.status for check in checks}
     passed = "FAIL" not in statuses
     return EvaluationResult(case_id=str(case["case_id"]), passed=passed, checks=checks)
