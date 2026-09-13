@@ -16,6 +16,7 @@ from deepresearch.domain.models import (
     InvestmentMemo,
     InvestmentMemory,
     MemoSection,
+    RedTeamReview,
     ResearchCase,
     ResearchPlan,
     ResearchRun,
@@ -341,6 +342,45 @@ class ResearchEngine:
                 self.store.save_memory(memory.model_dump(mode="json"))
         self._persist(run, "HUMAN_DECISION", decision.model_dump(mode="json"))
         return run
+
+    def record_red_team_review(self, run_id: str, review: RedTeamReview) -> ResearchRun:
+        run = self.get_run(run_id)
+        if run.thesis is None:
+            raise ValueError("red-team review requires a synthesized thesis")
+        if review.run_id != run.id or review.thesis_id != run.thesis.id:
+            raise ValueError("red-team review target does not belong to this run")
+        records = {record.id: record for record in run.evidence}
+        missing = sorted(set(review.evidence_ids) - records.keys())
+        if missing:
+            raise ValueError(f"red-team evidence not found in run: {missing}")
+        invalid_stance = sorted(
+            evidence_id
+            for evidence_id in set(review.evidence_ids)
+            if records[evidence_id].stance not in {"COUNTER", "CONFLICTING"}
+        )
+        if invalid_stance:
+            raise ValueError(f"red-team evidence must be counter or conflicting: {invalid_stance}")
+        if any(item.id == review.id for item in run.red_team_reviews):
+            raise ValueError(f"red-team review already exists: {review.id}")
+        run.red_team_reviews.append(review)
+        if review.outcome == "REQUIRES_RESEARCH":
+            run.thesis.review_status = "NEEDS_REVIEW"
+            if run.memo is not None:
+                run.memo.status = "READY_FOR_REVIEW" if run.state == "COMPLETED" else "DRAFT"
+        self._persist(
+            run,
+            "RED_TEAM_REVIEW_RECORDED",
+            {
+                "review_id": review.id,
+                "thesis_id": review.thesis_id,
+                "outcome": review.outcome,
+                "evidence_ids": review.evidence_ids,
+            },
+        )
+        return run
+
+    def get_red_team_reviews(self, run_id: str) -> list[RedTeamReview]:
+        return self.get_run(run_id).red_team_reviews
 
     def get_memo(self, run_id: str) -> InvestmentMemo:
         run = self.get_run(run_id)

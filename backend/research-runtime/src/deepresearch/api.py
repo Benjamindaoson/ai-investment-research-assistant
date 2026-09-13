@@ -2,14 +2,19 @@
 
 import os
 from pathlib import Path
-from typing import Any
+from typing import Any, Literal
 from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
 from pydantic import BaseModel, Field, model_validator
 
-from deepresearch.domain.models import DecisionRecord, FinancialSnapshot, ResearchCase
+from deepresearch.domain.models import (
+    DecisionRecord,
+    FinancialSnapshot,
+    RedTeamReview,
+    ResearchCase,
+)
 from deepresearch.persistence.store import SQLiteStore
 from deepresearch.runtime.engine import ResearchEngine
 from deepresearch.runtime.evidence import (
@@ -42,6 +47,14 @@ class DecisionRequest(BaseModel):
     actor: str = Field(min_length=1, max_length=200)
     action: str
     target_id: str
+    rationale: str = Field(min_length=3, max_length=4000)
+
+
+class RedTeamReviewRequest(BaseModel):
+    reviewer: str = Field(min_length=1, max_length=200)
+    challenge: str = Field(min_length=3, max_length=4000)
+    evidence_ids: list[str] = Field(default_factory=list, max_length=100)
+    outcome: Literal["OPEN", "SUPPORTED", "REJECTED", "REQUIRES_RESEARCH"] = "OPEN"
     rationale: str = Field(min_length=3, max_length=4000)
 
 
@@ -244,6 +257,34 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
             raise HTTPException(status_code=404, detail="research run not found") from error
         except ValueError as error:
             raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.post("/api/v1/research-runs/{run_id}/red-team-reviews")
+    def red_team_review(run_id: str, request: RedTeamReviewRequest) -> dict[str, Any]:
+        try:
+            run = engine.get_run(run_id)
+            if run.thesis is None:
+                raise ValueError("red-team review requires a synthesized thesis")
+            review = RedTeamReview(
+                run_id=run_id,
+                thesis_id=run.thesis.id,
+                reviewer=request.reviewer,
+                challenge=request.challenge,
+                evidence_ids=request.evidence_ids,
+                outcome=request.outcome,
+                rationale=request.rationale,
+            )
+            return engine.record_red_team_review(run_id, review).model_dump(mode="json")
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research run not found") from error
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.get("/api/v1/research-runs/{run_id}/red-team-reviews")
+    def get_red_team_reviews(run_id: str) -> list[dict[str, Any]]:
+        try:
+            return [review.model_dump(mode="json") for review in engine.get_red_team_reviews(run_id)]
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research run not found") from error
 
     return app
 

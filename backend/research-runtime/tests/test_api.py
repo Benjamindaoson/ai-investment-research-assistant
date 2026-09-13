@@ -243,6 +243,61 @@ def test_api_rejects_unknown_or_missing_financial_evidence_links(tmp_path) -> No
     assert "missing evidence links" in str(missing.json()["detail"])
 
 
+def test_api_records_red_team_review_and_reopens_thesis(tmp_path) -> None:
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+    created = client.post("/api/v1/research-cases", json={"question": "Assess ACME downside", "target": "ACME"})
+    run_id = created.json()["run_id"]
+    run = client.post(f"/api/v1/research-runs/{run_id}/execute").json()
+    counter_id = next(item["id"] for item in run["evidence"] if item["stance"] == "COUNTER")
+
+    response = client.post(
+        f"/api/v1/research-runs/{run_id}/red-team-reviews",
+        json={
+            "reviewer": "analyst@example.com",
+            "challenge": "What if the observed growth signal is not durable?",
+            "evidence_ids": [counter_id],
+            "outcome": "REQUIRES_RESEARCH",
+            "rationale": "The downside evidence requires a focused follow-up.",
+        },
+    )
+    listed = client.get(f"/api/v1/research-runs/{run_id}/red-team-reviews")
+    events = client.get(f"/api/v1/research-runs/{run_id}/events").json()
+
+    assert response.status_code == 200
+    assert response.json()["thesis"]["review_status"] == "NEEDS_REVIEW"
+    assert response.json()["memo"]["status"] == "READY_FOR_REVIEW"
+    assert response.json()["red_team_reviews"][0]["evidence_ids"] == [counter_id]
+    assert listed.status_code == 200
+    assert listed.json() == response.json()["red_team_reviews"]
+    assert any(event["event_type"] == "RED_TEAM_REVIEW_RECORDED" for event in events)
+
+
+def test_api_rejects_supporting_red_team_evidence_without_mutation(tmp_path) -> None:
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+    created = client.post("/api/v1/research-cases", json={"question": "Assess ACME downside", "target": "ACME"})
+    run_id = created.json()["run_id"]
+    run = client.post(f"/api/v1/research-runs/{run_id}/execute").json()
+    supporting_id = next(item["id"] for item in run["evidence"] if item["stance"] == "SUPPORTING")
+    before = client.get(f"/api/v1/research-runs/{run_id}").json()
+    events_before = client.get(f"/api/v1/research-runs/{run_id}/events").json()
+
+    response = client.post(
+        f"/api/v1/research-runs/{run_id}/red-team-reviews",
+        json={
+            "reviewer": "analyst@example.com",
+            "challenge": "Challenge with supporting evidence",
+            "evidence_ids": [supporting_id],
+            "rationale": "This should be rejected by the stance boundary.",
+        },
+    )
+
+    assert response.status_code == 422
+    assert "counter or conflicting" in response.json()["detail"]
+    assert client.get(f"/api/v1/research-runs/{run_id}").json() == before
+    assert client.get(f"/api/v1/research-runs/{run_id}/events").json() == events_before
+    assert client.get("/api/v1/research-runs/missing/red-team-reviews").status_code == 404
+
+
 def test_api_reads_target_investment_memory(tmp_path) -> None:
     client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
     created_ids = []

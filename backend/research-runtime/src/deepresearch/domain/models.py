@@ -201,6 +201,18 @@ class DecisionRecord(DomainModel):
     created_at: datetime = Field(default_factory=utc_now)
 
 
+class RedTeamReview(DomainModel):
+    id: str = Field(default_factory=lambda: f"red-team-{uuid4().hex}")
+    run_id: str
+    thesis_id: str
+    reviewer: str = Field(min_length=1, max_length=200)
+    challenge: str = Field(min_length=3, max_length=4000)
+    evidence_ids: list[str] = Field(default_factory=list, max_length=100)
+    outcome: Literal["OPEN", "SUPPORTED", "REJECTED", "REQUIRES_RESEARCH"] = "OPEN"
+    rationale: str = Field(min_length=3, max_length=4000)
+    created_at: datetime = Field(default_factory=utc_now)
+
+
 class Checkpoint(DomainModel):
     id: str = Field(default_factory=lambda: f"checkpoint-{uuid4().hex}")
     run_id: str
@@ -222,6 +234,7 @@ class ResearchRun(DomainModel):
     thesis: Thesis | None = None
     memo: InvestmentMemo | None = None
     financial_analysis: FinancialAnalysisResult | None = None
+    red_team_reviews: list[RedTeamReview] = Field(default_factory=list)
     decisions: list[DecisionRecord] = Field(default_factory=list)
     checkpoint: Checkpoint | None = None
     state_version: int = Field(default=1, ge=1)

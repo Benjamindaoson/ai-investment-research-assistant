@@ -114,6 +114,17 @@ const runtimeRunSchema = z.object({
   thesis: z.object({ id: z.string(), statement: z.string(), bull: z.string(), base: z.string(), bear: z.string(), claim_ids: z.array(z.string()), review_status: z.enum(["PENDING_REVIEW", "APPROVED", "NEEDS_REVIEW"]) }).nullable(),
   memo: runtimeMemoSchema.nullable(),
   financial_analysis: financialAnalysisResultSchema.nullable().default(null),
+  red_team_reviews: z.array(z.object({
+    id: z.string(),
+    run_id: z.string(),
+    thesis_id: z.string(),
+    reviewer: z.string(),
+    challenge: z.string(),
+    evidence_ids: z.array(z.string()),
+    outcome: z.enum(["OPEN", "SUPPORTED", "REJECTED", "REQUIRES_RESEARCH"]),
+    rationale: z.string(),
+    created_at: z.string().datetime(),
+  })).default([]),
 }).passthrough();
 export type RuntimeRun = z.infer<typeof runtimeRunSchema>;
 

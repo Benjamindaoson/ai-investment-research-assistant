@@ -33,7 +33,7 @@ const memory: InvestmentMemory = {
 
 const run: RuntimeRun = {
   id: "run-1", case_id: "case-1", state: "CREATED", tasks: [{ id: "market", title: "Market", state: "PENDING" }],
-  evidence: [], claims: [], thesis: null, memo: null, financial_analysis: null,
+  evidence: [], claims: [], thesis: null, memo: null, financial_analysis: null, red_team_reviews: [],
 };
 
 describe("ResearchRuntimeRepository", () => {
