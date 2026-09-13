@@ -300,7 +300,11 @@ class EvaluationCheck(DomainModel):
 
 
 class EvaluationResult(DomainModel):
+    id: str = Field(default_factory=lambda: f"evaluation-{uuid4().hex}")
     case_id: str
+    run_id: str | None = None
+    evaluator: str = Field(default="deterministic-run-scorer-v1", min_length=1, max_length=200)
+    case_hash: str = Field(default="", max_length=64)
     passed: bool | None
     checks: list[EvaluationCheck] = Field(min_length=1)
     evaluated_at: datetime = Field(default_factory=utc_now)

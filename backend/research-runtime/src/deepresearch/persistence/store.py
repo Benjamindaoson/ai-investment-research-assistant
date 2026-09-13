@@ -59,6 +59,12 @@ class SQLiteStore:
                     acquired_at TEXT NOT NULL,
                     expires_at REAL NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS evaluations (
+                    id TEXT PRIMARY KEY,
+                    run_id TEXT NOT NULL,
+                    payload TEXT NOT NULL,
+                    created_at TEXT NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS investment_memory (
                     target TEXT PRIMARY KEY,
                     payload TEXT NOT NULL,
@@ -139,6 +145,26 @@ class SQLiteStore:
         with self._transaction() as connection:
             row = connection.execute("SELECT payload FROM runs WHERE id = ?", (run_id,)).fetchone()
         return json.loads(row["payload"]) if row else None
+
+    def save_evaluation(self, payload: dict[str, Any]) -> None:
+        with self._transaction() as connection:
+            connection.execute(
+                "INSERT INTO evaluations(id, run_id, payload, created_at) VALUES (?, ?, ?, ?)",
+                (payload["id"], payload["run_id"], json.dumps(payload), datetime.now(UTC).isoformat()),
+            )
+
+    def latest_evaluation(self, run_id: str) -> dict[str, Any] | None:
+        with self._transaction() as connection:
+            row = connection.execute(
+                "SELECT payload FROM evaluations WHERE run_id = ? ORDER BY rowid DESC LIMIT 1",
+                (run_id,),
+            ).fetchone()
+        return json.loads(row["payload"]) if row else None
+
+    def evaluation_count(self, run_id: str) -> int:
+        with self._transaction() as connection:
+            row = connection.execute("SELECT COUNT(*) AS count FROM evaluations WHERE run_id = ?", (run_id,)).fetchone()
+        return int(row["count"])
 
     def list_runs(self, case_id: str) -> list[dict[str, Any]]:
         with self._transaction() as connection:

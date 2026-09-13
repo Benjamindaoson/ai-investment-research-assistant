@@ -553,3 +553,58 @@ def test_api_uses_deterministic_provider_only_without_fin_evidence_url(monkeypat
     create_app(SQLiteStore(tmp_path / "runtime.sqlite3"), planner=DeterministicResearchPlanner())
 
     assert CapturingDeterministicProvider.created is True
+
+
+def test_api_persists_and_reads_latest_run_evaluation(tmp_path) -> None:
+    store_path = tmp_path / "runtime.sqlite3"
+    client = TestClient(create_app(SQLiteStore(store_path)))
+    created = client.post(
+        "/api/v1/research-cases",
+        json={"question": "Assess ACME's margin durability", "target": "ACME"},
+    )
+    run_id = created.json()["run_id"]
+    client.post(f"/api/v1/research-runs/{run_id}/execute")
+    evaluation_case = {
+        "case_id": created.json()["case_id"],
+        "expected_state": "COMPLETED",
+        "minimum_qualified_evidence": 1,
+        "requires_claim": True,
+    }
+
+    first = client.post(f"/api/v1/research-runs/{run_id}/evaluate", json={"case": evaluation_case})
+    second = client.post(f"/api/v1/research-runs/{run_id}/evaluate", json={"case": evaluation_case})
+
+    assert first.status_code == 200
+    assert second.status_code == 200
+    assert second.json()["run_id"] == run_id
+    assert second.json()["case_hash"] == first.json()["case_hash"]
+    assert second.json()["id"] != first.json()["id"]
+    assert client.get(f"/api/v1/research-runs/{run_id}/evaluation").json() == second.json()
+    assert SQLiteStore(store_path).evaluation_count(run_id) == 2
+
+
+def test_api_rejects_mismatched_evaluation_and_preserves_na(tmp_path) -> None:
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    client = TestClient(create_app(store))
+    created = client.post(
+        "/api/v1/research-cases",
+        json={"question": "Assess ACME's margin durability", "target": "ACME"},
+    )
+    run_id = created.json()["run_id"]
+    client.post(f"/api/v1/research-runs/{run_id}/execute")
+
+    mismatch = client.post(
+        f"/api/v1/research-runs/{run_id}/evaluate",
+        json={"case": {"case_id": "other-case", "expected_state": "COMPLETED"}},
+    )
+    assert mismatch.status_code == 422
+    assert store.evaluation_count(run_id) == 0
+
+    na = client.post(
+        f"/api/v1/research-runs/{run_id}/evaluate",
+        json={"case": {"case_id": created.json()["case_id"], "requires_external_provider": True}},
+    )
+
+    assert na.status_code == 200
+    assert na.json()["passed"] is None
+    assert na.json()["checks"] == [{"name": "external_provider", "status": "N/A", "detail": "FinEvidence provider is not configured in this local run."}]

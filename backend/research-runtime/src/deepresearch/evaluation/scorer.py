@@ -1,9 +1,15 @@
 """Evidence-based golden-case scorer."""
 
+import json
+from hashlib import sha256
 from typing import Any
 
 from deepresearch.domain.models import EvaluationCheck, EvaluationResult, ResearchPlan, ResearchRun
 from deepresearch.runtime.engine import validate_task_dag
+
+
+def evaluation_case_hash(case: dict[str, Any]) -> str:
+    return sha256(json.dumps(case, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 def score_plan(plan: ResearchPlan, case: dict[str, Any]) -> EvaluationResult:
@@ -86,12 +92,24 @@ def score_plan(plan: ResearchPlan, case: dict[str, Any]) -> EvaluationResult:
             detail=f"duplicate_titles={duplicate_titles}",
         )
     )
-    return EvaluationResult(case_id=str(case["case_id"]), passed=all(check.status == "PASS" for check in checks), checks=checks)
+    return EvaluationResult(
+        case_id=str(case["case_id"]),
+        evaluator="deterministic-plan-scorer-v1",
+        case_hash=evaluation_case_hash(case),
+        passed=all(check.status == "PASS" for check in checks),
+        checks=checks,
+    )
 
 
 def score_run(run: ResearchRun, case: dict[str, Any]) -> EvaluationResult:
     if case.get("requires_external_provider"):
-        return EvaluationResult(case_id=str(case["case_id"]), passed=None, checks=[EvaluationCheck(name="external_provider", status="N/A", detail="FinEvidence provider is not configured in this local run.")])
+        return EvaluationResult(
+            case_id=str(case["case_id"]),
+            evaluator="deterministic-run-scorer-v1",
+            case_hash=evaluation_case_hash(case),
+            passed=None,
+            checks=[EvaluationCheck(name="external_provider", status="N/A", detail="FinEvidence provider is not configured in this local run.")],
+        )
     checks: list[EvaluationCheck] = []
     expected_state = case.get("expected_state", "COMPLETED")
     checks.append(EvaluationCheck(name="terminal_state", status="PASS" if run.state == expected_state else "FAIL", detail=f"observed={run.state}, expected={expected_state}"))
@@ -140,4 +158,10 @@ def score_run(run: ResearchRun, case: dict[str, Any]) -> EvaluationResult:
         )
     statuses = {check.status for check in checks}
     passed = "FAIL" not in statuses
-    return EvaluationResult(case_id=str(case["case_id"]), passed=passed, checks=checks)
+    return EvaluationResult(
+        case_id=str(case["case_id"]),
+        evaluator="deterministic-run-scorer-v1",
+        case_hash=evaluation_case_hash(case),
+        passed=passed,
+        checks=checks,
+    )

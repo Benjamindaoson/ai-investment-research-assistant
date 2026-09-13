@@ -45,6 +45,10 @@ class ExecuteRequest(BaseModel):
     stop_after_tasks: int | None = Field(default=None, ge=1, le=100)
 
 
+class EvaluateRequest(BaseModel):
+    case: dict[str, Any]
+
+
 class CancelRequest(BaseModel):
     reason: str = Field(default="Analyst requested cancellation.", min_length=3, max_length=500)
 
@@ -240,6 +244,22 @@ def create_app(
             return engine.cancel(run_id, reason).model_dump(mode="json")
         except KeyError as error:
             raise HTTPException(status_code=404, detail="research run not found") from error
+
+    @app.post("/api/v1/research-runs/{run_id}/evaluate")
+    def evaluate(run_id: str, request: EvaluateRequest) -> dict[str, Any]:
+        try:
+            return engine.evaluate_run(run_id, request.case).model_dump(mode="json")
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research run not found") from error
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.get("/api/v1/research-runs/{run_id}/evaluation")
+    def evaluation(run_id: str) -> dict[str, Any]:
+        try:
+            return engine.get_latest_evaluation(run_id).model_dump(mode="json")
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="evaluation not found") from error
 
     @app.get("/api/v1/research-runs/{run_id}/events")
     def events(run_id: str) -> list[dict[str, Any]]:

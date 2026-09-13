@@ -12,6 +12,7 @@ from deepresearch.domain.models import (
     Checkpoint,
     Claim,
     DecisionRecord,
+    EvaluationResult,
     EvidenceRecord,
     FinancialAnalysisResult,
     InvestmentMemo,
@@ -132,6 +133,28 @@ class ResearchEngine:
         if payload is None:
             raise KeyError(run_id)
         return ResearchRun.model_validate(payload)
+
+    def evaluate_run(self, run_id: str, case: dict[str, object]) -> EvaluationResult:
+        run = self.get_run(run_id)
+        if case.get("case_id") != run.case_id:
+            raise ValueError("evaluation case does not match research run")
+        from deepresearch.evaluation.scorer import score_run
+
+        result = score_run(run, case).model_copy(update={"run_id": run.id})
+        self.store.save_evaluation(result.model_dump(mode="json"))
+        self.store.append_event(
+            run.id,
+            "EVALUATION_RECORDED",
+            {"evaluation_id": result.id, "case_hash": result.case_hash, "passed": result.passed},
+        )
+        return result
+
+    def get_latest_evaluation(self, run_id: str) -> EvaluationResult:
+        self.get_run(run_id)
+        payload = self.store.latest_evaluation(run_id)
+        if payload is None:
+            raise KeyError(f"evaluation missing for {run_id}")
+        return EvaluationResult.model_validate(payload)
 
     def list_runs(self, case_id: str) -> list[ResearchRun]:
         return [ResearchRun.model_validate(payload) for payload in self.store.list_runs(case_id)]
