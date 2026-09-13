@@ -64,7 +64,19 @@ class LLMResearchPlanner:
                 "messages": [
                     {
                         "role": "system",
-                        "content": "Return only JSON matching {tasks:[ResearchTask]}. Propose evidence-bearing financial research tasks, include counter-evidence, and do not state financial facts or conclusions.",
+                        "content": (
+                            "Return only one JSON object with this shape: "
+                            '{"tasks":[{"id":"task-id","title":"...","purpose":"...",'
+                            '"depends_on":[],"tool_name":"...","evidence_requirements":['
+                            '{"id":"requirement-id","description":"...","minimum_records":1,'
+                            '"required_stances":["SUPPORTING"]}]}]} . '
+                            "Every task must include purpose, tool_name, and at least one evidence requirement. "
+                            "Every evidence requirement must include id, description, minimum_records, and "
+                            "required_stances; use SUPPORTING, COUNTER, or CONFLICTING for stances. "
+                            "Include at least one COUNTER requirement for downside or disconfirming evidence. "
+                            "Do not include rationale, search_queries, sources, facts, claims, thesis, or conclusions. "
+                            "Do not invent financial data."
+                        ),
                     },
                     {"role": "user", "content": json.dumps(case.model_dump(mode="json"), sort_keys=True)},
                 ],
@@ -94,7 +106,7 @@ class LLMResearchPlanner:
         try:
             envelope = json.loads(raw.decode("utf-8"))
             content = envelope["choices"][0]["message"]["content"]
-            draft = LLMPlannerDraft.model_validate(json.loads(content))
+            draft = LLMPlannerDraft.model_validate(json.loads(self._strip_json_fence(content)))
         except (UnicodeDecodeError, json.JSONDecodeError, KeyError, IndexError, TypeError, ValidationError) as error:
             raise PlannerProviderError(f"planner response contract invalid: {error}") from error
         return ResearchPlan(
@@ -111,6 +123,16 @@ class LLMResearchPlanner:
                 "response_hash": response_hash,
             },
         )
+
+    @staticmethod
+    def _strip_json_fence(content: object) -> str:
+        if not isinstance(content, str):
+            raise TypeError("planner message content must be a string")
+        text = content.strip()
+        if text.startswith("```") and text.endswith("```"):
+            lines = text.splitlines()
+            text = "\n".join(lines[1:-1]).strip()
+        return text
 
 
 def create_configured_research_planner() -> ResearchPlanner:

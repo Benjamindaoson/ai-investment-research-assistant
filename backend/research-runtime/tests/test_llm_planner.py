@@ -57,6 +57,38 @@ def test_llm_planner_rejects_malformed_model_content(monkeypatch: pytest.MonkeyP
         )
 
 
+def test_llm_planner_accepts_json_markdown_fence(monkeypatch: pytest.MonkeyPatch) -> None:
+    case = ResearchCase(id="case-1", question="Assess ACME margin durability", target="ACME")
+    tasks = DeterministicResearchPlanner().plan(case).tasks
+    content = "```json\n" + json.dumps({"tasks": [task.model_dump(mode="json") for task in tasks]}) + "\n```"
+    monkeypatch.setattr(
+        "deepresearch.runtime.planner.urlopen",
+        lambda *args, **kwargs: FakeResponse({"choices": [{"message": {"content": content}}]}),
+    )
+
+    plan = LLMResearchPlanner("secret", "https://llm.example", "model").plan(case)
+
+    assert len(plan.tasks) == 3
+
+
+def test_llm_planner_prompt_requires_evidence_contract(monkeypatch: pytest.MonkeyPatch) -> None:
+    case = ResearchCase(id="case-1", question="Assess ACME margin durability", target="ACME")
+    tasks = DeterministicResearchPlanner().plan(case).tasks
+    requests: list[object] = []
+
+    def respond(request: object, **kwargs: object) -> FakeResponse:
+        requests.append(request)
+        return FakeResponse({"choices": [{"message": {"content": json.dumps({"tasks": [task.model_dump(mode="json") for task in tasks]})}}]})
+
+    monkeypatch.setattr("deepresearch.runtime.planner.urlopen", respond)
+    LLMResearchPlanner("secret", "https://llm.example", "model").plan(case)
+
+    body = json.loads(requests[0].data.decode())  # type: ignore[attr-defined]
+    system_prompt = body["messages"][0]["content"]
+    assert '"evidence_requirements"' in system_prompt
+    assert "Do not include rationale" in system_prompt
+
+
 def test_llm_planner_preserves_http_failure(monkeypatch: pytest.MonkeyPatch) -> None:
     def fail(*args: object, **kwargs: object) -> None:
         raise HTTPError("url", 429, "rate limited", {}, None)
