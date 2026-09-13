@@ -15,8 +15,8 @@ python -m venv .venv
 `/api/v1/research-runs/{run_id}/trace` 查看证据资格、provenance 完整性和
 claim-to-evidence 链接。
 
-设置 `FINEVIDENCE_BASE_URL` 后，API 会使用真实的 FinEvidence v1 HTTP
-provider；未设置时使用明确标记的 deterministic provider，保证本地测试不
+设置 canonical 变量 `FIN_EVIDENCE_BASE_URL` 后，API 会使用真实的 FinEvidence v1 HTTP
+provider；旧的 `FINEVIDENCE_BASE_URL` 仅作为兼容别名。未设置时使用明确标记的 deterministic provider，保证本地测试不
 需要网络或凭证。FinEvidence 的启动方式（另一个冻结仓库）是：
 
 ```powershell
@@ -27,8 +27,8 @@ cd "D:\01_work\Enterprise Multimodal RAG\finevidence"
 随后在本项目启动前设置：
 
 ```powershell
-$env:FINEVIDENCE_BASE_URL = "http://127.0.0.1:8000"
-$env:FINEVIDENCE_TIMEOUT_SECONDS = "120"
+$env:FIN_EVIDENCE_BASE_URL = "http://127.0.0.1:8000"
+$env:FIN_EVIDENCE_TIMEOUT_SECONDS = "120"
 ```
 
 Planner 默认也是 deterministic。只有显式设置

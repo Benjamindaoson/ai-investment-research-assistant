@@ -45,11 +45,11 @@ not autonomous trading or a broad financial super-app.
 The frontend currently uses explicitly labelled synthetic fixtures. The
 backend has a deterministic local provider so the durable runtime and review
 semantics can be exercised without external credentials or live market data.
-When `FINEVIDENCE_BASE_URL` is set, the runtime uses the frozen FinEvidence
+When canonical `FIN_EVIDENCE_BASE_URL` is set, the runtime uses the frozen FinEvidence
 Evidence Backend v1 contract: search → requirement coverage → citation. This
 repository does not import FinEvidence retrieval, parser, table IR, eval, or
 CLIP modules, and it does not silently fall back when the external service
-fails.
+fails. The legacy `FINEVIDENCE_BASE_URL` name remains a compatibility alias.
 
 ## Run locally
 
@@ -72,7 +72,7 @@ Set-Location "D:\01_work\Enterprise Multimodal RAG\finevidence"
 
 # Terminal 2, from backend/research-runtime
 Set-Location backend/research-runtime
-$env:FINEVIDENCE_BASE_URL = "http://127.0.0.1:8000" # use FinEvidence v1
+$env:FIN_EVIDENCE_BASE_URL = "http://127.0.0.1:8000" # use FinEvidence v1
 $env:RESEARCH_RUNTIME_CORS_ORIGINS = "http://localhost:3000"
 .\.venv\Scripts\python -m uvicorn deepresearch.api:app --reload --port 8010
 

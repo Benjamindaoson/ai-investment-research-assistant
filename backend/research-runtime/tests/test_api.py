@@ -485,3 +485,55 @@ def test_api_maps_invalid_plan_without_persisting_case(tmp_path) -> None:
     with sqlite3.connect(store.path) as connection:
         assert connection.execute("SELECT COUNT(*) FROM cases").fetchone()[0] == 0
         assert connection.execute("SELECT COUNT(*) FROM runs").fetchone()[0] == 0
+
+
+def test_api_uses_canonical_fin_evidence_configuration(monkeypatch, tmp_path) -> None:
+    class CapturingHttpProvider:
+        last = None
+
+        def __init__(self, base_url, timeout_seconds):
+            type(self).last = (base_url, timeout_seconds)
+
+    monkeypatch.setattr("deepresearch.api.HttpEvidenceProvider", CapturingHttpProvider)
+    monkeypatch.setenv("FIN_EVIDENCE_BASE_URL", "http://canonical.test")
+    monkeypatch.setenv("FIN_EVIDENCE_TIMEOUT_SECONDS", "17")
+    monkeypatch.setenv("FINEVIDENCE_BASE_URL", "http://legacy.test")
+    monkeypatch.setenv("FINEVIDENCE_TIMEOUT_SECONDS", "31")
+
+    create_app(SQLiteStore(tmp_path / "runtime.sqlite3"), planner=DeterministicResearchPlanner())
+
+    assert CapturingHttpProvider.last == ("http://canonical.test", 17.0)
+
+
+def test_api_keeps_legacy_fin_evidence_configuration_compatible(monkeypatch, tmp_path) -> None:
+    class CapturingHttpProvider:
+        last = None
+
+        def __init__(self, base_url, timeout_seconds):
+            type(self).last = (base_url, timeout_seconds)
+
+    monkeypatch.setattr("deepresearch.api.HttpEvidenceProvider", CapturingHttpProvider)
+    monkeypatch.delenv("FIN_EVIDENCE_BASE_URL", raising=False)
+    monkeypatch.delenv("FIN_EVIDENCE_TIMEOUT_SECONDS", raising=False)
+    monkeypatch.setenv("FINEVIDENCE_BASE_URL", "http://legacy.test")
+    monkeypatch.setenv("FINEVIDENCE_TIMEOUT_SECONDS", "31")
+
+    create_app(SQLiteStore(tmp_path / "runtime.sqlite3"), planner=DeterministicResearchPlanner())
+
+    assert CapturingHttpProvider.last == ("http://legacy.test", 31.0)
+
+
+def test_api_uses_deterministic_provider_only_without_fin_evidence_url(monkeypatch, tmp_path) -> None:
+    class CapturingDeterministicProvider:
+        created = False
+
+        def __init__(self):
+            type(self).created = True
+
+    monkeypatch.setattr("deepresearch.api.DeterministicEvidenceProvider", CapturingDeterministicProvider)
+    monkeypatch.delenv("FIN_EVIDENCE_BASE_URL", raising=False)
+    monkeypatch.delenv("FINEVIDENCE_BASE_URL", raising=False)
+
+    create_app(SQLiteStore(tmp_path / "runtime.sqlite3"), planner=DeterministicResearchPlanner())
+
+    assert CapturingDeterministicProvider.created is True
