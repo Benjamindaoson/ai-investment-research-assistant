@@ -31,7 +31,7 @@ const run = {
     { id: "conflicting", source_title: "Conflicting note", stance: "CONFLICTING", qualification: "NEEDS_REVIEW" },
   ],
   claims: [], thesis: { id: "thesis-1", statement: "Thesis", bull: "Bull", base: "Base", bear: "Bear", claim_ids: [], review_status: "PENDING_REVIEW" },
-  memo: null, financial_analysis: null, red_team_reviews: [], decisions: [],
+  memo: null, financial_analysis: null, red_team_reviews: [], decisions: [], tool_executions: [],
 } as RuntimeRun;
 
 describe("RedTeamReviewForm", () => {
