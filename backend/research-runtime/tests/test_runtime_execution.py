@@ -1,3 +1,6 @@
+from threading import Event, Thread
+from time import sleep
+
 from deepresearch.domain.models import (
     EvidenceRecord,
     EvidenceRequirement,
@@ -6,7 +9,7 @@ from deepresearch.domain.models import (
     ResearchTask,
 )
 from deepresearch.persistence.store import SQLiteStore
-from deepresearch.runtime.engine import ResearchEngine, RunLeaseConflictError
+from deepresearch.runtime.engine import ResearchEngine, RunLeaseConflictError, RunLeaseLostError
 from deepresearch.runtime.evidence import DeterministicEvidenceProvider, EvidenceProviderError
 from deepresearch.runtime.planner import research_input_hash
 
@@ -540,3 +543,76 @@ def test_stop_after_tasks_releases_lease_for_resume(tmp_path) -> None:
     assert resumed.state == "COMPLETED"
     assert len([event for event in events if event["event_type"] == "RUN_LEASE_ACQUIRED"]) == 2
     assert len([event for event in events if event["event_type"] == "RUN_LEASE_RELEASED"]) == 2
+
+
+def test_engine_heartbeat_keeps_ownership_during_slow_provider(tmp_path) -> None:
+    started = Event()
+    release = Event()
+
+    class SlowProvider(DeterministicEvidenceProvider):
+        def collect(self, task, case):
+            started.set()
+            assert release.wait(2)
+            return super().collect(task, case)
+
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    engine = ResearchEngine(store, SlowProvider(), lease_seconds=0.15)
+    run = engine.create_run(
+        ResearchCase(id="case-heartbeat", question="Assess ACME heartbeat", target="ACME"),
+        [make_task("market")],
+    )
+    result_holder = []
+    execution = Thread(target=lambda: result_holder.append(engine.execute(run.id)))
+    execution.start()
+    assert started.wait(1)
+    sleep(0.25)
+    assert store.acquire_run_lease(run.id, "other-executor", 1) is False
+    release.set()
+    execution.join(2)
+
+    assert not execution.is_alive()
+    assert result_holder[0].state == "COMPLETED"
+
+
+def test_engine_discards_result_after_lease_loss_and_allows_takeover(monkeypatch, tmp_path) -> None:
+    started = Event()
+    release = Event()
+
+    class BlockingProvider(DeterministicEvidenceProvider):
+        def collect(self, task, case):
+            started.set()
+            assert release.wait(2)
+            return super().collect(task, case)
+
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    engine = ResearchEngine(store, BlockingProvider(), lease_seconds=0.15)
+    run = engine.create_run(
+        ResearchCase(id="case-lease-loss", question="Assess ACME lease loss", target="ACME"),
+        [make_task("market")],
+    )
+    original_renew = store.renew_run_lease
+    monkeypatch.setattr(store, "renew_run_lease", lambda run_id, lease_id, ttl_seconds: False)
+    errors = []
+    execution = Thread(target=lambda: _capture_error(errors, lambda: engine.execute(run.id)))
+    execution.start()
+    assert started.wait(1)
+    sleep(0.1)
+    release.set()
+    execution.join(2)
+    monkeypatch.setattr(store, "renew_run_lease", original_renew)
+
+    assert not execution.is_alive()
+    assert isinstance(errors[0], RunLeaseLostError)
+    assert engine.get_run(run.id).tasks[0].state == "RUNNING"
+
+    recovered = engine.execute(run.id)
+
+    assert recovered.state == "COMPLETED"
+    assert any(event["event_type"] == "TASK_RECOVERED" for event in store.events(run.id))
+
+
+def _capture_error(errors, operation) -> None:
+    try:
+        operation()
+    except Exception as error:
+        errors.append(error)

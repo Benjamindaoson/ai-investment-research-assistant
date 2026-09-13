@@ -90,6 +90,18 @@ class SQLiteStore:
             )
         return cursor.rowcount == 1
 
+    def renew_run_lease(self, run_id: str, lease_id: str, ttl_seconds: float) -> bool:
+        if ttl_seconds <= 0:
+            raise ValueError("ttl_seconds must be positive")
+        now = time.time()
+        with self._transaction() as connection:
+            cursor = connection.execute(
+                """UPDATE run_leases SET expires_at = ?
+                WHERE run_id = ? AND lease_id = ? AND expires_at > ?""",
+                (now + ttl_seconds, run_id, lease_id, now),
+            )
+        return cursor.rowcount == 1
+
     def save_case(self, payload: dict[str, Any]) -> None:
         with self._transaction() as connection:
             connection.execute(
@@ -109,6 +121,19 @@ class SQLiteStore:
                 ON CONFLICT(id) DO UPDATE SET case_id=excluded.case_id, payload=excluded.payload""",
                 (payload["id"], payload["case_id"], json.dumps(payload)),
             )
+
+    def save_run_owned(self, payload: dict[str, Any], lease_id: str) -> bool:
+        now = time.time()
+        with self._transaction() as connection:
+            cursor = connection.execute(
+                """UPDATE runs SET case_id = ?, payload = ?
+                WHERE id = ? AND EXISTS (
+                    SELECT 1 FROM run_leases
+                    WHERE run_id = ? AND lease_id = ? AND expires_at > ?
+                )""",
+                (payload["case_id"], json.dumps(payload), payload["id"], payload["id"], lease_id, now),
+            )
+        return cursor.rowcount == 1
 
     def get_run(self, run_id: str) -> dict[str, Any] | None:
         with self._transaction() as connection:
@@ -133,6 +158,21 @@ class SQLiteStore:
             sequence = cursor.lastrowid
         return {"seq": sequence, "run_id": run_id, "event_type": event_type, "payload": payload, "occurred_at": occurred_at}
 
+    def append_event_owned(self, run_id: str, lease_id: str, event_type: str, payload: dict[str, Any]) -> bool:
+        occurred_at = datetime.now(UTC).isoformat()
+        now = time.time()
+        with self._transaction() as connection:
+            cursor = connection.execute(
+                """INSERT INTO events(run_id, event_type, payload, occurred_at)
+                SELECT ?, ?, ?, ?
+                WHERE EXISTS (
+                    SELECT 1 FROM run_leases
+                    WHERE run_id = ? AND lease_id = ? AND expires_at > ?
+                )""",
+                (run_id, event_type, json.dumps(payload), occurred_at, run_id, lease_id, now),
+            )
+        return cursor.rowcount == 1
+
     def events(self, run_id: str) -> list[dict[str, Any]]:
         with self._transaction() as connection:
             rows = connection.execute(
@@ -153,6 +193,22 @@ class SQLiteStore:
                 (checkpoint_id, run_id, json.dumps(payload), created_at),
             )
         return checkpoint_id
+
+    def save_checkpoint_owned(self, run_id: str, lease_id: str, payload: dict[str, Any]) -> str | None:
+        checkpoint_id = f"checkpoint-{uuid4().hex}"
+        created_at = datetime.now(UTC).isoformat()
+        now = time.time()
+        with self._transaction() as connection:
+            cursor = connection.execute(
+                """INSERT INTO checkpoints(id, run_id, payload, created_at)
+                SELECT ?, ?, ?, ?
+                WHERE EXISTS (
+                    SELECT 1 FROM run_leases
+                    WHERE run_id = ? AND lease_id = ? AND expires_at > ?
+                )""",
+                (checkpoint_id, run_id, json.dumps(payload), created_at, run_id, lease_id, now),
+            )
+        return checkpoint_id if cursor.rowcount == 1 else None
 
     def latest_checkpoint(self, run_id: str) -> dict[str, Any] | None:
         with self._transaction() as connection:

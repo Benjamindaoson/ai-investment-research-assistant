@@ -33,9 +33,11 @@ $env:RESEARCH_RUNTIME_LEASE_SECONDS = "300"
 ```
 
 每次 run 执行都会先获取 SQLite durable lease；同一个 run 的并发执行会返回
-HTTP 409，进程崩溃后过期 lease 可以被下一次执行接管。lease TTL 应高于单次
-provider timeout；当前同步 runtime 尚未提供 heartbeat，长任务需要后续 worker
-切片支持。
+HTTP 409，进程崩溃后过期 lease 可以被下一次执行接管。同步 runtime 会以 TTL
+的三分之一周期（最多 30 秒）heartbeat renewal；若 ownership 丢失，旧 executor
+不会持久化 provider 结果，下一次执行会回收遗留的 `RUNNING` task。heartbeat
+无法中断正在进行的 provider 调用，外部副作用的 exactly-once / UNKNOWN_EFFECT
+语义仍由后续 worker 切片负责。
 
 Planner 默认也是 deterministic。只有显式设置
 `DEEPRESEARCH_PLANNER=llm`，并提供 `DEEPSEEK_API_KEY`、

@@ -17,7 +17,7 @@ from deepresearch.domain.models import (
     ResearchMandate,
 )
 from deepresearch.persistence.store import SQLiteStore
-from deepresearch.runtime.engine import ResearchEngine, RunLeaseConflictError
+from deepresearch.runtime.engine import ResearchEngine, RunLeaseConflictError, RunLeaseLostError
 from deepresearch.runtime.evidence import (
     DeterministicEvidenceProvider,
     EvidenceProvider,
@@ -208,6 +208,8 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
         except KeyError as error:
             raise HTTPException(status_code=404, detail="research run not found") from error
         except RunLeaseConflictError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        except RunLeaseLostError as error:
             raise HTTPException(status_code=409, detail=str(error)) from error
 
     @app.post("/api/v1/research-runs/{run_id}/replan")

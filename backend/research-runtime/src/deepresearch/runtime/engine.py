@@ -5,6 +5,7 @@ from __future__ import annotations
 from collections.abc import Iterable
 from datetime import UTC, datetime
 from hashlib import sha256
+from threading import Event, Thread
 from uuid import uuid4
 
 from deepresearch.domain.models import (
@@ -59,6 +60,10 @@ def validate_task_dag(tasks: Iterable[ResearchTask]) -> list[str]:
 
 class RunLeaseConflictError(RuntimeError):
     """Another executor currently owns the research run."""
+
+
+class RunLeaseLostError(RuntimeError):
+    """The executor lost ownership before it could persist its result."""
 
 
 class ResearchEngine:
@@ -252,40 +257,81 @@ class ResearchEngine:
         lease_id = f"lease-{uuid4().hex}"
         if not self.store.acquire_run_lease(run_id, lease_id, self.lease_seconds):
             raise RunLeaseConflictError(f"research run {run_id} is already being executed")
+        heartbeat_stop = Event()
+        heartbeat_lost = Event()
+        heartbeat = Thread(
+            target=self._heartbeat,
+            args=(run_id, lease_id, heartbeat_stop, heartbeat_lost),
+            daemon=True,
+        )
+        heartbeat.start()
         try:
             self.store.append_event(run_id, "RUN_LEASE_ACQUIRED", {"lease_id": lease_id})
-            return self._execute(run_id, stop_after_tasks)
+            return self._execute(run_id, stop_after_tasks, lease_id, heartbeat_lost)
         finally:
+            heartbeat_stop.set()
+            heartbeat.join(timeout=min(max(self.lease_seconds / 3, 0.05), 1.0))
             released = self.store.release_run_lease(run_id, lease_id)
-            self.store.append_event(run_id, "RUN_LEASE_RELEASED", {"lease_id": lease_id, "released": released})
+            self.store.append_event(
+                run_id,
+                "RUN_LEASE_RELEASED",
+                {"lease_id": lease_id, "released": released, "heartbeat_lost": heartbeat_lost.is_set()},
+            )
 
-    def _execute(self, run_id: str, stop_after_tasks: int | None = None) -> ResearchRun:
+    def _heartbeat(self, run_id: str, lease_id: str, stop: Event, lost: Event) -> None:
+        interval = min(max(self.lease_seconds / 3, 0.01), 30.0)
+        while not stop.wait(interval):
+            try:
+                renewed = self.store.renew_run_lease(run_id, lease_id, self.lease_seconds)
+            except Exception:
+                renewed = False
+            if not renewed:
+                lost.set()
+                return
+
+    def _execute(
+        self,
+        run_id: str,
+        stop_after_tasks: int | None = None,
+        lease_id: str | None = None,
+        heartbeat_lost: Event | None = None,
+    ) -> ResearchRun:
+        self._ensure_lease(heartbeat_lost)
         run = self.get_run(run_id)
         if run.state in {"COMPLETED", "PARTIAL", "FAILED", "CANCELLED"}:
             return run
         case = self.get_case(run.case_id)
+        abandoned = [task for task in run.tasks if task.state == "RUNNING"]
+        for task in abandoned:
+            task.state = "PENDING"
+            self._persist(run, "TASK_RECOVERED", {"task_id": task.id}, lease_id)
         completed = {task.id for task in run.tasks if task.state == "COMPLETED"}
         if completed:
-            self.store.append_event(run.id, "RUN_RESUMED", {"completed_task_ids": sorted(completed)})
+            self._append_event(run.id, "RUN_RESUMED", {"completed_task_ids": sorted(completed)}, lease_id)
         executed_this_call = 0
         while len(completed) < len(run.tasks):
+            self._ensure_lease(heartbeat_lost)
             ready = [
                 task for task in run.tasks if task.state == "PENDING" and set(task.depends_on) <= completed
             ]
             if not ready:
-                return self._fail(run, "no ready task; DAG is inconsistent")
+                return self._fail(run, "no ready task; DAG is inconsistent", lease_id)
             for task in sorted(ready, key=lambda item: item.id):
+                self._ensure_lease(heartbeat_lost)
                 task.state = "RUNNING"
                 run.state = "RUNNING"
-                self._persist(run, "TASK_STARTED", {"task_id": task.id})
+                self._persist(run, "TASK_STARTED", {"task_id": task.id}, lease_id)
                 try:
                     records = self.provider.collect(task, case)
                 except Exception as error:
+                    self._ensure_lease(heartbeat_lost)
                     task.state = "FAILED"
                     return self._fail(
                         run,
                         f"evidence provider failed for task {task.id}: {type(error).__name__}: {error}",
+                        lease_id,
                     )
+                self._ensure_lease(heartbeat_lost)
                 qualified = [self._qualify(record, task) for record in records]
                 existing_evidence = {
                     (record.id, record.content_hash): index for index, record in enumerate(run.evidence)
@@ -311,16 +357,19 @@ class ResearchEngine:
                 task.state = "COMPLETED"
                 completed.add(task.id)
                 executed_this_call += 1
-                self._persist(run, "TASK_COMPLETED", {"task_id": task.id, "evidence_count": len(new_evidence)})
-                self._checkpoint(run, completed)
+                self._persist(run, "TASK_COMPLETED", {"task_id": task.id, "evidence_count": len(new_evidence)}, lease_id)
+                self._checkpoint(run, completed, lease_id)
                 if stop_after_tasks is not None and executed_this_call >= stop_after_tasks:
                     return run
+        self._ensure_lease(heartbeat_lost)
         run.state = "VERIFYING"
-        self._persist(run, "RUN_VERIFYING", {})
+        self._persist(run, "RUN_VERIFYING", {}, lease_id)
         try:
             self._synthesize(run)
         except EvidenceProviderError as error:
-            return self._fail(run, f"claim verification failed: {error}")
+            self._ensure_lease(heartbeat_lost)
+            return self._fail(run, f"claim verification failed: {error}", lease_id)
+        self._ensure_lease(heartbeat_lost)
         run.completed_at = datetime.now(UTC)
         run.state = (
             "COMPLETED"
@@ -329,7 +378,12 @@ class ResearchEngine:
             else "PARTIAL"
         )
         self._build_memo(run, case.target)
-        self._persist(run, "RUN_COMPLETED" if run.state == "COMPLETED" else "RUN_PARTIAL", {"claim_count": len(run.claims)})
+        self._persist(
+            run,
+            "RUN_COMPLETED" if run.state == "COMPLETED" else "RUN_PARTIAL",
+            {"claim_count": len(run.claims)},
+            lease_id,
+        )
         return run
 
     def cancel(self, run_id: str, reason: str) -> ResearchRun:
@@ -718,21 +772,57 @@ class ResearchEngine:
             ),
         )
 
-    def _checkpoint(self, run: ResearchRun, completed: set[str]) -> None:
+    def _checkpoint(self, run: ResearchRun, completed: set[str], lease_id: str | None = None) -> None:
         run.state_version += 1
         payload = {"state_version": run.state_version, "completed_task_ids": sorted(completed), "state_hash": sha256(run.model_dump_json().encode()).hexdigest()}
-        checkpoint_id = self.store.save_checkpoint(run.id, payload)
+        checkpoint_id = (
+            self.store.save_checkpoint_owned(run.id, lease_id, payload)
+            if lease_id
+            else self.store.save_checkpoint(run.id, payload)
+        )
+        if checkpoint_id is None:
+            raise RunLeaseLostError(f"research run {run.id} lease ownership was lost")
         run.checkpoint = Checkpoint.model_validate({"id": checkpoint_id, "run_id": run.id, **payload})
-        self.store.save_run(run.model_dump(mode="json"))
-        self.store.append_event(run.id, "CHECKPOINT_SAVED", payload | {"checkpoint_id": checkpoint_id})
+        self._persist(run, "CHECKPOINT_SAVED", payload | {"checkpoint_id": checkpoint_id}, lease_id)
 
-    def _persist(self, run: ResearchRun, event_type: str, payload: dict[str, object]) -> None:
+    def _persist(
+        self,
+        run: ResearchRun,
+        event_type: str,
+        payload: dict[str, object],
+        lease_id: str | None = None,
+    ) -> None:
         run.updated_at = datetime.now(UTC)
-        self.store.save_run(run.model_dump(mode="json"))
-        self.store.append_event(run.id, event_type, payload)
+        serialized = run.model_dump(mode="json")
+        if lease_id:
+            if not self.store.save_run_owned(serialized, lease_id):
+                raise RunLeaseLostError(f"research run {run.id} lease ownership was lost")
+            if not self.store.append_event_owned(run.id, lease_id, event_type, payload):
+                raise RunLeaseLostError(f"research run {run.id} lease ownership was lost")
+        else:
+            self.store.save_run(serialized)
+            self.store.append_event(run.id, event_type, payload)
 
-    def _fail(self, run: ResearchRun, reason: str) -> ResearchRun:
+    def _fail(self, run: ResearchRun, reason: str, lease_id: str | None = None) -> ResearchRun:
         run.completed_at = datetime.now(UTC)
         run.state = "FAILED"
-        self._persist(run, "RUN_FAILED", {"reason": reason})
+        self._persist(run, "RUN_FAILED", {"reason": reason}, lease_id)
         return run
+
+    @staticmethod
+    def _ensure_lease(heartbeat_lost: Event | None) -> None:
+        if heartbeat_lost is not None and heartbeat_lost.is_set():
+            raise RunLeaseLostError("research run lease ownership was lost")
+
+    def _append_event(
+        self,
+        run_id: str,
+        event_type: str,
+        payload: dict[str, object],
+        lease_id: str | None = None,
+    ) -> None:
+        if lease_id:
+            if not self.store.append_event_owned(run_id, lease_id, event_type, payload):
+                raise RunLeaseLostError(f"research run {run_id} lease ownership was lost")
+        else:
+            self.store.append_event(run_id, event_type, payload)
