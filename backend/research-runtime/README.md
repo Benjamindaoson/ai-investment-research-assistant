@@ -29,7 +29,13 @@ cd "D:\01_work\Enterprise Multimodal RAG\finevidence"
 ```powershell
 $env:FIN_EVIDENCE_BASE_URL = "http://127.0.0.1:8000"
 $env:FIN_EVIDENCE_TIMEOUT_SECONDS = "120"
+$env:RESEARCH_RUNTIME_LEASE_SECONDS = "300"
 ```
+
+每次 run 执行都会先获取 SQLite durable lease；同一个 run 的并发执行会返回
+HTTP 409，进程崩溃后过期 lease 可以被下一次执行接管。lease TTL 应高于单次
+provider timeout；当前同步 runtime 尚未提供 heartbeat，长任务需要后续 worker
+切片支持。
 
 Planner 默认也是 deterministic。只有显式设置
 `DEEPRESEARCH_PLANNER=llm`，并提供 `DEEPSEEK_API_KEY`、

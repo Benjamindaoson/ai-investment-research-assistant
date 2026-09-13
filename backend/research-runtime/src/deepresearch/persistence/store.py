@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import json
 import sqlite3
+import time
 from collections.abc import Iterator
 from contextlib import contextmanager
 from datetime import UTC, datetime
@@ -52,6 +53,12 @@ class SQLiteStore:
                     payload TEXT NOT NULL,
                     created_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS run_leases (
+                    run_id TEXT PRIMARY KEY,
+                    lease_id TEXT NOT NULL,
+                    acquired_at TEXT NOT NULL,
+                    expires_at REAL NOT NULL
+                );
                 CREATE TABLE IF NOT EXISTS investment_memory (
                     target TEXT PRIMARY KEY,
                     payload TEXT NOT NULL,
@@ -59,6 +66,29 @@ class SQLiteStore:
                 );
                 """
             )
+
+    def acquire_run_lease(self, run_id: str, lease_id: str, ttl_seconds: float) -> bool:
+        if ttl_seconds <= 0:
+            raise ValueError("ttl_seconds must be positive")
+        now = time.time()
+        with self._transaction() as connection:
+            connection.execute("DELETE FROM run_leases WHERE expires_at <= ?", (now,))
+            try:
+                connection.execute(
+                    "INSERT INTO run_leases(run_id, lease_id, acquired_at, expires_at) VALUES (?, ?, ?, ?)",
+                    (run_id, lease_id, datetime.now(UTC).isoformat(), now + ttl_seconds),
+                )
+            except sqlite3.IntegrityError:
+                return False
+        return True
+
+    def release_run_lease(self, run_id: str, lease_id: str) -> bool:
+        with self._transaction() as connection:
+            cursor = connection.execute(
+                "DELETE FROM run_leases WHERE run_id = ? AND lease_id = ?",
+                (run_id, lease_id),
+            )
+        return cursor.rowcount == 1
 
     def save_case(self, payload: dict[str, Any]) -> None:
         with self._transaction() as connection:

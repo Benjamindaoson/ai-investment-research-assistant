@@ -57,11 +57,18 @@ def validate_task_dag(tasks: Iterable[ResearchTask]) -> list[str]:
     return ordered
 
 
+class RunLeaseConflictError(RuntimeError):
+    """Another executor currently owns the research run."""
+
+
 class ResearchEngine:
-    def __init__(self, store: SQLiteStore, provider: EvidenceProvider, planner: ResearchPlanner | None = None) -> None:
+    def __init__(self, store: SQLiteStore, provider: EvidenceProvider, planner: ResearchPlanner | None = None, lease_seconds: float = 300.0) -> None:
+        if lease_seconds <= 0:
+            raise ValueError("lease_seconds must be positive")
         self.store = store
         self.provider = provider
         self.planner = planner or DeterministicResearchPlanner()
+        self.lease_seconds = lease_seconds
 
     def create_run(self, case: ResearchCase, tasks: list[ResearchTask] | None = None) -> ResearchRun:
         plan = self.planner.plan(case) if tasks is None else ResearchPlan(
@@ -239,6 +246,20 @@ class ResearchEngine:
         }
 
     def execute(self, run_id: str, stop_after_tasks: int | None = None) -> ResearchRun:
+        current = self.get_run(run_id)
+        if current.state in {"COMPLETED", "PARTIAL", "FAILED", "CANCELLED"}:
+            return current
+        lease_id = f"lease-{uuid4().hex}"
+        if not self.store.acquire_run_lease(run_id, lease_id, self.lease_seconds):
+            raise RunLeaseConflictError(f"research run {run_id} is already being executed")
+        try:
+            self.store.append_event(run_id, "RUN_LEASE_ACQUIRED", {"lease_id": lease_id})
+            return self._execute(run_id, stop_after_tasks)
+        finally:
+            released = self.store.release_run_lease(run_id, lease_id)
+            self.store.append_event(run_id, "RUN_LEASE_RELEASED", {"lease_id": lease_id, "released": released})
+
+    def _execute(self, run_id: str, stop_after_tasks: int | None = None) -> ResearchRun:
         run = self.get_run(run_id)
         if run.state in {"COMPLETED", "PARTIAL", "FAILED", "CANCELLED"}:
             return run

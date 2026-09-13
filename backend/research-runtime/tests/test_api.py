@@ -153,6 +153,19 @@ def test_api_calculates_financial_snapshot(tmp_path) -> None:
     assert response.json()["unavailable_metrics"] == []
 
 
+def test_api_maps_active_run_lease_to_conflict(tmp_path) -> None:
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    client = TestClient(create_app(store))
+    created = client.post("/api/v1/research-cases", json={"question": "Assess ACME lease conflict", "target": "ACME"})
+    run_id = created.json()["run_id"]
+    assert store.acquire_run_lease(run_id, "existing-executor", 60)
+
+    response = client.post(f"/api/v1/research-runs/{run_id}/execute")
+
+    assert response.status_code == 409
+    assert response.json()["detail"] == f"research run {run_id} is already being executed"
+
+
 def test_api_calculates_only_with_qualified_run_evidence(tmp_path) -> None:
     client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
     created = client.post("/api/v1/research-cases", json={"question": "Assess ACME revenue", "target": "ACME"})

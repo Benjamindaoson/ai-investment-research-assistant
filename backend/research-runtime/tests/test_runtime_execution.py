@@ -6,7 +6,7 @@ from deepresearch.domain.models import (
     ResearchTask,
 )
 from deepresearch.persistence.store import SQLiteStore
-from deepresearch.runtime.engine import ResearchEngine
+from deepresearch.runtime.engine import ResearchEngine, RunLeaseConflictError
 from deepresearch.runtime.evidence import DeterministicEvidenceProvider, EvidenceProviderError
 from deepresearch.runtime.planner import research_input_hash
 
@@ -461,3 +461,82 @@ def test_engine_cancellation_is_terminal_idempotent_and_not_resumable(tmp_path) 
     assert executed.state == "CANCELLED"
     assert provider.calls == []
     assert [event["event_type"] for event in engine.store.events(run.id)].count("RUN_CANCELLED") == 1
+
+
+def test_engine_rejects_active_lease_without_provider_work(tmp_path) -> None:
+    provider = DeterministicEvidenceProvider()
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    engine = ResearchEngine(store, provider)
+    run = engine.create_run(
+        ResearchCase(id="case-lease-conflict", question="Assess ACME lease safety", target="ACME"),
+        [make_task("market")],
+    )
+    assert store.acquire_run_lease(run.id, "other-executor", 60)
+
+    try:
+        engine.execute(run.id)
+    except RunLeaseConflictError as error:
+        assert str(error) == f"research run {run.id} is already being executed"
+    else:
+        raise AssertionError("active lease was ignored")
+
+    assert provider.calls == []
+    assert engine.get_run(run.id).state == "CREATED"
+
+
+def test_engine_records_lease_lifecycle_and_releases_on_failure(tmp_path) -> None:
+    class FailingProvider(DeterministicEvidenceProvider):
+        def collect(self, task, case):
+            raise RuntimeError("provider unavailable")
+
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    engine = ResearchEngine(store, FailingProvider())
+    run = engine.create_run(
+        ResearchCase(id="case-lease-failure", question="Assess ACME lease failure", target="ACME"),
+        [make_task("market")],
+    )
+
+    result = engine.execute(run.id)
+    events = store.events(run.id)
+    acquired = next(event for event in events if event["event_type"] == "RUN_LEASE_ACQUIRED")
+    released = next(event for event in events if event["event_type"] == "RUN_LEASE_RELEASED")
+
+    assert result.state == "FAILED"
+    assert acquired["payload"]["lease_id"] == released["payload"]["lease_id"]
+    assert released["payload"]["released"] is True
+    assert store.acquire_run_lease(run.id, "later-executor", 60)
+
+
+def test_terminal_execution_is_idempotent_without_lease_events(tmp_path) -> None:
+    provider = DeterministicEvidenceProvider()
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    engine = ResearchEngine(store, provider)
+    run = engine.create_run(
+        ResearchCase(id="case-lease-terminal", question="Assess ACME terminal run", target="ACME"),
+        [make_task("market")],
+    )
+
+    completed = engine.execute(run.id)
+    repeated = engine.execute(run.id)
+
+    assert completed.state == repeated.state == "COMPLETED"
+    assert len(provider.calls) == 1
+    assert [event["event_type"] for event in store.events(run.id)].count("RUN_LEASE_ACQUIRED") == 1
+
+
+def test_stop_after_tasks_releases_lease_for_resume(tmp_path) -> None:
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    engine = ResearchEngine(store, DeterministicEvidenceProvider())
+    run = engine.create_run(
+        ResearchCase(id="case-lease-resume", question="Assess ACME resume", target="ACME"),
+        [make_task("market"), make_task("risk", ["market"])],
+    )
+
+    partial = engine.execute(run.id, stop_after_tasks=1)
+    resumed = engine.execute(run.id)
+    events = store.events(run.id)
+
+    assert partial.state == "RUNNING"
+    assert resumed.state == "COMPLETED"
+    assert len([event for event in events if event["event_type"] == "RUN_LEASE_ACQUIRED"]) == 2
+    assert len([event for event in events if event["event_type"] == "RUN_LEASE_RELEASED"]) == 2

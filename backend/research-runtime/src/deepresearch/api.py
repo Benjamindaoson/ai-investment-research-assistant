@@ -17,7 +17,7 @@ from deepresearch.domain.models import (
     ResearchMandate,
 )
 from deepresearch.persistence.store import SQLiteStore
-from deepresearch.runtime.engine import ResearchEngine
+from deepresearch.runtime.engine import ResearchEngine, RunLeaseConflictError
 from deepresearch.runtime.evidence import (
     DeterministicEvidenceProvider,
     EvidenceProvider,
@@ -92,7 +92,13 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
         base_url = os.environ.get("FIN_EVIDENCE_BASE_URL") or os.environ.get("FINEVIDENCE_BASE_URL")
         timeout = float(os.environ.get("FIN_EVIDENCE_TIMEOUT_SECONDS") or os.environ.get("FINEVIDENCE_TIMEOUT_SECONDS", "120"))
         configured_provider = HttpEvidenceProvider(base_url, timeout) if base_url else DeterministicEvidenceProvider()
-    engine = ResearchEngine(runtime_store, configured_provider, planner=planner or create_configured_research_planner())
+    lease_seconds = float(os.environ.get("RESEARCH_RUNTIME_LEASE_SECONDS", "300"))
+    engine = ResearchEngine(
+        runtime_store,
+        configured_provider,
+        planner=planner or create_configured_research_planner(),
+        lease_seconds=lease_seconds,
+    )
     financial_analysis = FinancialAnalysisTool()
     app = FastAPI(title="Financial DeepResearch Runtime", version="0.1.0")
     cors_origins = [
@@ -201,6 +207,8 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
             return engine.execute(run_id, request.stop_after_tasks if request else None).model_dump(mode="json")
         except KeyError as error:
             raise HTTPException(status_code=404, detail="research run not found") from error
+        except RunLeaseConflictError as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
 
     @app.post("/api/v1/research-runs/{run_id}/replan")
     def replan(run_id: str) -> dict[str, Any]:
