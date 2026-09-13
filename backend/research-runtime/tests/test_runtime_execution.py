@@ -36,6 +36,10 @@ def test_engine_executes_dag_and_resumes_without_duplicate_tools(tmp_path) -> No
     assert any(event["event_type"] == "RUN_RESUMED" for event in engine.store.events(run.id))
     assert resumed.thesis is not None
     assert all(claim.evidence_ids for claim in resumed.claims)
+    assert all(claim.confidence == 0.5 for claim in resumed.claims)
+    assert all("Operating momentum" not in claim.statement for claim in resumed.claims)
+    assert "qualified" in resumed.thesis.base.lower()
+    assert "operating momentum" not in resumed.thesis.bull.lower()
 
 
 def test_engine_marks_missing_evidence_partial(tmp_path) -> None:
@@ -51,6 +55,10 @@ def test_engine_marks_missing_evidence_partial(tmp_path) -> None:
     assert result.state == "PARTIAL"
     assert result.thesis is not None
     assert result.thesis.review_status == "NEEDS_REVIEW"
+    assert result.claims[0].status == "NEEDS_REVIEW"
+    assert result.claims[0].evidence_ids == []
+    assert result.claims[0].confidence == 0.0
+    assert "unresolved" in result.thesis.bear.lower()
 
 
 def test_engine_records_provider_failure_without_successful_tool_execution(tmp_path) -> None:

@@ -240,11 +240,67 @@ class ResearchEngine:
     def _synthesize(self, run: ResearchRun) -> None:
         run.claims = []
         for task in run.tasks:
-            evidence = [record for record in run.evidence if record.task_id == task.id and record.qualification == "QUALIFIED"]
-            run.claims.append(Claim(task_id=task.id, statement=f"{task.title} produces a material signal for the investment question.", evidence_ids=[item.id for item in evidence], status="QUALIFIED" if evidence else "NEEDS_REVIEW", confidence=0.8 if evidence else 0.2))
+            observed = [record for record in run.evidence if record.task_id == task.id]
+            qualified = [record for record in observed if record.qualification == "QUALIFIED"]
+            stance_counts = ", ".join(
+                f"{stance.lower()}={sum(record.stance == stance for record in observed)}"
+                for stance in ("SUPPORTING", "COUNTER", "CONFLICTING")
+            )
+            statement = (
+                f"{task.title}: {len(qualified)} of {len(observed)} observed evidence records qualified "
+                f"({stance_counts})."
+            )
+            run.claims.append(
+                Claim(
+                    task_id=task.id,
+                    statement=statement,
+                    evidence_ids=[item.id for item in qualified],
+                    status="QUALIFIED" if self._task_is_qualified(run, task) else "NEEDS_REVIEW",
+                    confidence=round(len(qualified) / len(observed), 4) if observed else 0.0,
+                )
+            )
         claim_ids = [claim.id for claim in run.claims]
-        complete = all(claim.status == "QUALIFIED" for claim in run.claims)
-        run.thesis = Thesis(statement="The investment case is evidence-backed but remains contingent on explicit downside conditions.", bull="Operating momentum and market structure improve faster than expected.", base="Current evidence supports a measured thesis with ongoing monitoring.", bear="Counter-evidence compounds and invalidates the key assumptions.", claim_ids=claim_ids, review_status="PENDING_REVIEW" if complete else "NEEDS_REVIEW")
+        qualified_count = sum(claim.status == "QUALIFIED" for claim in run.claims)
+        qualified_supporting = self._task_titles_with_stance(run, "SUPPORTING")
+        qualified_downside = self._task_titles_with_stance(run, "COUNTER") + self._task_titles_with_stance(run, "CONFLICTING")
+        unresolved = [
+            f"{task.id}:{requirement.id}"
+            for task in run.tasks
+            for requirement in task.evidence_requirements
+            if not self._requirement_is_qualified(run, task, requirement.id)
+        ]
+        bull_subjects = ", ".join(qualified_supporting) or "no task"
+        downside_subjects = ", ".join(dict.fromkeys(qualified_downside)) or "no task"
+        unresolved_text = ", ".join(unresolved) or "none"
+        run.thesis = Thesis(
+            statement=f"Observed evidence qualifies {qualified_count} of {len(run.tasks)} task claims; interpretation requires human review.",
+            bull=f"Bull scenario: qualified supporting evidence is observed for {bull_subjects}; assumptions remain subject to review.",
+            base=f"Base scenario: {qualified_count} of {len(run.tasks)} task claims are qualified, with unresolved requirements {unresolved_text}.",
+            bear=f"Bear scenario: qualified counter or conflicting evidence is observed for {downside_subjects}; unresolved requirements are {unresolved_text}.",
+            claim_ids=claim_ids,
+            review_status="PENDING_REVIEW" if not unresolved else "NEEDS_REVIEW",
+        )
+
+    def _task_titles_with_stance(self, run: ResearchRun, stance: str) -> list[str]:
+        return [
+            task.title
+            for task in run.tasks
+            if any(
+                record.task_id == task.id
+                and record.stance == stance
+                and record.qualification == "QUALIFIED"
+                for record in run.evidence
+            )
+        ]
+
+    def _requirement_is_qualified(self, run: ResearchRun, task: ResearchTask, requirement_id: str) -> bool:
+        requirement = next(item for item in task.evidence_requirements if item.id == requirement_id)
+        return sum(
+            record.task_id == task.id
+            and record.requirement_id == requirement_id
+            and record.qualification == "QUALIFIED"
+            for record in run.evidence
+        ) >= requirement.minimum_records
 
     def _checkpoint(self, run: ResearchRun, completed: set[str]) -> None:
         run.state_version += 1
