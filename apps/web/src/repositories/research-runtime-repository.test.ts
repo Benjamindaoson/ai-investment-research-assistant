@@ -56,6 +56,17 @@ describe("ResearchRuntimeRepository", () => {
     await expect(repository.executeRun("run-1")).resolves.toMatchObject({ state: "COMPLETED" });
   });
 
+  it("preserves detailed claims from a completed run", async () => {
+    const detailedRun = { ...run, state: "COMPLETED", claims: [{
+      id: "claim-1", task_id: "market", statement: "Market evidence qualifies.", status: "QUALIFIED",
+      confidence: 1, evidence_ids: ["evidence-1"],
+    }] };
+    const fetchImpl = (async () => new Response(JSON.stringify(detailedRun), { status: 200 })) as typeof fetch;
+    const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+
+    await expect(repository.getRun("run-1")).resolves.toMatchObject({ claims: detailedRun.claims });
+  });
+
   it("posts an explicit research mandate at the runtime boundary", async () => {
     let requestBody = "";
     const fetchImpl = (async (_input, init) => {

@@ -6,6 +6,7 @@ import { FinancialAnalysisForm } from "@/components/runtime/financial-analysis-f
 import { RedTeamReviewForm } from "@/components/runtime/red-team-review-form";
 import { RuntimeDecisionForm } from "@/components/runtime/runtime-decision-form";
 import { RuntimeEvidenceTrace } from "@/components/runtime/runtime-evidence-trace";
+import { RuntimeClaimTrace } from "@/components/runtime/runtime-claim-trace";
 import { RuntimePlanContext } from "@/components/runtime/runtime-plan-context";
 import { useCancelRuntimeRunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeMemoryQuery, useRuntimeRunQuery } from "@/queries/use-runtime-run";
 
@@ -37,6 +38,7 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
       <RuntimePlanContext plan={run.plan} />
       <section className="decision-panel"><header><div><small>TASK CONTRACT</small><h2>Research tasks</h2></div><span>{run.tasks.filter((task) => task.state === "COMPLETED").length} / {run.tasks.length} completed</span></header><div className="runtime-task-list">{run.tasks.map((task) => <article className="runtime-task" key={task.id}><b>{task.title}</b><span>{task.id}</span><em>{task.state}</em></article>)}</div></section>
       <RuntimeEvidenceTrace evidence={run.evidence} />
+      <RuntimeClaimTrace claims={run.claims} evidence={run.evidence} />
       <section className="company-section-grid"><article className="company-section"><header><h3>Evidence coverage</h3><span>{run.evidence.length} observed</span></header><p>{qualified} qualified · {needsReview} needs review · {counter} counter/conflicting</p></article><article className="company-section"><header><h3>Memo projection</h3><span>{run.memo?.status ?? "not generated"}</span></header><p>{run.memo?.executive_summary ?? "Memo is generated after synthesis."}</p></article></section>
       {qualified > 0 && !["FAILED", "CANCELLED"].includes(run.state) && <FinancialAnalysisForm run={run} />}
       {run.financial_analysis && <section className="decision-panel"><header><div><small>CALCULATION ARTIFACT · EXPLICIT INPUTS</small><h2>Financial analysis · {run.financial_analysis.period}</h2></div><span>{Object.values(run.financial_analysis.evidence_ids).flat().length} linked evidence</span></header><div className="company-section-grid"><article className="company-section"><header><h3>Revenue growth</h3></header><p>{run.financial_analysis.revenue_growth_pct ?? "Unavailable"}</p></article><article className="company-section"><header><h3>Free cash flow</h3></header><p>{run.financial_analysis.free_cash_flow ?? "Unavailable"}</p></article><article className="company-section"><header><h3>Net cash</h3></header><p>{run.financial_analysis.net_cash ?? "Unavailable"}</p></article></div><small>Values were supplied explicitly and linked to qualified evidence; unavailable metrics are not inferred.</small></section>}

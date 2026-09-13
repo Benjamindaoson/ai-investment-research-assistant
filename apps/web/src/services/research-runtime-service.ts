@@ -186,6 +186,16 @@ const runtimePlanSchema = z.object({
 });
 export type RuntimePlan = z.infer<typeof runtimePlanSchema>;
 
+const runtimeClaimSchema = z.object({
+  id: z.string(),
+  task_id: z.string().optional(),
+  statement: z.string().optional(),
+  status: z.enum(["DRAFT", "QUALIFIED", "NEEDS_REVIEW", "REJECTED"]),
+  confidence: z.number().min(0).max(1).optional(),
+  evidence_ids: z.array(z.string()),
+});
+export type RuntimeClaim = z.infer<typeof runtimeClaimSchema>;
+
 const runtimeRunSchema = z.object({
   id: z.string(),
   case_id: z.string(),
@@ -193,7 +203,7 @@ const runtimeRunSchema = z.object({
   state: z.enum(["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED"]),
   tasks: z.array(z.object({ id: z.string(), title: z.string(), state: z.enum(["PENDING", "RUNNING", "COMPLETED", "FAILED"]) })),
   evidence: z.array(runtimeEvidenceSchema),
-  claims: z.array(z.object({ id: z.string(), status: z.enum(["DRAFT", "QUALIFIED", "NEEDS_REVIEW", "REJECTED"]), evidence_ids: z.array(z.string()) })),
+  claims: z.array(runtimeClaimSchema),
   thesis: z.object({ id: z.string(), statement: z.string(), bull: z.string(), base: z.string(), bear: z.string(), claim_ids: z.array(z.string()), review_status: z.enum(["PENDING_REVIEW", "APPROVED", "NEEDS_REVIEW"]) }).nullable(),
   memo: runtimeMemoSchema.nullable(),
   financial_analysis: financialAnalysisResultSchema.nullable().default(null),
