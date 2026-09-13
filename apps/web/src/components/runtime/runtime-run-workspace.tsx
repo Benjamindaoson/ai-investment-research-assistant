@@ -2,10 +2,11 @@
 
 import { useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
-import { useCancelRuntimeRunMutation, useExecuteRuntimeRunMutation, useRuntimeRunQuery } from "@/queries/use-runtime-run";
+import { useCancelRuntimeRunMutation, useExecuteRuntimeRunMutation, useRuntimeMemoryQuery, useRuntimeRunQuery } from "@/queries/use-runtime-run";
 
 export function RuntimeRunWorkspace({ runId }: { runId: string }) {
   const query = useRuntimeRunQuery(runId);
+  const memoryQuery = useRuntimeMemoryQuery(runId, Boolean(query.data?.memo));
   const execute = useExecuteRuntimeRunMutation(runId);
   const cancel = useCancelRuntimeRunMutation(runId);
   const [reason, setReason] = useState("Analyst stopped the run.");
@@ -30,6 +31,7 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
       <section className="decision-panel"><header><div><small>TASK CONTRACT</small><h2>Research tasks</h2></div><span>{run.tasks.filter((task) => task.state === "COMPLETED").length} / {run.tasks.length} completed</span></header><div className="runtime-task-list">{run.tasks.map((task) => <article className="runtime-task" key={task.id}><b>{task.title}</b><span>{task.id}</span><em>{task.state}</em></article>)}</div></section>
       <section className="company-section-grid"><article className="company-section"><header><h3>Evidence coverage</h3><span>{run.evidence.length} observed</span></header><p>{qualified} qualified · {needsReview} needs review · {counter} counter/conflicting</p></article><article className="company-section"><header><h3>Memo projection</h3><span>{run.memo?.status ?? "not generated"}</span></header><p>{run.memo?.executive_summary ?? "Memo is generated after synthesis."}</p></article></section>
       {run.memo && <section className="decision-panel"><header><div><small>REVIEW ARTIFACT</small><h2>{run.memo.title}</h2></div><span>{run.memo.evidence_ids.length} linked evidence</span></header><p>{run.memo.executive_summary}</p><p>Counter/conflicting evidence: {run.memo.counter_evidence_ids.length} · unresolved requirements: {run.memo.unresolved_requirement_ids.length}</p><div className="memo-section-grid">{run.memo.sections.map((section) => <article className="memo-section" key={section.section_key}><header><h3>{section.title}</h3><span>{section.evidence_ids.length} evidence</span></header><p>{section.body}</p><small>{section.claim_ids.length} claims · {section.unresolved_requirement_ids.length} unresolved</small></article>)}</div></section>}
+      {run.memo && memoryQuery.data && <section className="decision-panel"><header><div><small>INVESTMENT MEMORY · OBSERVED HISTORY</small><h2>{memoryQuery.data.target}</h2></div><span>{memoryQuery.data.run_ids.length} runs</span></header><p>Latest thesis: {memoryQuery.data.latest_thesis_id}</p><p>{memoryQuery.data.latest_thesis_delta?.summary ?? "First recorded target run; no prior thesis delta exists."}</p><small>Memory is an auditable history projection, not confidence or investment advice.</small></section>}
     </AppShell>
   );
 }

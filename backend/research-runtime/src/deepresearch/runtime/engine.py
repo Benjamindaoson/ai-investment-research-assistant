@@ -260,6 +260,11 @@ class ResearchEngine:
             raise KeyError(target)
         return InvestmentMemory.model_validate(payload)
 
+    def get_memory_for_run(self, run_id: str) -> InvestmentMemory:
+        run = self.get_run(run_id)
+        case = self.get_case(run.case_id)
+        return self.get_memory(case.target)
+
     def _qualify(self, record: EvidenceRecord, task: ResearchTask) -> EvidenceRecord:
         requirement = next(item for item in task.evidence_requirements if item.id == record.requirement_id)
         record.qualification = "QUALIFIED" if record.stance in requirement.required_stances else "NEEDS_REVIEW"

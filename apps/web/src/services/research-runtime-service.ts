@@ -142,6 +142,7 @@ export interface ResearchRuntimeService {
   cancelRun(runId: string, reason: string): Promise<RuntimeRunControl>;
   getMemo(runId: string): Promise<RuntimeMemo>;
   getMemory(target: string): Promise<InvestmentMemory>;
+  getMemoryForRun(runId: string): Promise<InvestmentMemory>;
   analyzeFinancials(snapshot: FinancialSnapshotInput): Promise<FinancialAnalysisResult>;
 }
 
@@ -198,6 +199,10 @@ export class HttpResearchRuntimeService implements ResearchRuntimeService {
     return investmentMemorySchema.parse(await this.requestJson(`/api/v1/investment-memory/${encodeURIComponent(target)}`, { headers: { accept: "application/json" } }));
   }
 
+  async getMemoryForRun(runId: string): Promise<InvestmentMemory> {
+    return investmentMemorySchema.parse(await this.requestJson(`/api/v1/research-runs/${encodeURIComponent(runId)}/memory`, { headers: { accept: "application/json" } }));
+  }
+
   async analyzeFinancials(snapshot: FinancialSnapshotInput): Promise<FinancialAnalysisResult> {
     const input = financialSnapshotSchema.parse(snapshot);
     return financialAnalysisResultSchema.parse(await this.requestJson("/api/v1/financial-analysis", {
@@ -220,6 +225,7 @@ class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
   async cancelRun(): Promise<RuntimeRunControl> { return this.unavailable(); }
   async getMemo(): Promise<RuntimeMemo> { return this.unavailable(); }
   async getMemory(): Promise<InvestmentMemory> { return this.unavailable(); }
+  async getMemoryForRun(): Promise<InvestmentMemory> { return this.unavailable(); }
   async analyzeFinancials(): Promise<FinancialAnalysisResult> { return this.unavailable(); }
 }
 

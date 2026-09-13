@@ -13,5 +13,6 @@ export class ResearchRuntimeRepository {
   cancelRun(runId: string, reason: string): Promise<RuntimeRunControl> { return this.service.cancelRun(runId, reason); }
   getMemo(runId: string): Promise<RuntimeMemo> { return this.service.getMemo(runId); }
   getMemory(target: string): Promise<InvestmentMemory> { return this.service.getMemory(target); }
+  getMemoryForRun(runId: string): Promise<InvestmentMemory> { return this.service.getMemoryForRun(runId); }
   analyzeFinancials(snapshot: FinancialSnapshotInput): Promise<FinancialAnalysisResult> { return this.service.analyzeFinancials(snapshot); }
 }

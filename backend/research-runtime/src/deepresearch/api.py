@@ -144,6 +144,13 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
         except KeyError as error:
             raise HTTPException(status_code=404, detail="research memo not found") from error
 
+    @app.get("/api/v1/research-runs/{run_id}/memory")
+    def run_memory(run_id: str) -> dict[str, Any]:
+        try:
+            return engine.get_memory_for_run(run_id).model_dump(mode="json")
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="investment memory not found") from error
+
     @app.get("/api/v1/investment-memory/{target}")
     def memory(target: str) -> dict[str, Any]:
         try:

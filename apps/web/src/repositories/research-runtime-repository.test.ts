@@ -68,6 +68,7 @@ describe("ResearchRuntimeRepository", () => {
       const url = String(input);
       if (url.endsWith("/memo")) return new Response(JSON.stringify(memo), { status: 200 });
       if (url.endsWith("/investment-memory/ACME")) return new Response(JSON.stringify(memory), { status: 200 });
+      if (url.endsWith("/research-runs/run-1/memory")) return new Response(JSON.stringify(memory), { status: 200 });
       requestBody = String(init?.body);
       return new Response(JSON.stringify({
         period: "FY2025", input_hash: "a".repeat(64), revenue_growth_pct: "20.0", gross_margin_pct: "50.0",
@@ -78,6 +79,7 @@ describe("ResearchRuntimeRepository", () => {
 
     await expect(repository.getMemo("run-1")).resolves.toEqual(memo);
     await expect(repository.getMemory("ACME")).resolves.toEqual(memory);
+    await expect(repository.getMemoryForRun("run-1")).resolves.toEqual(memory);
     await expect(repository.analyzeFinancials({ period: "FY2025", revenue: "120.00", prior_revenue: "100.00" })).resolves.toMatchObject({ free_cash_flow: "25" });
 
     expect(JSON.parse(requestBody)).toMatchObject({ period: "FY2025", revenue: "120.00", prior_revenue: "100.00" });

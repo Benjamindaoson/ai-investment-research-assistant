@@ -117,6 +117,20 @@ def test_api_reads_target_investment_memory(tmp_path) -> None:
     assert memory.json()["latest_run_id"] == created_ids[-1]
 
 
+def test_api_reads_memory_from_run_without_client_target(tmp_path) -> None:
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+    created = client.post("/api/v1/research-cases", json={"question": "Assess ACME memory", "target": "ACME"})
+    run_id = created.json()["run_id"]
+    client.post(f"/api/v1/research-runs/{run_id}/execute")
+
+    by_run = client.get(f"/api/v1/research-runs/{run_id}/memory")
+    by_target = client.get("/api/v1/investment-memory/ACME")
+
+    assert by_run.status_code == 200
+    assert by_run.json() == by_target.json()
+    assert client.get("/api/v1/research-runs/missing/memory").status_code == 404
+
+
 def test_api_cancels_run_and_prevents_execution(tmp_path) -> None:
     client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
     created = client.post("/api/v1/research-cases", json={"question": "Assess ACME risk", "target": "ACME"})
