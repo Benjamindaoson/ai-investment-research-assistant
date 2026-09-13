@@ -17,7 +17,7 @@ Next.js Research Workspace
   → typed service / repository boundary
   → FastAPI Research Runtime
   → ResearchCase / ResearchPlan / ResearchRun / Task DAG
-  → Evidence Requirements / FinEvidence v1 HTTP Client
+→ Evidence Requirements / FinEvidence v1 HTTP Client
   → Partial Coverage / Durable Replanning
   → Claims / Evidence-grounded Thesis / Memo / Human Decision
   → Investment Memory / Financial Analysis
@@ -124,7 +124,8 @@ memory reads, Decimal financial analysis, durable run-scoped financial analysis
 artifacts that require field-level links to qualified evidence already present
 in the same run, decision endpoints, typed
 Next.js runtime transport, live runtime workspace, case-scoped reruns, durable
-requirement-driven replanning, and an honest evaluation scorer.
+requirement-driven replanning, external claim verification gating, and an
+honest evaluation scorer.
 
 Incomplete by design: live filing and market providers, LLM plan quality
 promotion, PostgreSQL, authentication, document parsing, monitoring triggers,

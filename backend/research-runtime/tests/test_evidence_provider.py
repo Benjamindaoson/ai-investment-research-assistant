@@ -195,3 +195,21 @@ def test_client_exposes_frozen_auxiliary_endpoints(monkeypatch: pytest.MonkeyPat
     assert client.table_query(entity="ACME").evidence == []
     assert client.verify("ACME revenue was 100", ["ev-1"]).supported is True
     assert router.paths == ["/health", "/api/v1/table/query", "/api/v1/evidence/verify"]
+
+
+def test_http_provider_exposes_claim_verification(monkeypatch: pytest.MonkeyPatch) -> None:
+    router = Router(
+        {
+            "/api/v1/evidence/verify": {
+                "api_version": "v1",
+                "supported": True,
+                "coverage_score": 1.0,
+                "missing_requirements": [],
+                "supporting_evidence": [],
+            }
+        }
+    )
+    monkeypatch.setattr("deepresearch.runtime.evidence.urlopen", router)
+
+    assert HttpEvidenceProvider("https://evidence.example").verify_claim("Observed claim", ["ev-1"]) is True
+    assert router.payloads == [{"claim": "Observed claim", "evidence_ids": ["ev-1"]}]

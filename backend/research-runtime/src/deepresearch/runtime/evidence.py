@@ -203,6 +203,9 @@ class HttpEvidenceProvider:
     def __init__(self, base_url: str, timeout_seconds: float = 10.0) -> None:
         self.client = FinEvidenceClient(base_url, timeout_seconds)
 
+    def verify_claim(self, claim: str, evidence_ids: list[str]) -> bool:
+        return self.client.verify(claim, evidence_ids).supported
+
     def collect(self, task: ResearchTask, case: ResearchCase) -> list[EvidenceRecord]:
         query = " ".join([case.target, case.question, task.title, task.purpose, *(item.description for item in task.evidence_requirements)])
         search = self.client.search(query, top_k=10)

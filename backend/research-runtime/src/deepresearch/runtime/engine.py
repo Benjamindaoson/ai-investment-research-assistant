@@ -25,7 +25,7 @@ from deepresearch.domain.models import (
     ToolExecution,
 )
 from deepresearch.persistence.store import SQLiteStore
-from deepresearch.runtime.evidence import EvidenceProvider, evidence_hash
+from deepresearch.runtime.evidence import EvidenceProvider, EvidenceProviderError, evidence_hash
 from deepresearch.runtime.planner import (
     DeterministicResearchPlanner,
     ResearchPlanner,
@@ -292,9 +292,17 @@ class ResearchEngine:
                     return run
         run.state = "VERIFYING"
         self._persist(run, "RUN_VERIFYING", {})
-        self._synthesize(run)
+        try:
+            self._synthesize(run)
+        except EvidenceProviderError as error:
+            return self._fail(run, f"claim verification failed: {error}")
         run.completed_at = datetime.now(UTC)
-        run.state = "COMPLETED" if all(self._task_is_qualified(run, task) for task in run.tasks) else "PARTIAL"
+        run.state = (
+            "COMPLETED"
+            if all(self._task_is_qualified(run, task) for task in run.tasks)
+            and all(claim.status == "QUALIFIED" for claim in run.claims)
+            else "PARTIAL"
+        )
         self._build_memo(run, case.target)
         self._persist(run, "RUN_COMPLETED" if run.state == "COMPLETED" else "RUN_PARTIAL", {"claim_count": len(run.claims)})
         return run
@@ -418,15 +426,17 @@ class ResearchEngine:
                 f"{task.title}: {len(qualified)} of {len(observed)} observed evidence records qualified "
                 f"({stance_counts})."
             )
-            run.claims.append(
-                Claim(
-                    task_id=task.id,
-                    statement=statement,
-                    evidence_ids=list(dict.fromkeys(item.id for item in qualified)),
-                    status="QUALIFIED" if self._task_is_qualified(run, task) else "NEEDS_REVIEW",
-                    confidence=round(len(qualified) / len(observed), 4) if observed else 0.0,
-                )
+            claim = Claim(
+                task_id=task.id,
+                statement=statement,
+                evidence_ids=list(dict.fromkeys(item.id for item in qualified)),
+                status="QUALIFIED" if self._task_is_qualified(run, task) else "NEEDS_REVIEW",
+                confidence=round(len(qualified) / len(observed), 4) if observed else 0.0,
             )
+            verify_claim = getattr(self.provider, "verify_claim", None)
+            if claim.status == "QUALIFIED" and claim.evidence_ids and callable(verify_claim) and not verify_claim(claim.statement, claim.evidence_ids):
+                claim.status = "NEEDS_REVIEW"
+            run.claims.append(claim)
         claim_ids = [claim.id for claim in run.claims]
         qualified_count = sum(claim.status == "QUALIFIED" for claim in run.claims)
         qualified_supporting = self._task_titles_with_stance(run, "SUPPORTING")

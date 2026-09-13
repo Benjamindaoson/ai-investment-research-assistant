@@ -7,7 +7,7 @@ from deepresearch.domain.models import (
 )
 from deepresearch.persistence.store import SQLiteStore
 from deepresearch.runtime.engine import ResearchEngine
-from deepresearch.runtime.evidence import DeterministicEvidenceProvider
+from deepresearch.runtime.evidence import DeterministicEvidenceProvider, EvidenceProviderError
 from deepresearch.runtime.planner import research_input_hash
 
 
@@ -306,6 +306,84 @@ def test_engine_replan_rejects_unknown_dependency_without_mutation(tmp_path) -> 
 
     assert engine.get_run(run.id) == partial
     assert engine.store.events(run.id) == before
+
+
+def test_engine_requires_external_claim_verification_for_completion(tmp_path) -> None:
+    class UnsupportedClaimProvider:
+        qualification_authority = "external"
+
+        def collect(self, task, case):
+            return [
+                EvidenceRecord(
+                    task_id=task.id,
+                    requirement_id=task.evidence_requirements[0].id,
+                    stance="SUPPORTING",
+                    qualification="QUALIFIED",
+                    source_id="source",
+                    source_title="Source",
+                    excerpt="Observed evidence",
+                    provider="finevidence-http",
+                    source_url="https://example.test/source",
+                    locator="page:1",
+                    content_hash="d" * 64,
+                    provenance={"finevidence": {"coverage_status": "ELIGIBLE"}},
+                )
+            ]
+
+        def verify_claim(self, claim, evidence_ids):
+            return False
+
+    engine = ResearchEngine(SQLiteStore(tmp_path / "runtime.sqlite3"), UnsupportedClaimProvider())
+    run = engine.create_run(
+        ResearchCase(id="case-claim-review", question="Assess ACME evidence", target="ACME"),
+        [make_task("market")],
+    )
+
+    result = engine.execute(run.id)
+
+    assert result.state == "PARTIAL"
+    assert result.claims[0].status == "NEEDS_REVIEW"
+    assert result.completed_at is not None
+
+
+def test_engine_records_claim_verification_transport_failure(tmp_path) -> None:
+    class FailingVerifier:
+        qualification_authority = "external"
+
+        def collect(self, task, case):
+            return [
+                EvidenceRecord(
+                    task_id=task.id,
+                    requirement_id=task.evidence_requirements[0].id,
+                    stance="SUPPORTING",
+                    qualification="QUALIFIED",
+                    source_id="source",
+                    source_title="Source",
+                    excerpt="Observed evidence",
+                    provider="finevidence-http",
+                    source_url="https://example.test/source",
+                    locator="page:1",
+                    content_hash="e" * 64,
+                    provenance={"finevidence": {"coverage_status": "ELIGIBLE"}},
+                )
+            ]
+
+        def verify_claim(self, claim, evidence_ids):
+            raise EvidenceProviderError("verification unavailable")
+
+    engine = ResearchEngine(SQLiteStore(tmp_path / "runtime.sqlite3"), FailingVerifier())
+    run = engine.create_run(
+        ResearchCase(id="case-claim-failure", question="Assess ACME evidence", target="ACME"),
+        [make_task("market")],
+    )
+
+    result = engine.execute(run.id)
+
+    assert result.state == "FAILED"
+    assert any(
+        event["event_type"] == "RUN_FAILED" and "verification unavailable" in event["payload"]["reason"]
+        for event in engine.store.events(run.id)
+    )
 
 
 def test_engine_retries_replace_same_evidence_when_qualification_changes(tmp_path) -> None:

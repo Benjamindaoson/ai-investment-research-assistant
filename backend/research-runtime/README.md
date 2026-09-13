@@ -61,6 +61,10 @@ DAG 校验；调用失败不会静默回退为另一份 plan。
   evidence-backed. A successful run-scoped calculation is persisted on the
   ResearchRun, emits FINANCIAL_ANALYSIS_RECORDED, and can be read back from
   GET /api/v1/research-runs/{run_id}/financial-analysis.
+- When the configured FinEvidence provider exposes claim verification, every
+  evidence-backed claim is sent to /api/v1/evidence/verify. Unsupported claims
+  make the run PARTIAL; provider transport or contract failures make it FAILED
+  with the original reason in RUN_FAILED. Deterministic demo runs stay offline.
 - 已实现 FinEvidence v1 provider transport boundary：`FinEvidenceClient` 只
   通过 `/health`、`/api/v1/evidence/search`、`coverage`、`citation`、
   `/api/v1/table/query` 和 `/api/v1/evidence/verify` 消费外部 API，不实现
