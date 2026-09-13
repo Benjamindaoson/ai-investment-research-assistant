@@ -43,6 +43,15 @@ const runtimeRunControlSchema = z.object({
 });
 export type RuntimeRunControl = z.infer<typeof runtimeRunControlSchema>;
 
+const runtimeMemoSectionSchema = z.object({
+  section_key: z.enum(["thesis", "evidence", "risks", "scenarios", "decision"]),
+  title: z.string(),
+  body: z.string().min(3),
+  claim_ids: z.array(z.string()),
+  evidence_ids: z.array(z.string()),
+  unresolved_requirement_ids: z.array(z.string()),
+});
+
 const runtimeMemoSchema = z.object({
   id: z.string(),
   run_id: z.string(),
@@ -55,6 +64,7 @@ const runtimeMemoSchema = z.object({
   evidence_ids: z.array(z.string()),
   counter_evidence_ids: z.array(z.string()),
   unresolved_requirement_ids: z.array(z.string()),
+  sections: z.array(runtimeMemoSectionSchema).default([]),
   provenance: z.record(z.string(), z.unknown()),
   generated_at: z.string().datetime(),
 });

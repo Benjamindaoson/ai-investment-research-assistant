@@ -13,6 +13,7 @@ from deepresearch.domain.models import (
     EvidenceRecord,
     InvestmentMemo,
     InvestmentMemory,
+    MemoSection,
     ResearchCase,
     ResearchPlan,
     ResearchRun,
@@ -356,6 +357,9 @@ class ResearchEngine:
             for record in run.evidence
             if record.stance in {"COUNTER", "CONFLICTING"}
         ]
+        sections = self._build_memo_sections(
+            run, qualified_evidence_ids, counter_evidence_ids, unresolved
+        )
         run.memo = InvestmentMemo(
             run_id=run.id,
             case_id=run.case_id,
@@ -371,6 +375,7 @@ class ResearchEngine:
             evidence_ids=list(dict.fromkeys(qualified_evidence_ids)),
             counter_evidence_ids=list(dict.fromkeys(counter_evidence_ids)),
             unresolved_requirement_ids=unresolved,
+            sections=sections,
             provenance={
                 "generator": "deterministic-evidence-synthesis",
                 "run_state": run.state,
@@ -405,6 +410,71 @@ class ResearchEngine:
         memory.unresolved_requirement_ids = unresolved
         memory.updated_at = datetime.now(UTC)
         self.store.save_memory(memory.model_dump(mode="json"))
+
+    def _build_memo_sections(
+        self,
+        run: ResearchRun,
+        qualified_evidence_ids: list[str],
+        counter_evidence_ids: list[str],
+        unresolved: list[str],
+    ) -> list[MemoSection]:
+        if run.thesis is None:
+            raise ValueError("cannot build memo sections without a thesis")
+        claim_ids = [claim.id for claim in run.claims]
+        evidence_count = len(run.evidence)
+        support = "none" if not qualified_evidence_ids else str(len(qualified_evidence_ids))
+        unresolved_text = ", ".join(unresolved) or "none"
+        return [
+            MemoSection(
+                section_key="thesis",
+                title="Investment thesis",
+                body=run.thesis.statement,
+                claim_ids=list(run.thesis.claim_ids),
+                evidence_ids=list(dict.fromkeys(qualified_evidence_ids)),
+                unresolved_requirement_ids=list(unresolved),
+            ),
+            MemoSection(
+                section_key="evidence",
+                title="Evidence coverage",
+                body=(
+                    f"Observed {evidence_count} evidence records; {support} are qualified. "
+                    f"Unresolved requirements: {unresolved_text}."
+                ),
+                claim_ids=claim_ids,
+                evidence_ids=[record.id for record in run.evidence],
+                unresolved_requirement_ids=list(unresolved),
+            ),
+            MemoSection(
+                section_key="risks",
+                title="Risks and disconfirming conditions",
+                body=run.thesis.bear,
+                claim_ids=claim_ids,
+                evidence_ids=list(dict.fromkeys(counter_evidence_ids)),
+                unresolved_requirement_ids=list(unresolved),
+            ),
+            MemoSection(
+                section_key="scenarios",
+                title="Bull / base / bear scenarios",
+                body=(
+                    f"Bull: {run.thesis.bull}\nBase: {run.thesis.base}\nBear: {run.thesis.bear}"
+                ),
+                claim_ids=list(run.thesis.claim_ids),
+                evidence_ids=list(dict.fromkeys(qualified_evidence_ids)),
+                unresolved_requirement_ids=list(unresolved),
+            ),
+            MemoSection(
+                section_key="decision",
+                title="Decision readiness",
+                body=(
+                    "Ready for human review; no unresolved evidence requirements remain."
+                    if not unresolved
+                    else f"Human review required before approval. Unresolved requirements: {unresolved_text}."
+                ),
+                claim_ids=list(run.thesis.claim_ids),
+                evidence_ids=list(dict.fromkeys(qualified_evidence_ids + counter_evidence_ids)),
+                unresolved_requirement_ids=list(unresolved),
+            ),
+        ]
 
     def _thesis_delta(
         self,

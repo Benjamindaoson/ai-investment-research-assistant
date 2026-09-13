@@ -40,6 +40,12 @@ def test_engine_executes_dag_and_resumes_without_duplicate_tools(tmp_path) -> No
     assert all("Operating momentum" not in claim.statement for claim in resumed.claims)
     assert "qualified" in resumed.thesis.base.lower()
     assert "operating momentum" not in resumed.thesis.bull.lower()
+    assert resumed.memo is not None
+    assert [section.section_key for section in resumed.memo.sections] == [
+        "thesis", "evidence", "risks", "scenarios", "decision"
+    ]
+    assert set(resumed.memo.sections[0].claim_ids) == {claim.id for claim in resumed.claims}
+    assert set(resumed.memo.sections[0].evidence_ids) <= {record.id for record in resumed.evidence}
 
 
 def test_engine_marks_missing_evidence_partial(tmp_path) -> None:
@@ -62,6 +68,8 @@ def test_engine_marks_missing_evidence_partial(tmp_path) -> None:
     assert result.memo is not None
     assert result.memo.status == "DRAFT"
     assert result.memo.unresolved_requirement_ids == ["risk:req-risk"]
+    assert {"risk:req-risk"} <= set(result.memo.sections[0].unresolved_requirement_ids)
+    assert all(section.body for section in result.memo.sections)
 
 
 def test_engine_records_provider_failure_without_successful_tool_execution(tmp_path) -> None:

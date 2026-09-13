@@ -15,6 +15,7 @@ const memo: RuntimeMemo = {
   id: "memo-1", run_id: "run-1", case_id: "case-1", title: "ACME research memo", status: "READY_FOR_REVIEW",
   executive_summary: "Observed evidence remains reviewable.", thesis_id: "thesis-1", claim_ids: ["claim-1"],
   evidence_ids: ["evidence-1"], counter_evidence_ids: ["evidence-2"], unresolved_requirement_ids: [],
+  sections: [{ section_key: "thesis", title: "Investment thesis", body: "Observed thesis.", claim_ids: ["claim-1"], evidence_ids: ["evidence-1"], unresolved_requirement_ids: [] }],
   provenance: { generator: "test" }, generated_at: "2026-09-14T00:00:00.000Z",
 };
 
@@ -108,6 +109,13 @@ describe("ResearchRuntimeRepository", () => {
 
   it("rejects an invalid memo response at the Zod boundary", async () => {
     const fetchImpl = (async () => new Response(JSON.stringify({ id: "memo-1" }), { status: 200 })) as typeof fetch;
+    const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+    await expect(repository.getMemo("run-1")).rejects.toThrow();
+  });
+
+  it("rejects a memo with an unsupported structured section", async () => {
+    const invalid = { ...memo, sections: [{ ...memo.sections[0], section_key: "valuation" }] };
+    const fetchImpl = (async () => new Response(JSON.stringify(invalid), { status: 200 })) as typeof fetch;
     const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
     await expect(repository.getMemo("run-1")).rejects.toThrow();
   });

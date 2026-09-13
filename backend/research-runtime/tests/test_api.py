@@ -49,6 +49,9 @@ def test_api_creates_and_executes_case(tmp_path) -> None:
     assert memo.json()["unresolved_requirement_ids"] == []
     assert len(memo.json()["evidence_ids"]) == 3
     assert len(memo.json()["counter_evidence_ids"]) == 3
+    assert [section["section_key"] for section in memo.json()["sections"]] == [
+        "thesis", "evidence", "risks", "scenarios", "decision"
+    ]
 
     approved = client.post(
         f"/api/v1/research-runs/{run_id}/decisions",

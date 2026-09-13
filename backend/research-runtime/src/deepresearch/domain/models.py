@@ -138,6 +138,15 @@ class Thesis(DomainModel):
     review_status: Literal["PENDING_REVIEW", "APPROVED", "NEEDS_REVIEW"] = "PENDING_REVIEW"
 
 
+class MemoSection(DomainModel):
+    section_key: Literal["thesis", "evidence", "risks", "scenarios", "decision"]
+    title: str = Field(min_length=1, max_length=200)
+    body: str = Field(min_length=3, max_length=5000)
+    claim_ids: list[str] = Field(default_factory=list)
+    evidence_ids: list[str] = Field(default_factory=list)
+    unresolved_requirement_ids: list[str] = Field(default_factory=list)
+
+
 class InvestmentMemo(DomainModel):
     id: str = Field(default_factory=lambda: f"memo-{uuid4().hex}")
     run_id: str
@@ -150,6 +159,7 @@ class InvestmentMemo(DomainModel):
     evidence_ids: list[str] = Field(default_factory=list)
     counter_evidence_ids: list[str] = Field(default_factory=list)
     unresolved_requirement_ids: list[str] = Field(default_factory=list)
+    sections: list[MemoSection] = Field(default_factory=list)
     provenance: dict[str, Any] = Field(default_factory=dict)
     generated_at: datetime = Field(default_factory=utc_now)
 

@@ -30,7 +30,7 @@ DAG 校验；调用失败不会静默回退为另一份 plan。
   planner provenance 的 ResearchPlan、依赖 DAG 校验、SQLite durable state、
   append-only events、checkpoint read-back、resume 去重、evidence
   qualification、evidence-grounded claims/thesis、human decision API、
-  durable investment memo projection、Decimal financial analysis、
+  durable investment memo projection（含 evidence-linked structured sections）、Decimal financial analysis、
   target-level Investment Memory with observed ThesisDelta、plan/trace/memo/memory/financial-analysis
   API、durable cancellation、可执行 scorer。`python -m
   deepresearch.evaluation` 会独立输出 planner quality 和 runtime execution
