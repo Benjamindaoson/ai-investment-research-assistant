@@ -1,4 +1,5 @@
 from deepresearch.domain.models import (
+    CalculationLedgerEntry,
     Claim,
     DecisionRecord,
     EvaluationResult,
@@ -19,6 +20,7 @@ from deepresearch.domain.models import (
 )
 
 __all__ = [
+    "CalculationLedgerEntry",
     "Claim",
     "DecisionRecord",
     "EvidenceRecord",

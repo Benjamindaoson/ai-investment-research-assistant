@@ -171,6 +171,9 @@ def test_api_calculates_only_with_qualified_run_evidence(tmp_path) -> None:
     assert response.status_code == 200
     assert response.json()["revenue_growth_pct"] == "20.0"
     assert response.json()["evidence_ids"] == {"revenue": [evidence_id], "prior_revenue": [evidence_id]}
+    revenue_entry = next(item for item in response.json()["calculation_ledger"] if item["metric"] == "revenue_growth_pct")
+    assert revenue_entry["status"] == "AVAILABLE"
+    assert revenue_entry["evidence_ids"] == [evidence_id]
     persisted = client.get(f"/api/v1/research-runs/{run_id}/financial-analysis")
     assert persisted.status_code == 200
     assert persisted.json() == response.json()

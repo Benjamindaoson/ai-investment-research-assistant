@@ -97,6 +97,18 @@ const financialSnapshotSchema = z.object({
 });
 export type FinancialSnapshotInput = z.infer<typeof financialSnapshotSchema>;
 
+const calculationLedgerEntrySchema = z.object({
+  metric: z.string(),
+  formula: z.string(),
+  inputs: z.record(z.string(), z.string()),
+  value: z.string().nullable(),
+  unit: z.string(),
+  status: z.enum(["AVAILABLE", "UNAVAILABLE"]),
+  reason: z.string().nullable().optional(),
+  evidence_ids: z.array(z.string()).default([]),
+});
+export type CalculationLedgerEntry = z.infer<typeof calculationLedgerEntrySchema>;
+
 const financialAnalysisResultSchema = z.object({
   period: z.string(),
   snapshot: financialSnapshotSchema,
@@ -109,6 +121,7 @@ const financialAnalysisResultSchema = z.object({
   net_cash: z.string().nullable(),
   unavailable_metrics: z.array(z.string()),
   evidence_ids: z.record(z.string(), z.array(z.string())).default({}),
+  calculation_ledger: z.array(calculationLedgerEntrySchema).default([]),
 });
 export type FinancialAnalysisResult = z.infer<typeof financialAnalysisResultSchema>;
 const evidenceLinkedFinancialAnalysisInputSchema = z.object({

@@ -201,6 +201,7 @@ describe("ResearchRuntimeRepository", () => {
       gross_margin_pct: null, operating_margin_pct: null, free_cash_flow: null,
       fcf_margin_pct: null, net_cash: null, unavailable_metrics: ["gross_margin_pct"],
       evidence_ids: { revenue: ["evidence-1"], prior_revenue: ["evidence-1"] },
+      calculation_ledger: [],
     };
     let requestUrl = "";
     const fetchImpl = (async (input) => {

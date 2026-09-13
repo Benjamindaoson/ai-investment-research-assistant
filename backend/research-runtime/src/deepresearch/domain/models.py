@@ -64,6 +64,25 @@ class FinancialSnapshot(DomainModel):
     debt: Decimal | None = Field(default=None, ge=0)
 
 
+class CalculationLedgerEntry(DomainModel):
+    metric: str = Field(min_length=1, max_length=100)
+    formula: str = Field(min_length=1, max_length=500)
+    inputs: dict[str, Decimal] = Field(default_factory=dict)
+    value: Decimal | None = None
+    unit: str = Field(min_length=1, max_length=50)
+    status: Literal["AVAILABLE", "UNAVAILABLE"]
+    reason: str | None = Field(default=None, max_length=500)
+    evidence_ids: list[str] = Field(default_factory=list, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_availability(self) -> "CalculationLedgerEntry":
+        if self.status == "AVAILABLE" and self.value is None:
+            raise ValueError("available calculations require a value")
+        if self.status == "UNAVAILABLE" and (self.value is not None or not self.reason):
+            raise ValueError("unavailable calculations require a reason and null value")
+        return self
+
+
 class FinancialAnalysisResult(DomainModel):
     period: str
     snapshot: FinancialSnapshot
@@ -76,6 +95,7 @@ class FinancialAnalysisResult(DomainModel):
     net_cash: Decimal | None = None
     unavailable_metrics: list[str] = Field(default_factory=list)
     evidence_ids: dict[str, list[str]] = Field(default_factory=dict)
+    calculation_ledger: list[CalculationLedgerEntry] = Field(default_factory=list)
 
 
 class EvidenceRequirement(DomainModel):

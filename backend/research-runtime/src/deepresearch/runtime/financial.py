@@ -5,7 +5,11 @@ from __future__ import annotations
 from decimal import Decimal
 from hashlib import sha256
 
-from deepresearch.domain.models import FinancialAnalysisResult, FinancialSnapshot
+from deepresearch.domain.models import (
+    CalculationLedgerEntry,
+    FinancialAnalysisResult,
+    FinancialSnapshot,
+)
 
 
 class FinancialAnalysisTool:
@@ -13,35 +17,74 @@ class FinancialAnalysisTool:
 
     def analyze(self, snapshot: FinancialSnapshot, evidence_ids: dict[str, list[str]] | None = None) -> FinancialAnalysisResult:
         input_hash = sha256(snapshot.model_dump_json().encode()).hexdigest()
-        unavailable: list[str] = []
-
         revenue_growth = self._growth(snapshot.revenue, snapshot.prior_revenue)
-        if revenue_growth is None:
-            unavailable.append("revenue_growth_pct")
-
         gross_margin = self._ratio(snapshot.gross_profit, snapshot.revenue)
-        if gross_margin is None:
-            unavailable.append("gross_margin_pct")
-
         operating_margin = self._ratio(snapshot.operating_income, snapshot.revenue)
-        if operating_margin is None:
-            unavailable.append("operating_margin_pct")
-
         free_cash_flow = None
         if snapshot.operating_cash_flow is not None and snapshot.capex is not None:
             free_cash_flow = snapshot.operating_cash_flow - snapshot.capex
-        else:
-            unavailable.append("free_cash_flow")
-
         fcf_margin = self._ratio(free_cash_flow, snapshot.revenue)
-        if fcf_margin is None:
-            unavailable.append("fcf_margin_pct")
-
         net_cash = None
         if snapshot.cash is not None and snapshot.debt is not None:
             net_cash = snapshot.cash - snapshot.debt
-        else:
-            unavailable.append("net_cash")
+
+        links = evidence_ids or {}
+        ledger = [
+            self._entry(
+                "revenue_growth_pct",
+                "(revenue / prior_revenue - 1) × 100",
+                {"revenue": snapshot.revenue, **({"prior_revenue": snapshot.prior_revenue} if snapshot.prior_revenue is not None else {})},
+                revenue_growth,
+                "%",
+                self._linked_ids(links, "revenue", "prior_revenue"),
+                "prior_revenue is required and must be non-zero" if revenue_growth is None else None,
+            ),
+            self._entry(
+                "gross_margin_pct",
+                "gross_profit / revenue × 100",
+                {"gross_profit": snapshot.gross_profit, "revenue": snapshot.revenue} if snapshot.gross_profit is not None else {"revenue": snapshot.revenue},
+                gross_margin,
+                "%",
+                self._linked_ids(links, "gross_profit", "revenue"),
+                "gross_profit is required and revenue must be non-zero" if gross_margin is None else None,
+            ),
+            self._entry(
+                "operating_margin_pct",
+                "operating_income / revenue × 100",
+                {"operating_income": snapshot.operating_income, "revenue": snapshot.revenue} if snapshot.operating_income is not None else {"revenue": snapshot.revenue},
+                operating_margin,
+                "%",
+                self._linked_ids(links, "operating_income", "revenue"),
+                "operating_income is required and revenue must be non-zero" if operating_margin is None else None,
+            ),
+            self._entry(
+                "free_cash_flow",
+                "operating_cash_flow - capex",
+                {key: value for key, value in {"operating_cash_flow": snapshot.operating_cash_flow, "capex": snapshot.capex}.items() if value is not None},
+                free_cash_flow,
+                "currency",
+                self._linked_ids(links, "operating_cash_flow", "capex"),
+                "operating_cash_flow and capex are required" if free_cash_flow is None else None,
+            ),
+            self._entry(
+                "fcf_margin_pct",
+                "free_cash_flow / revenue × 100",
+                {"free_cash_flow": free_cash_flow, "revenue": snapshot.revenue} if free_cash_flow is not None else {"revenue": snapshot.revenue},
+                fcf_margin,
+                "%",
+                self._linked_ids(links, "operating_cash_flow", "capex", "revenue"),
+                "free_cash_flow is required and revenue must be non-zero" if fcf_margin is None else None,
+            ),
+            self._entry(
+                "net_cash",
+                "cash - debt",
+                {key: value for key, value in {"cash": snapshot.cash, "debt": snapshot.debt}.items() if value is not None},
+                net_cash,
+                "currency",
+                self._linked_ids(links, "cash", "debt"),
+                "cash and debt are required" if net_cash is None else None,
+            ),
+        ]
 
         return FinancialAnalysisResult(
             period=snapshot.period,
@@ -53,9 +96,35 @@ class FinancialAnalysisTool:
             free_cash_flow=free_cash_flow,
             fcf_margin_pct=fcf_margin,
             net_cash=net_cash,
-            unavailable_metrics=unavailable,
-            evidence_ids=evidence_ids or {},
+            unavailable_metrics=[entry.metric for entry in ledger if entry.status == "UNAVAILABLE"],
+            evidence_ids=links,
+            calculation_ledger=ledger,
         )
+
+    @staticmethod
+    def _entry(
+        metric: str,
+        formula: str,
+        inputs: dict[str, Decimal],
+        value: Decimal | None,
+        unit: str,
+        evidence_ids: list[str],
+        reason: str | None,
+    ) -> CalculationLedgerEntry:
+        return CalculationLedgerEntry(
+            metric=metric,
+            formula=formula,
+            inputs=inputs,
+            value=value,
+            unit=unit,
+            status="AVAILABLE" if value is not None else "UNAVAILABLE",
+            reason=reason,
+            evidence_ids=evidence_ids,
+        )
+
+    @staticmethod
+    def _linked_ids(links: dict[str, list[str]], *fields: str) -> list[str]:
+        return list(dict.fromkeys(evidence_id for field in fields for evidence_id in links.get(field, [])))
 
     @staticmethod
     def _ratio(numerator: Decimal | None, denominator: Decimal) -> Decimal | None:

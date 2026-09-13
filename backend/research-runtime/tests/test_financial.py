@@ -27,6 +27,12 @@ def test_financial_analysis_uses_decimal_math_and_hashes_inputs() -> None:
     assert result.net_cash == Decimal("30")
     assert result.unavailable_metrics == []
     assert len(result.input_hash) == 64
+    entries = {entry.metric: entry for entry in result.calculation_ledger}
+    assert entries["revenue_growth_pct"].formula == "(revenue / prior_revenue - 1) × 100"
+    assert entries["revenue_growth_pct"].inputs == {"revenue": Decimal("120"), "prior_revenue": Decimal("100")}
+    assert entries["revenue_growth_pct"].value == result.revenue_growth_pct
+    assert entries["revenue_growth_pct"].unit == "%"
+    assert entries["revenue_growth_pct"].status == "AVAILABLE"
 
 
 def test_financial_analysis_preserves_field_level_evidence_links() -> None:
@@ -35,6 +41,8 @@ def test_financial_analysis_preserves_field_level_evidence_links() -> None:
     result = FinancialAnalysisTool().analyze(snapshot, {"revenue": ["evidence-1"]})
 
     assert result.evidence_ids == {"revenue": ["evidence-1"]}
+    revenue_entry = next(entry for entry in result.calculation_ledger if entry.metric == "revenue_growth_pct")
+    assert revenue_entry.evidence_ids == ["evidence-1"]
     assert result.snapshot == snapshot
 
 
@@ -45,6 +53,9 @@ def test_financial_analysis_preserves_negative_free_cash_flow() -> None:
 
     assert result.free_cash_flow == Decimal("-15")
     assert result.fcf_margin_pct == Decimal("-15")
+    entries = {entry.metric: entry for entry in result.calculation_ledger}
+    assert entries["free_cash_flow"].status == "AVAILABLE"
+    assert entries["free_cash_flow"].value == Decimal("-15")
 
 
 def test_financial_analysis_marks_missing_and_zero_denominator_metrics() -> None:
@@ -65,3 +76,16 @@ def test_financial_analysis_marks_missing_and_zero_denominator_metrics() -> None
         "fcf_margin_pct",
         "net_cash",
     ]
+    assert len(result.calculation_ledger) == 6
+    assert all(entry.status == "UNAVAILABLE" for entry in result.calculation_ledger)
+    assert all(entry.value is None and entry.reason for entry in result.calculation_ledger)
+
+
+def test_financial_calculation_ledger_is_stable_for_same_snapshot() -> None:
+    snapshot = FinancialSnapshot(period="FY2025", revenue=Decimal("120.00"), prior_revenue=Decimal("100.00"))
+
+    first = FinancialAnalysisTool().analyze(snapshot)
+    second = FinancialAnalysisTool().analyze(snapshot)
+
+    assert first.input_hash == second.input_hash
+    assert first.calculation_ledger == second.calculation_ledger

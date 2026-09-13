@@ -16,7 +16,7 @@ const run: RuntimeRun = {
 const analysis: FinancialAnalysisResult = {
   period: "FY2025", snapshot: { period: "FY2025", revenue: "120.00" }, input_hash: "a".repeat(64),
   revenue_growth_pct: null, gross_margin_pct: null, operating_margin_pct: null, free_cash_flow: null,
-  fcf_margin_pct: null, net_cash: null, unavailable_metrics: ["revenue_growth_pct"], evidence_ids: { revenue: ["evidence-1"] },
+  fcf_margin_pct: null, net_cash: null, unavailable_metrics: ["revenue_growth_pct"], evidence_ids: { revenue: ["evidence-1"] }, calculation_ledger: [],
 };
 
 describe("useAnalyzeRuntimeFinancialsMutation", () => {
