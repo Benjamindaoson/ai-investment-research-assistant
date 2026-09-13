@@ -153,6 +153,10 @@ def test_api_reruns_existing_case_without_overwriting_original(tmp_path) -> None
     assert original_after.status_code == 200
     assert original_after.json() == original
     assert client.post("/api/v1/research-cases/missing/runs").status_code == 404
+    history = client.get(f"/api/v1/research-cases/{case_id}/runs")
+    assert history.status_code == 200
+    assert [item["id"] for item in history.json()] == [original_id, rerun.json()["run_id"]]
+    assert client.get("/api/v1/research-cases/missing/runs").status_code == 404
 
 
 def test_api_cancels_run_and_prevents_execution(tmp_path) -> None:

@@ -102,6 +102,14 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
             raise HTTPException(status_code=422, detail=str(error)) from error
         return {"case_id": case.id, "run_id": run.id}
 
+    @app.get("/api/v1/research-cases/{case_id}/runs")
+    def list_case_runs(case_id: str) -> list[dict[str, Any]]:
+        try:
+            engine.get_case(case_id)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research case not found") from error
+        return [run.model_dump(mode="json") for run in engine.list_runs(case_id)]
+
     @app.get("/api/v1/research-cases/{case_id}")
     def get_case(case_id: str) -> dict[str, Any]:
         try:

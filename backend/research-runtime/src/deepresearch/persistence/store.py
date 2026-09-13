@@ -85,6 +85,14 @@ class SQLiteStore:
             row = connection.execute("SELECT payload FROM runs WHERE id = ?", (run_id,)).fetchone()
         return json.loads(row["payload"]) if row else None
 
+    def list_runs(self, case_id: str) -> list[dict[str, Any]]:
+        with self._transaction() as connection:
+            rows = connection.execute(
+                "SELECT payload FROM runs WHERE case_id = ? ORDER BY rowid",
+                (case_id,),
+            ).fetchall()
+        return [json.loads(row["payload"]) for row in rows]
+
     def append_event(self, run_id: str, event_type: str, payload: dict[str, Any]) -> dict[str, Any]:
         occurred_at = datetime.now(UTC).isoformat()
         with self._transaction() as connection:

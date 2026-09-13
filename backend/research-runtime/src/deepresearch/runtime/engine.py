@@ -103,6 +103,9 @@ class ResearchEngine:
             raise KeyError(run_id)
         return ResearchRun.model_validate(payload)
 
+    def list_runs(self, case_id: str) -> list[ResearchRun]:
+        return [ResearchRun.model_validate(payload) for payload in self.store.list_runs(case_id)]
+
     def get_case(self, case_id: str) -> ResearchCase:
         payload = self.store.get_case(case_id)
         if payload is None:
