@@ -2,7 +2,7 @@
 
 from datetime import UTC, datetime
 from decimal import Decimal
-from typing import Any, Literal
+from typing import Annotated, Any, Literal
 from uuid import uuid4
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
@@ -20,16 +20,35 @@ RunState = Literal["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "F
 TaskState = Literal["PENDING", "RUNNING", "COMPLETED", "FAILED"]
 EvidenceStance = Literal["SUPPORTING", "COUNTER", "CONFLICTING"]
 EvidenceQualification = Literal["QUALIFIED", "NEEDS_REVIEW", "UNQUALIFIED"]
+DecisionType = Literal["INVESTMENT_COMMITTEE", "DUE_DILIGENCE", "SCREENING", "MONITORING", "STRATEGIC_REVIEW"]
+Materiality = Literal["LOW", "MEDIUM", "HIGH"]
 
 
 def default_required_stances() -> list[EvidenceStance]:
     return ["SUPPORTING"]
 
 
+class ResearchMandate(DomainModel):
+    decision_type: DecisionType = "INVESTMENT_COMMITTEE"
+    time_horizon: str = Field(default="12 months", min_length=1, max_length=100)
+    materiality: Materiality = "MEDIUM"
+    required_outputs: list[Annotated[str, Field(min_length=1, max_length=500)]] = Field(default_factory=lambda: ["investment memo"], min_length=1, max_length=10)
+    constraints: list[Annotated[str, Field(min_length=1, max_length=500)]] = Field(default_factory=list, max_length=20)
+
+    @model_validator(mode="after")
+    def reject_blank_text(self) -> "ResearchMandate":
+        if not self.time_horizon.strip():
+            raise ValueError("time_horizon must not be blank")
+        if any(not item.strip() for item in [*self.required_outputs, *self.constraints]):
+            raise ValueError("mandate entries must not be blank")
+        return self
+
+
 class ResearchCase(DomainModel):
     id: str = Field(min_length=1, max_length=120)
     question: str = Field(min_length=3, max_length=5000)
     target: str = Field(min_length=1, max_length=300)
+    mandate: ResearchMandate = Field(default_factory=ResearchMandate)
     created_at: datetime = Field(default_factory=utc_now)
 
 
@@ -85,6 +104,7 @@ class ResearchPlan(DomainModel):
     input_hash: str = Field(min_length=64, max_length=64)
     status: Literal["PROPOSED", "VALIDATED", "REJECTED"] = "PROPOSED"
     tasks: list[ResearchTask] = Field(min_length=1)
+    mandate: ResearchMandate = Field(default_factory=ResearchMandate)
     provenance: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=utc_now)
 

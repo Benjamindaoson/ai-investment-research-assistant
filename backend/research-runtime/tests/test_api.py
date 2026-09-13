@@ -36,6 +36,13 @@ def test_api_creates_and_executes_case(tmp_path) -> None:
     assert case.status_code == 200
     assert case.json()["id"] == created.json()["case_id"]
     assert case.json()["target"] == "ACME"
+    assert case.json()["mandate"] == {
+        "decision_type": "INVESTMENT_COMMITTEE",
+        "time_horizon": "12 months",
+        "materiality": "MEDIUM",
+        "required_outputs": ["investment memo"],
+        "constraints": [],
+    }
     assert "state" not in case.json()
     run_id = created.json()["run_id"]
 
@@ -82,6 +89,44 @@ def test_api_creates_and_executes_case(tmp_path) -> None:
     assert client.get("/api/v1/research-runs/missing/trace").status_code == 404
     assert client.get("/api/v1/research-runs/missing/memo").status_code == 404
     assert client.get("/api/v1/research-cases/missing").status_code == 404
+
+
+def test_api_persists_explicit_mandate_in_case_and_plan(tmp_path) -> None:
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+    mandate = {
+        "decision_type": "DUE_DILIGENCE",
+        "time_horizon": "36 months",
+        "materiality": "HIGH",
+        "required_outputs": ["investment memo", "valuation sensitivity"],
+        "constraints": ["Exclude management projections"],
+    }
+
+    created = client.post(
+        "/api/v1/research-cases",
+        json={"question": "Assess ACME durability before acquisition", "target": "ACME", "mandate": mandate},
+    )
+    assert created.status_code == 201
+    case = client.get(f"/api/v1/research-cases/{created.json()['case_id']}")
+    plan = client.get(f"/api/v1/research-runs/{created.json()['run_id']}/plan")
+
+    assert case.json()["mandate"] == mandate
+    assert plan.json()["mandate"] == mandate
+    assert plan.json()["provenance"]["mandate"] == mandate
+
+
+def test_api_rejects_blank_mandate_entries(tmp_path) -> None:
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+
+    response = client.post(
+        "/api/v1/research-cases",
+        json={
+            "question": "Assess ACME durability",
+            "target": "ACME",
+            "mandate": {"required_outputs": ["  "]},
+        },
+    )
+
+    assert response.status_code == 422
 
 
 def test_api_calculates_financial_snapshot(tmp_path) -> None:

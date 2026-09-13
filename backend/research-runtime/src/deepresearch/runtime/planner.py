@@ -15,7 +15,13 @@ from deepresearch.domain.models import EvidenceRequirement, ResearchCase, Resear
 
 
 def research_input_hash(case: ResearchCase) -> str:
-    return sha256(f"{case.id}|{case.target}|{case.question}".encode()).hexdigest()
+    payload = {
+        "case_id": case.id,
+        "target": case.target,
+        "question": case.question,
+        "mandate": case.mandate.model_dump(mode="json"),
+    }
+    return sha256(json.dumps(payload, sort_keys=True, separators=(",", ":")).encode()).hexdigest()
 
 
 class ResearchPlanner(Protocol):
@@ -134,12 +140,14 @@ class LLMResearchPlanner:
             planner_version=self.version,
             input_hash=research_input_hash(case),
             tasks=draft.tasks,
+            mandate=case.mandate,
             provenance={
                 "provider": self.base_url,
                 "model": self.model,
                 "request_hash": request_hash,
                 "response_hash": response_hash,
                 "replan_unresolved_requirement_ids": sorted(unresolved_requirement_ids),
+                "mandate": case.mandate.model_dump(mode="json"),
             },
         )
 
@@ -212,5 +220,9 @@ class DeterministicResearchPlanner:
             planner_version=self.version,
             input_hash=research_input_hash(case),
             tasks=tasks,
-            provenance={"replan_unresolved_requirement_ids": sorted(unresolved_requirement_ids)} if unresolved_requirement_ids else {},
+            mandate=case.mandate,
+            provenance={
+                "mandate": case.mandate.model_dump(mode="json"),
+                **({"replan_unresolved_requirement_ids": sorted(unresolved_requirement_ids)} if unresolved_requirement_ids else {}),
+            },
         )

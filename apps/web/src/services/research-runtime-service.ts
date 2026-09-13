@@ -30,7 +30,20 @@ const runtimeTraceSchema = z.object({
 export type RuntimeTrace = z.infer<typeof runtimeTraceSchema>;
 export type FetchLike = typeof fetch;
 
-const runtimeCaseInputSchema = z.object({ question: z.string().min(3), target: z.string().min(1) });
+const researchMandateSchema = z.object({
+  decision_type: z.enum(["INVESTMENT_COMMITTEE", "DUE_DILIGENCE", "SCREENING", "MONITORING", "STRATEGIC_REVIEW"]),
+  time_horizon: z.string().min(1).max(100),
+  materiality: z.enum(["LOW", "MEDIUM", "HIGH"]),
+  required_outputs: z.array(z.string().min(1)).min(1).max(10),
+  constraints: z.array(z.string().min(1)).max(20),
+});
+export type ResearchMandate = z.infer<typeof researchMandateSchema>;
+
+const runtimeCaseInputSchema = z.object({
+  question: z.string().min(3),
+  target: z.string().min(1),
+  mandate: researchMandateSchema.optional(),
+});
 export type RuntimeCaseInput = z.infer<typeof runtimeCaseInputSchema>;
 
 const runtimeCaseResultSchema = z.object({ case_id: z.string(), run_id: z.string() });

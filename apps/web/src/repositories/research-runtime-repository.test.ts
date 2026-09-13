@@ -56,6 +56,39 @@ describe("ResearchRuntimeRepository", () => {
     await expect(repository.executeRun("run-1")).resolves.toMatchObject({ state: "COMPLETED" });
   });
 
+  it("posts an explicit research mandate at the runtime boundary", async () => {
+    let requestBody = "";
+    const fetchImpl = (async (_input, init) => {
+      requestBody = String(init?.body);
+      return new Response(JSON.stringify({ case_id: "case-1", run_id: "run-1" }), { status: 201 });
+    }) as typeof fetch;
+    const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+
+    await repository.createCase({
+      question: "Assess ACME before acquisition",
+      target: "ACME",
+      mandate: {
+        decision_type: "DUE_DILIGENCE",
+        time_horizon: "36 months",
+        materiality: "HIGH",
+        required_outputs: ["investment memo", "valuation sensitivity"],
+        constraints: ["Exclude management projections"],
+      },
+    });
+
+    expect(JSON.parse(requestBody)).toEqual({
+      question: "Assess ACME before acquisition",
+      target: "ACME",
+      mandate: {
+        decision_type: "DUE_DILIGENCE",
+        time_horizon: "36 months",
+        materiality: "HIGH",
+        required_outputs: ["investment memo", "valuation sensitivity"],
+        constraints: ["Exclude management projections"],
+      },
+    });
+  });
+
   it("replans a partial run through the typed repository boundary", async () => {
     let requestUrl = "";
     let requestMethod = "";

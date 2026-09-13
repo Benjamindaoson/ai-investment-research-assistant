@@ -14,6 +14,7 @@ from deepresearch.domain.models import (
     FinancialSnapshot,
     RedTeamReview,
     ResearchCase,
+    ResearchMandate,
 )
 from deepresearch.persistence.store import SQLiteStore
 from deepresearch.runtime.engine import ResearchEngine
@@ -33,6 +34,7 @@ from deepresearch.runtime.planner import (
 class CreateCaseRequest(BaseModel):
     question: str = Field(min_length=3, max_length=5000)
     target: str = Field(min_length=1, max_length=300)
+    mandate: ResearchMandate = Field(default_factory=ResearchMandate)
 
 
 class ExecuteRequest(BaseModel):
@@ -136,7 +138,12 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
 
     @app.post("/api/v1/research-cases", status_code=status.HTTP_201_CREATED)
     def create_case(request: CreateCaseRequest) -> dict[str, str]:
-        case = ResearchCase(id=f"case-{uuid4().hex[:10]}", question=request.question, target=request.target)
+        case = ResearchCase(
+            id=f"case-{uuid4().hex[:10]}",
+            question=request.question,
+            target=request.target,
+            mandate=request.mandate,
+        )
         try:
             run = engine.create_run(case)
         except PlannerProviderError as error:

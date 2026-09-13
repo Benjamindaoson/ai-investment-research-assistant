@@ -71,6 +71,7 @@ class ResearchEngine:
             planner_version="v1",
             input_hash=research_input_hash(case),
             tasks=tasks,
+            mandate=case.mandate,
             status="VALIDATED",
         )
         self._validate_plan(plan, case)
@@ -92,6 +93,8 @@ class ResearchEngine:
         validate_task_dag(plan.tasks)
         if plan.case_id != case.id or plan.question != case.question:
             raise ValueError("plan input does not match research case")
+        if plan.mandate != case.mandate:
+            raise ValueError("plan mandate does not match research case")
         if plan.input_hash != research_input_hash(case):
             raise ValueError("plan input hash does not match research case")
         for task in plan.tasks:
