@@ -51,3 +51,15 @@ def test_owned_writes_reject_stale_token(tmp_path) -> None:
     assert store.save_run_owned({**payload, "state": "RUNNING"}, "lease-1") is True
     assert store.append_event_owned("run-1", "lease-1", "OWNED", {}) is True
     assert store.save_checkpoint_owned("run-1", "lease-1", {"state_version": 2}) is not None
+
+
+def test_owned_memory_write_requires_current_lease_and_supports_insert(tmp_path) -> None:
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    store.save_run({"id": "run-1", "case_id": "case-1", "state": "CREATED"})
+    memory = {"target": "ACME", "updated_at": "2026-09-14T00:00:00+00:00"}
+
+    assert store.save_memory_owned(memory, "run-1", "wrong") is False
+    assert store.acquire_run_lease("run-1", "lease-1", 60)
+    assert store.save_memory_owned(memory, "run-1", "lease-1") is True
+    assert store.save_memory_owned({**memory, "updated_at": "2026-09-14T00:01:00+00:00"}, "run-1", "lease-1") is True
+    assert store.get_memory("ACME")["updated_at"] == "2026-09-14T00:01:00+00:00"

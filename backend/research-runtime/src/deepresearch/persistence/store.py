@@ -226,6 +226,30 @@ class SQLiteStore:
                 (payload["target"], json.dumps(payload), payload["updated_at"]),
             )
 
+    def save_memory_owned(self, payload: dict[str, Any], run_id: str, lease_id: str) -> bool:
+        now = time.time()
+        with self._transaction() as connection:
+            update = connection.execute(
+                """UPDATE investment_memory SET payload = ?, updated_at = ?
+                WHERE target = ? AND EXISTS (
+                    SELECT 1 FROM run_leases
+                    WHERE run_id = ? AND lease_id = ? AND expires_at > ?
+                )""",
+                (json.dumps(payload), payload["updated_at"], payload["target"], run_id, lease_id, now),
+            )
+            if update.rowcount == 1:
+                return True
+            insert = connection.execute(
+                """INSERT INTO investment_memory(target, payload, updated_at)
+                SELECT ?, ?, ?
+                WHERE EXISTS (
+                    SELECT 1 FROM run_leases
+                    WHERE run_id = ? AND lease_id = ? AND expires_at > ?
+                )""",
+                (payload["target"], json.dumps(payload), payload["updated_at"], run_id, lease_id, now),
+            )
+        return insert.rowcount == 1
+
     def get_memory(self, target: str) -> dict[str, Any] | None:
         with self._transaction() as connection:
             row = connection.execute("SELECT payload FROM investment_memory WHERE target = ?", (target,)).fetchone()

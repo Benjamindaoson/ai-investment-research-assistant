@@ -12,7 +12,7 @@ The runtime SHALL renew an active run lease periodically while execution is in p
 - **THEN** the store rejects the renewal and does not extend the active owner's expiry
 
 ### Requirement: Stale executors cannot persist state
-Run payload, checkpoint, and event writes performed during execution SHALL be conditional on an unexpired current lease. If ownership is lost, the executor MUST raise an explicit lease-loss error before accepting provider results or writing further execution state.
+Run payload, checkpoint, event, and living-memory writes performed during execution SHALL be conditional on an unexpired current lease. If ownership is lost, the executor MUST raise an explicit lease-loss error before accepting provider results or writing further execution state.
 
 #### Scenario: Ownership loss discards provider result
 - **WHEN** lease renewal fails while a provider call is in flight
@@ -21,6 +21,10 @@ Run payload, checkpoint, and event writes performed during execution SHALL be co
 #### Scenario: Current owner can persist normally
 - **WHEN** the lease token is current and unexpired
 - **THEN** guarded run, checkpoint, and event writes succeed
+
+#### Scenario: Stale owner cannot update living memory
+- **WHEN** an executor is finalizing a run after another executor has taken ownership
+- **THEN** the stale executor cannot insert or update the target's living research memory
 
 ### Requirement: Takeover recovers abandoned task state
 When a new executor acquires an expired lease, the runtime SHALL reset persisted `RUNNING` tasks to `PENDING` before continuing and SHALL record the recovery in the run event stream.

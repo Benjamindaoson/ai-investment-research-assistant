@@ -1,6 +1,6 @@
 ## 1. Ownership-checked persistence
 
-- [x] 1.1 Add SQLite lease renewal and ownership-checked run, checkpoint, and event writes.
+- [x] 1.1 Add SQLite lease renewal and ownership-checked run, checkpoint, event, and memory writes.
 - [x] 1.2 Add store tests for successful renewal, stale-token rejection, and guarded-write rejection.
 
 ## 2. Runtime heartbeat and recovery

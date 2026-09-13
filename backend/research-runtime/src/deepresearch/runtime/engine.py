@@ -377,13 +377,19 @@ class ResearchEngine:
             and all(claim.status == "QUALIFIED" for claim in run.claims)
             else "PARTIAL"
         )
-        self._build_memo(run, case.target)
+        memory = self._build_memo(run, case.target)
         self._persist(
             run,
             "RUN_COMPLETED" if run.state == "COMPLETED" else "RUN_PARTIAL",
             {"claim_count": len(run.claims)},
             lease_id,
         )
+        memory_payload = memory.model_dump(mode="json")
+        if lease_id:
+            if not self.store.save_memory_owned(memory_payload, run.id, lease_id):
+                raise RunLeaseLostError(f"research run {run.id} lease ownership was lost")
+        else:
+            self.store.save_memory(memory_payload)
         return run
 
     def cancel(self, run_id: str, reason: str) -> ResearchRun:
@@ -599,7 +605,7 @@ class ResearchEngine:
             and record.qualification == "QUALIFIED"
         }) >= requirement.minimum_records
 
-    def _build_memo(self, run: ResearchRun, target: str) -> None:
+    def _build_memo(self, run: ResearchRun, target: str) -> InvestmentMemory:
         if run.thesis is None:
             raise ValueError("cannot build a memo without a thesis")
         unresolved = [
@@ -668,7 +674,7 @@ class ResearchEngine:
         memory.latest_thesis_delta = self._thesis_delta(previous_run, run, memory)
         memory.unresolved_requirement_ids = unresolved
         memory.updated_at = datetime.now(UTC)
-        self.store.save_memory(memory.model_dump(mode="json"))
+        return memory
 
     def _build_memo_sections(
         self,

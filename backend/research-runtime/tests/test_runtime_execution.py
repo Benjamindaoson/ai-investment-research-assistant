@@ -1,5 +1,4 @@
 from threading import Event, Thread
-from time import sleep
 
 from deepresearch.domain.models import (
     EvidenceRecord,
@@ -548,6 +547,7 @@ def test_stop_after_tasks_releases_lease_for_resume(tmp_path) -> None:
 def test_engine_heartbeat_keeps_ownership_during_slow_provider(tmp_path) -> None:
     started = Event()
     release = Event()
+    renewed = Event()
 
     class SlowProvider(DeterministicEvidenceProvider):
         def collect(self, task, case):
@@ -556,7 +556,15 @@ def test_engine_heartbeat_keeps_ownership_during_slow_provider(tmp_path) -> None
             return super().collect(task, case)
 
     store = SQLiteStore(tmp_path / "runtime.sqlite3")
-    engine = ResearchEngine(store, SlowProvider(), lease_seconds=0.15)
+    original_renew = store.renew_run_lease
+
+    def track_renewal(run_id, lease_id, ttl_seconds):
+        result = original_renew(run_id, lease_id, ttl_seconds)
+        renewed.set()
+        return result
+
+    store.renew_run_lease = track_renewal
+    engine = ResearchEngine(store, SlowProvider(), lease_seconds=0.3)
     run = engine.create_run(
         ResearchCase(id="case-heartbeat", question="Assess ACME heartbeat", target="ACME"),
         [make_task("market")],
@@ -565,7 +573,7 @@ def test_engine_heartbeat_keeps_ownership_during_slow_provider(tmp_path) -> None
     execution = Thread(target=lambda: result_holder.append(engine.execute(run.id)))
     execution.start()
     assert started.wait(1)
-    sleep(0.25)
+    assert renewed.wait(1)
     assert store.acquire_run_lease(run.id, "other-executor", 1) is False
     release.set()
     execution.join(2)
@@ -577,6 +585,7 @@ def test_engine_heartbeat_keeps_ownership_during_slow_provider(tmp_path) -> None
 def test_engine_discards_result_after_lease_loss_and_allows_takeover(monkeypatch, tmp_path) -> None:
     started = Event()
     release = Event()
+    lost = Event()
 
     class BlockingProvider(DeterministicEvidenceProvider):
         def collect(self, task, case):
@@ -585,18 +594,23 @@ def test_engine_discards_result_after_lease_loss_and_allows_takeover(monkeypatch
             return super().collect(task, case)
 
     store = SQLiteStore(tmp_path / "runtime.sqlite3")
-    engine = ResearchEngine(store, BlockingProvider(), lease_seconds=0.15)
+    original_renew = store.renew_run_lease
+
+    def lose_renewal(run_id, lease_id, ttl_seconds):
+        lost.set()
+        return False
+
+    monkeypatch.setattr(store, "renew_run_lease", lose_renewal)
+    engine = ResearchEngine(store, BlockingProvider(), lease_seconds=0.3)
     run = engine.create_run(
         ResearchCase(id="case-lease-loss", question="Assess ACME lease loss", target="ACME"),
         [make_task("market")],
     )
-    original_renew = store.renew_run_lease
-    monkeypatch.setattr(store, "renew_run_lease", lambda run_id, lease_id, ttl_seconds: False)
     errors = []
     execution = Thread(target=lambda: _capture_error(errors, lambda: engine.execute(run.id)))
     execution.start()
     assert started.wait(1)
-    sleep(0.1)
+    assert lost.wait(1)
     release.set()
     execution.join(2)
     monkeypatch.setattr(store, "renew_run_lease", original_renew)
