@@ -321,10 +321,25 @@ class ResearchEngine:
                 task.state = "RUNNING"
                 run.state = "RUNNING"
                 self._persist(run, "TASK_STARTED", {"task_id": task.id}, lease_id)
+                tool_started_at = datetime.now(UTC)
                 try:
                     records = self.provider.collect(task, case)
                 except Exception as error:
                     self._ensure_lease(heartbeat_lost)
+                    diagnostic = f"{type(error).__name__}:{error}"
+                    diagnostic_hash = sha256(diagnostic.encode()).hexdigest()
+                    run.tool_executions.append(
+                        ToolExecution(
+                            task_id=task.id,
+                            tool_name=task.tool_name,
+                            status="FAILED",
+                            result_hash=diagnostic_hash,
+                            started_at=tool_started_at,
+                            error_type=type(error).__name__,
+                            error_message=str(error)[:1000],
+                            error_hash=diagnostic_hash,
+                        )
+                    )
                     task.state = "FAILED"
                     return self._fail(
                         run,
@@ -352,7 +367,13 @@ class ResearchEngine:
                 run.evidence.extend(new_evidence)
                 result_hash = evidence_hash(qualified) if qualified else sha256(b"empty").hexdigest()
                 run.tool_executions.append(
-                    ToolExecution(task_id=task.id, tool_name=task.tool_name, status="SUCCEEDED", result_hash=result_hash)
+                    ToolExecution(
+                        task_id=task.id,
+                        tool_name=task.tool_name,
+                        status="SUCCEEDED",
+                        result_hash=result_hash,
+                        started_at=tool_started_at,
+                    )
                 )
                 task.state = "COMPLETED"
                 completed.add(task.id)

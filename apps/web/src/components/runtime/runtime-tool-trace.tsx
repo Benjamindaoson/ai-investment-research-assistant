@@ -8,6 +8,8 @@ export function RuntimeToolTrace({ executions }: { executions: RuntimeToolExecut
       {executions.map((execution) => <article className={`runtime-tool-record ${execution.status.toLowerCase()}`} key={execution.id}>
         <header><div><b>{execution.tool_name}</b><small>{execution.task_id} · {execution.id}</small></div><span>{execution.status}</span></header>
         <p>Result hash: {execution.result_hash}</p>
+        {execution.status === "FAILED" && execution.error_type && <p>Failure: {execution.error_type}: {execution.error_message || "No diagnostic message recorded."}</p>}
+        {execution.status === "FAILED" && execution.error_hash && <p>Diagnostic hash: {execution.error_hash}</p>}
         <footer><span>Started: {execution.started_at}</span><span>Completed: {execution.completed_at}</span></footer>
       </article>)}
     </div>

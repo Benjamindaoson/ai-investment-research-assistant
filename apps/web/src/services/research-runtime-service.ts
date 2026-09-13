@@ -226,6 +226,9 @@ const runtimeToolExecutionSchema = z.object({
   result_hash: z.string(),
   started_at: z.string().datetime(),
   completed_at: z.string().datetime(),
+  error_type: z.string().max(200).nullable().optional(),
+  error_message: z.string().max(1000).nullable().optional(),
+  error_hash: z.string().length(64).nullable().optional(),
 });
 export type RuntimeToolExecution = z.infer<typeof runtimeToolExecutionSchema>;
 

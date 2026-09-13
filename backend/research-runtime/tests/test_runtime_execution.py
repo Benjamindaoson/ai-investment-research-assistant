@@ -1,3 +1,4 @@
+from hashlib import sha256
 from threading import Event, Thread
 
 from deepresearch.domain.models import (
@@ -92,6 +93,8 @@ def test_engine_marks_missing_evidence_partial(tmp_path) -> None:
     assert "unresolved" in result.thesis.bear.lower()
     assert result.memo is not None
     assert result.memo.status == "DRAFT"
+    assert result.tool_executions[0].status == "SUCCEEDED"
+    assert result.tool_executions[0].result_hash == sha256(b"empty").hexdigest()
     assert result.memo.unresolved_requirement_ids == ["risk:req-risk"]
     assert {"risk:req-risk"} <= set(result.memo.sections[0].unresolved_requirement_ids)
     assert all(section.body for section in result.memo.sections)
@@ -429,10 +432,12 @@ def test_engine_retries_replace_same_evidence_when_qualification_changes(tmp_pat
     assert completed.evidence[0].qualification == "QUALIFIED"
 
 
-def test_engine_records_provider_failure_without_successful_tool_execution(tmp_path) -> None:
+def test_engine_records_provider_failure_as_failed_tool_execution(tmp_path) -> None:
+    message = "provider unavailable: " + "x" * 1200
+
     class FailingProvider(DeterministicEvidenceProvider):
         def collect(self, task, case):
-            raise RuntimeError("provider unavailable")
+            raise RuntimeError(message)
 
     engine = ResearchEngine(SQLiteStore(tmp_path / "runtime.sqlite3"), FailingProvider())
     case = ResearchCase(id="case-3", question="Assess ACME's margin durability", target="ACME")
@@ -442,7 +447,14 @@ def test_engine_records_provider_failure_without_successful_tool_execution(tmp_p
 
     assert result.state == "FAILED"
     assert result.tasks[0].state == "FAILED"
-    assert result.tool_executions == []
+    assert len(result.tool_executions) == 1
+    failure = result.tool_executions[0]
+    assert failure.status == "FAILED"
+    assert failure.error_type == "RuntimeError"
+    assert failure.error_message == message[:1000]
+    assert failure.error_hash == sha256(f"RuntimeError:{message}".encode()).hexdigest()
+    assert failure.result_hash == failure.error_hash
+    assert len(failure.error_hash) == 64
     assert any(event["event_type"] == "RUN_FAILED" for event in engine.store.events(run.id))
 
 

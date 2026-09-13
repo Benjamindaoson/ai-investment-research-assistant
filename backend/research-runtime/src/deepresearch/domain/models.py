@@ -137,6 +137,9 @@ class ToolExecution(DomainModel):
     result_hash: str = Field(min_length=16, max_length=128)
     started_at: datetime = Field(default_factory=utc_now)
     completed_at: datetime = Field(default_factory=utc_now)
+    error_type: str | None = Field(default=None, max_length=200)
+    error_message: str | None = Field(default=None, max_length=1000)
+    error_hash: str | None = Field(default=None, min_length=64, max_length=64)
 
 
 class EvidenceRecord(DomainModel):
