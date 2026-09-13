@@ -9,6 +9,7 @@ import { RuntimeEvidenceTrace } from "@/components/runtime/runtime-evidence-trac
 import { RuntimeClaimTrace } from "@/components/runtime/runtime-claim-trace";
 import { RuntimePlanContext } from "@/components/runtime/runtime-plan-context";
 import { RuntimeTaskContract } from "@/components/runtime/runtime-task-contract";
+import { RuntimeToolTrace } from "@/components/runtime/runtime-tool-trace";
 import { useCancelRuntimeRunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeMemoryQuery, useRuntimeRunQuery, useRuntimeTraceQuery } from "@/queries/use-runtime-run";
 
 export function RuntimeRunWorkspace({ runId }: { runId: string }) {
@@ -39,6 +40,7 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
       </section>
       <RuntimePlanContext plan={run.plan} />
       <RuntimeTaskContract tasks={run.tasks} traceTasks={traceQuery.data?.tasks} />
+      <RuntimeToolTrace executions={run.tool_executions} />
       <RuntimeEvidenceTrace evidence={run.evidence} />
       <RuntimeClaimTrace claims={run.claims} evidence={run.evidence} />
       <section className="company-section-grid"><article className="company-section"><header><h3>Evidence coverage</h3><span>{run.evidence.length} observed</span></header><p>{qualified} qualified · {needsReview} needs review · {counter} counter/conflicting</p></article><article className="company-section"><header><h3>Memo projection</h3><span>{run.memo?.status ?? "not generated"}</span></header><p>{run.memo?.executive_summary ?? "Memo is generated after synthesis."}</p></article></section>

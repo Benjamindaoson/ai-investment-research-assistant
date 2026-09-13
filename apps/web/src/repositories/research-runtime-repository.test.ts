@@ -33,7 +33,7 @@ const memory: InvestmentMemory = {
 
 const run: RuntimeRun = {
   id: "run-1", case_id: "case-1", state: "CREATED", tasks: [{ id: "market", title: "Market", state: "PENDING" }],
-  evidence: [], claims: [], thesis: null, memo: null, financial_analysis: null, red_team_reviews: [], decisions: [],
+  evidence: [], tool_executions: [], claims: [], thesis: null, memo: null, financial_analysis: null, red_team_reviews: [], decisions: [],
 };
 
 describe("ResearchRuntimeRepository", () => {
@@ -76,6 +76,17 @@ describe("ResearchRuntimeRepository", () => {
     const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
 
     await expect(repository.getRun("run-1")).resolves.toMatchObject({ tasks: detailedRun.tasks });
+  });
+
+  it("preserves tool execution receipts from a completed run", async () => {
+    const detailedRun = { ...run, tool_executions: [{
+      id: "tool-1", task_id: "market", tool_name: "research", status: "SUCCEEDED", result_hash: "a".repeat(16),
+      started_at: "2026-09-14T00:00:00.000Z", completed_at: "2026-09-14T00:00:01.000Z",
+    }] };
+    const fetchImpl = (async () => new Response(JSON.stringify(detailedRun), { status: 200 })) as typeof fetch;
+    const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+
+    await expect(repository.getRun("run-1")).resolves.toMatchObject({ tool_executions: detailedRun.tool_executions });
   });
 
   it("posts an explicit research mandate at the runtime boundary", async () => {

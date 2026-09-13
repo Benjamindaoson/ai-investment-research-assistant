@@ -10,7 +10,7 @@ const createReview = vi.hoisted(() => vi.fn());
 vi.mock("@/repositories", () => ({ researchRuntimeRepository: { analyzeFinancialsForRun: analyze, createRedTeamReview: createReview } }));
 
 const run: RuntimeRun = {
-  id: "run-1", case_id: "case-1", state: "COMPLETED", tasks: [], evidence: [], claims: [], thesis: null, memo: null,
+  id: "run-1", case_id: "case-1", state: "COMPLETED", tasks: [], evidence: [], tool_executions: [], claims: [], thesis: null, memo: null,
   financial_analysis: null, red_team_reviews: [], decisions: [],
 };
 const analysis: FinancialAnalysisResult = {

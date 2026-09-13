@@ -205,6 +205,17 @@ const runtimeTaskSchema = z.object({
 });
 export type RuntimeTask = z.infer<typeof runtimeTaskSchema>;
 
+const runtimeToolExecutionSchema = z.object({
+  id: z.string(),
+  task_id: z.string(),
+  tool_name: z.string(),
+  status: z.enum(["SUCCEEDED", "FAILED"]),
+  result_hash: z.string(),
+  started_at: z.string().datetime(),
+  completed_at: z.string().datetime(),
+});
+export type RuntimeToolExecution = z.infer<typeof runtimeToolExecutionSchema>;
+
 const runtimeClaimSchema = z.object({
   id: z.string(),
   task_id: z.string().optional(),
@@ -221,6 +232,7 @@ const runtimeRunSchema = z.object({
   plan: runtimePlanSchema.optional(),
   state: z.enum(["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED"]),
   tasks: z.array(runtimeTaskSchema),
+  tool_executions: z.array(runtimeToolExecutionSchema).default([]),
   evidence: z.array(runtimeEvidenceSchema),
   claims: z.array(runtimeClaimSchema),
   thesis: z.object({ id: z.string(), statement: z.string(), bull: z.string(), base: z.string(), bear: z.string(), claim_ids: z.array(z.string()), review_status: z.enum(["PENDING_REVIEW", "APPROVED", "NEEDS_REVIEW"]) }).nullable(),
