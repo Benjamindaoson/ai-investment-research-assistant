@@ -18,7 +18,8 @@ Next.js Research Workspace
   → FastAPI Research Runtime
   → ResearchCase / ResearchPlan / ResearchRun / Task DAG
   → Evidence Requirements / FinEvidence Provider
-  → Claims / Thesis / Bull-Base-Bear / Decision
+  → Claims / Evidence-grounded Thesis / Memo / Human Decision
+  → Investment Memory / Financial Analysis
   → SQLite events + checkpoints / Evaluation
 ```
 
@@ -83,15 +84,18 @@ pnpm build
 
 ## Scope and limitations
 
-Implemented: typed domain contracts, deterministic planner boundary, validated
-ResearchPlan provenance, DAG validation, durable SQLite state,
-append-only events, checkpoints, resume without duplicate completed work,
-evidence qualification, claim/thesis synthesis, decision endpoints, and an
+Implemented: typed domain contracts, deterministic and opt-in structured LLM
+planner boundaries, validated ResearchPlan provenance, DAG validation, durable
+SQLite state, append-only events, checkpoints, resumable execution, explicit
+cancellation, evidence qualification, evidence-grounded claim/thesis
+synthesis, durable investment memos, target-level Investment Memory, Decimal
+financial analysis, decision endpoints, typed Next.js runtime transport, and an
 honest evaluation scorer.
 
-Incomplete by design: FinEvidence production integration, live filing and
-market providers, LLM planning, PostgreSQL, authentication, document parsing,
-and trading execution. No output should be interpreted as investment advice.
+Incomplete by design: FinEvidence production deployment, live filing and market
+providers, LLM plan quality promotion, PostgreSQL, authentication, document
+parsing, monitoring triggers, rich memo export, and trading execution. No output
+should be interpreted as investment advice.
 
 The runtime transport can be enabled for an external-compatible provider with
 `NEXT_PUBLIC_RESEARCH_RUNTIME_URL`; without it, the workspace remains in its
@@ -100,9 +104,10 @@ explicit synthetic-data mode.
 Planner quality is evaluated independently from execution quality. The local
 evaluation command reports plan coverage, dependency edges, evidence
 requirements, counter-evidence coverage, task ceiling, and duplicate-task
-checks separately from the executed run checks. A future LLM planner must beat
-this deterministic baseline on the same authored golden cases before it is
-treated as a product improvement.
+checks separately from the executed run checks. The opt-in LLM planner has
+passed transport and runtime contract preflights, but its output has not yet
+beaten the deterministic baseline on the authored golden case and therefore is
+not the default planner.
 
 The branch audit and selection record is in
 [`docs/audit/branch-audit.md`](docs/audit/branch-audit.md); the source-evidence
