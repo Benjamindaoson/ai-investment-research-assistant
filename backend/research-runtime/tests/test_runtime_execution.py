@@ -48,3 +48,20 @@ def test_engine_marks_missing_evidence_partial(tmp_path) -> None:
     assert result.state == "PARTIAL"
     assert result.thesis is not None
     assert result.thesis.review_status == "NEEDS_REVIEW"
+
+
+def test_engine_records_provider_failure_without_successful_tool_execution(tmp_path) -> None:
+    class FailingProvider(DeterministicEvidenceProvider):
+        def collect(self, task, case):
+            raise RuntimeError("provider unavailable")
+
+    engine = ResearchEngine(SQLiteStore(tmp_path / "runtime.sqlite3"), FailingProvider())
+    case = ResearchCase(id="case-3", question="Assess ACME's margin durability", target="ACME")
+    run = engine.create_run(case, [make_task("market")])
+
+    result = engine.execute(run.id)
+
+    assert result.state == "FAILED"
+    assert result.tasks[0].state == "FAILED"
+    assert result.tool_executions == []
+    assert any(event["event_type"] == "RUN_FAILED" for event in engine.store.events(run.id))

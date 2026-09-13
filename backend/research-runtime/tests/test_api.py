@@ -20,3 +20,9 @@ def test_api_creates_and_executes_case(tmp_path) -> None:
     events = client.get(f"/api/v1/research-runs/{run_id}/events")
     assert events.status_code == 200
     assert any(item["event_type"] == "RUN_COMPLETED" for item in events.json())
+
+    trace = client.get(f"/api/v1/research-runs/{run_id}/trace")
+    assert trace.status_code == 200
+    assert trace.json()["evidence"]["provenance_complete"] == 6
+    assert all(not claim["unresolved_evidence_ids"] for claim in trace.json()["claims"])
+    assert client.get("/api/v1/research-runs/missing/trace").status_code == 404

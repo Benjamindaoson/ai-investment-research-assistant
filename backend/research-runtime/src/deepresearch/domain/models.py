@@ -69,8 +69,16 @@ class EvidenceRecord(DomainModel):
     source_title: str = Field(min_length=1, max_length=500)
     excerpt: str = Field(min_length=1, max_length=5000)
     provider: str = Field(min_length=1, max_length=200)
+    source_url: str | None = Field(default=None, max_length=2000)
+    source_version: str | None = Field(default=None, max_length=200)
+    locator: str | None = Field(default=None, max_length=500)
+    content_hash: str | None = Field(default=None, min_length=16, max_length=128)
     retrieved_at: datetime = Field(default_factory=utc_now)
     provenance: dict[str, Any] = Field(default_factory=dict)
+
+    @property
+    def provenance_complete(self) -> bool:
+        return bool(self.source_url and self.locator and self.content_hash)
 
 
 class Claim(DomainModel):

@@ -11,6 +11,24 @@ memo.
 It is not a generic chatbot, a market-data terminal, a low-level RAG product,
 an autonomous trading system, or a promise of investment performance.
 
+## Product wedge by user
+
+For an institutional research team, the product is a research execution and
+control layer that can consume proprietary data and FinEvidence without
+replacing Bloomberg, FactSet, Capital IQ, internal research systems, or the
+firm's compliance controls. Its differentiator is the auditable chain from
+research question to evidence-backed claim, counter-evidence, scenario thesis,
+checkpoint, and human decision.
+
+For an individual investor, the product is a focused research memo system. It
+must reduce research time while making source quality, uncertainty,
+disconfirming evidence, and assumptions inspectable. A generic conversational
+stock assistant is not a sufficient product wedge.
+
+The first commercial proof point is an evidence-backed investment memo that a
+user can reproduce and review later. Autonomous trade execution and broad
+personal-finance features remain outside the product boundary.
+
 ## Canonical workflow
 
 ```text

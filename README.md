@@ -22,6 +22,24 @@ Next.js Research Workspace
   → SQLite events + checkpoints / Evaluation
 ```
 
+## Product wedge
+
+For a top-tier investment bank, this product is not a replacement for
+Bloomberg, FactSet, Capital IQ, internal data platforms, or an existing
+research-management system. Its value is a controlled research execution
+layer: task contracts, evidence requirements, provenance, counter-evidence,
+checkpoint/recovery, and human approval that can sit above those systems and
+leave an auditable trail for every investment conclusion.
+
+For an individual investor, the value is different: a focused research
+workflow that makes source quality, uncertainty, disconfirming evidence, and
+scenario assumptions visible. It earns a place only when it saves substantial
+research time and produces a memo the investor can re-check later; a generic
+chatbot with a stock ticker is not enough.
+
+The first commercial wedge is therefore the evidence-backed research memo,
+not autonomous trading or a broad financial super-app.
+
 The frontend currently uses explicitly labelled synthetic fixtures. The
 backend has a deterministic local provider so the durable runtime and review
 semantics can be exercised without external credentials or live market data.
@@ -73,6 +91,10 @@ honest evaluation scorer.
 Incomplete by design: FinEvidence production integration, live filing and
 market providers, LLM planning, PostgreSQL, authentication, document parsing,
 and trading execution. No output should be interpreted as investment advice.
+
+The runtime transport can be enabled for an external-compatible provider with
+`NEXT_PUBLIC_RESEARCH_RUNTIME_URL`; without it, the workspace remains in its
+explicit synthetic-data mode.
 
 The branch audit and selection record is in
 [`docs/audit/branch-audit.md`](docs/audit/branch-audit.md); the source-evidence

@@ -1,5 +1,6 @@
 """Small HTTP boundary for the Financial DeepResearch Runtime."""
 
+import os
 from pathlib import Path
 from typing import Any
 from uuid import uuid4
@@ -10,7 +11,11 @@ from pydantic import BaseModel, Field
 from deepresearch.domain.models import DecisionRecord, ResearchCase
 from deepresearch.persistence.store import SQLiteStore
 from deepresearch.runtime.engine import ResearchEngine
-from deepresearch.runtime.evidence import DeterministicEvidenceProvider, EvidenceProvider
+from deepresearch.runtime.evidence import (
+    DeterministicEvidenceProvider,
+    EvidenceProvider,
+    HttpEvidenceProvider,
+)
 
 
 class CreateCaseRequest(BaseModel):
@@ -31,7 +36,11 @@ class DecisionRequest(BaseModel):
 
 def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | None = None) -> FastAPI:
     runtime_store = store or SQLiteStore(Path(".data/deepresearch.sqlite3"))
-    engine = ResearchEngine(runtime_store, provider or DeterministicEvidenceProvider())
+    configured_provider = provider
+    if configured_provider is None:
+        base_url = os.environ.get("FINEVIDENCE_BASE_URL")
+        configured_provider = HttpEvidenceProvider(base_url) if base_url else DeterministicEvidenceProvider()
+    engine = ResearchEngine(runtime_store, configured_provider)
     app = FastAPI(title="Financial DeepResearch Runtime", version="0.1.0")
 
     @app.get("/api/v1/health")
@@ -70,6 +79,13 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
         if runtime_store.get_run(run_id) is None:
             raise HTTPException(status_code=404, detail="research run not found")
         return runtime_store.events(run_id)
+
+    @app.get("/api/v1/research-runs/{run_id}/trace")
+    def trace(run_id: str) -> dict[str, object]:
+        try:
+            return engine.trace(run_id)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research run not found") from error
 
     @app.post("/api/v1/research-runs/{run_id}/decisions")
     def decision(run_id: str, request: DecisionRequest) -> dict[str, Any]:

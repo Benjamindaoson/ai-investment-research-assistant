@@ -72,6 +72,62 @@ class ResearchEngine:
             raise KeyError(case_id)
         return ResearchCase.model_validate(payload)
 
+    def trace(self, run_id: str) -> dict[str, object]:
+        run = self.get_run(run_id)
+        evidence_by_id = {record.id: record for record in run.evidence}
+        requirements_by_task = {
+            task.id: {requirement.id: requirement for requirement in task.evidence_requirements}
+            for task in run.tasks
+        }
+        missing_requirements: dict[str, list[str]] = {}
+        for task_id, requirements in requirements_by_task.items():
+            missing = []
+            for requirement_id, requirement in requirements.items():
+                qualified = sum(
+                    record.qualification == "QUALIFIED"
+                    for record in run.evidence
+                    if record.task_id == task_id and record.requirement_id == requirement_id
+                )
+                if qualified < requirement.minimum_records:
+                    missing.append(requirement_id)
+            if missing:
+                missing_requirements[task_id] = missing
+        by_qualification = {
+            qualification: sum(record.qualification == qualification for record in run.evidence)
+            for qualification in ("QUALIFIED", "NEEDS_REVIEW", "UNQUALIFIED")
+        }
+        provenance_complete = sum(record.provenance_complete for record in run.evidence)
+        return {
+            "run_id": run.id,
+            "case_id": run.case_id,
+            "state": run.state,
+            "tasks": [
+                {
+                    "id": task.id,
+                    "state": task.state,
+                    "depends_on": task.depends_on,
+                    "missing_requirement_ids": missing_requirements.get(task.id, []),
+                }
+                for task in run.tasks
+            ],
+            "evidence": {
+                "total": len(run.evidence),
+                "by_qualification": by_qualification,
+                "provenance_complete": provenance_complete,
+                "provenance_incomplete": len(run.evidence) - provenance_complete,
+            },
+            "claims": [
+                {
+                    "id": claim.id,
+                    "task_id": claim.task_id,
+                    "status": claim.status,
+                    "evidence_ids": claim.evidence_ids,
+                    "unresolved_evidence_ids": [item for item in claim.evidence_ids if item not in evidence_by_id],
+                }
+                for claim in run.claims
+            ],
+        }
+
     def execute(self, run_id: str, stop_after_tasks: int | None = None) -> ResearchRun:
         run = self.get_run(run_id)
         if run.state in {"COMPLETED", "PARTIAL", "FAILED", "CANCELLED"}:
@@ -91,7 +147,14 @@ class ResearchEngine:
                 task.state = "RUNNING"
                 run.state = "RUNNING"
                 self._persist(run, "TASK_STARTED", {"task_id": task.id})
-                records = self.provider.collect(task, case)
+                try:
+                    records = self.provider.collect(task, case)
+                except Exception as error:
+                    task.state = "FAILED"
+                    return self._fail(
+                        run,
+                        f"evidence provider failed for task {task.id}: {type(error).__name__}: {error}",
+                    )
                 qualified = [self._qualify(record, task) for record in records]
                 run.evidence.extend(qualified)
                 result_hash = evidence_hash(qualified) if qualified else sha256(b"empty").hexdigest()
