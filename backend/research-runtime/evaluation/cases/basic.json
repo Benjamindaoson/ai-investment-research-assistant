@@ -1,0 +1,7 @@
+{
+  "case_id": "DR-001",
+  "title": "Local deterministic research vertical slice",
+  "expected_state": "COMPLETED",
+  "minimum_qualified_evidence": 3,
+  "requires_claim": true
+}

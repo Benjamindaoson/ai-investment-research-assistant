@@ -8,7 +8,7 @@ import { useUiStore } from "@/store/ui-store";
 
 const commands = [
   { label: "Start new research", href: "/new-research", create: true }, { label: "Go to Today", href: "/" },
-  { label: "Open active research case", href: "/research/case-value-pools" }, { label: "Go to Companies", href: "/companies" },
+  { label: "Open active research case", href: "/research/case-margin-durability" }, { label: "Go to Companies", href: "/companies" },
   { label: "Open Evidence Intelligence", href: "/evidence" }, { label: "Open Thesis Workspace", href: "/thesis" },
   { label: "Review risks and catalysts", href: "/risks" }, { label: "Open What to Monitor", href: "/monitor" },
   { label: "Open Human Review", href: "/review" }, { label: "Open Living Brief", href: "/brief" },

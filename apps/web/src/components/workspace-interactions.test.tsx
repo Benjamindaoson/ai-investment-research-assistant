@@ -17,10 +17,10 @@ function renderWorkspace(node: React.ReactNode) {
 describe("P0 evidence, review, and library interactions", () => {
   it("keeps supporting and counter evidence separate and records a status change", async () => {
     const user = userEvent.setup();
-    renderWorkspace(<EvidenceWorkspace caseId="case-value-pools" />);
+    renderWorkspace(<EvidenceWorkspace caseId="case-margin-durability" />);
     expect(await screen.findByText("Supporting Evidence")).toBeTruthy();
     expect(screen.getByText("Counter Evidence")).toBeTruthy();
-    const status = await screen.findByLabelText("Verification status for ev-pi-data");
+    const status = await screen.findByLabelText("Verification status for ev-demand");
     await user.selectOptions(status, "needs-review");
     expect(await screen.findByText("Evidence status changed to needs-review.")).toBeTruthy();
   });
@@ -28,7 +28,7 @@ describe("P0 evidence, review, and library interactions", () => {
   it("approves a queued human-review item and exposes the audit action", async () => {
     const user = userEvent.setup();
     renderWorkspace(<HumanReviewWorkspace />);
-    const detail = await screen.findAllByText("Robot data is a binding constraint");
+    const detail = await screen.findAllByText("AI infrastructure demand can support durable margins");
     expect(detail.length).toBeGreaterThan(1);
     await user.type(screen.getByLabelText("Analyst note"), "Checked support and counter-evidence.");
     await user.click(screen.getByRole("button", { name: "Approve" }));
@@ -39,10 +39,10 @@ describe("P0 evidence, review, and library interactions", () => {
   it("filters the research library by asset type", async () => {
     const user = userEvent.setup();
     renderWorkspace(<LibraryWorkspace />);
-    const table = await screen.findByText("Scaling synthetic-to-real transfer");
+    const table = await screen.findByText("Measuring infrastructure utilization and returns");
     expect(table).toBeTruthy();
     await user.selectOptions(screen.getByLabelText("Type"), "paper");
-    expect(screen.getByText("Scaling synthetic-to-real transfer")).toBeTruthy();
-    expect(within(screen.getByRole("main")).queryByText("Figure platform technical update")).toBeNull();
+    expect(screen.getByText("Measuring infrastructure utilization and returns")).toBeTruthy();
+    expect(within(screen.getByRole("main")).queryByText("Northstar Analytics operating update")).toBeNull();
   });
 });

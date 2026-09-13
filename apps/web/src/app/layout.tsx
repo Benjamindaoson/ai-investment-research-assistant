@@ -4,7 +4,7 @@ import { AppProviders } from "@/providers/app-providers";
 import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "Atlas Research",
+  title: "Financial DeepResearch Agent",
   description: "Evidence-first AI research workspace prototype",
 };
 

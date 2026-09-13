@@ -25,20 +25,20 @@ describe("P0 research entry workflows", () => {
     await user.click(screen.getByRole("tab", { name: /In research/ }));
     expect(screen.getAllByText("In research").length).toBeGreaterThan(0);
     expect(screen.queryByText("Needs review", { selector: "h2" })).toBeNull();
-    await user.type(screen.getByLabelText("Ask a research question"), "Which agent infrastructure layers can become durable platforms?");
+    await user.type(screen.getByLabelText("Ask a research question"), "Which AI infrastructure layers can become durable platforms?");
     await user.click(screen.getByRole("button", { name: /Set up research/ }));
     expect(navigation.push).toHaveBeenCalledWith(expect.stringContaining("/new-research?question="));
   });
 
-  it("generates an editable plan and creates the mock Research Case", async () => {
+  it("generates an editable plan and creates the synthetic Research Case", async () => {
     const user = userEvent.setup();
-    renderWithQuery(<NewResearchWorkspace initialQuestion="Where will embodied intelligence create defensible value over three years?" />);
+    renderWithQuery(<NewResearchWorkspace initialQuestion="Where will AI infrastructure create defensible value over three years?" />);
     await user.click(await screen.findByRole("button", { name: "Continue to research plan" }));
     expect(await screen.findByText("Structured research goal", { exact: false })).toBeTruthy();
     const firstQuestion = screen.getByLabelText("Market question 1");
     await user.clear(firstQuestion);
     await user.type(firstQuestion, "Estimate durable market value pools");
     await user.click(screen.getByRole("button", { name: "Start Research" }));
-    expect(navigation.push).toHaveBeenCalledWith("/research/case-value-pools");
+    expect(navigation.push).toHaveBeenCalledWith("/research/case-margin-durability");
   });
 });

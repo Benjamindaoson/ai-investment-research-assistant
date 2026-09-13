@@ -1,0 +1,53 @@
+{
+  "schema_version": 1,
+  "diagram_type": "architecture",
+  "meta": {
+    "title": "Financial DeepResearch Agent — canonical runtime",
+    "locale": "zh-CN",
+    "quality_profile": "showcase",
+    "viewBox": [1280, 760],
+    "repository": {
+      "url": "https://github.com/Benjamindaoson/ai-investment-research-assistant.git",
+      "revision": "ad7fb2619c4687e7b8777f30b4bda7da0e032243"
+    },
+    "views": [
+      {
+        "id": "research-path",
+        "label": "研究主路径",
+        "focus": ["analyst", "workspace", "api", "runtime", "evidence", "synthesis"],
+        "note": "从问题契约到可审计投研结论。"
+      },
+      {
+        "id": "durability",
+        "label": "耐久与追溯",
+        "focus": ["runtime", "contracts", "store", "evaluation"],
+        "note": "检查状态、证据、checkpoint 与评测的持久化边界。"
+      }
+    ]
+  },
+  "components": [
+    { "id": "analyst", "type": "external", "label": "投研分析师", "sublabel": "问题 / 审核 / 决策", "pos": [34, 304], "size": [150, 72] },
+    { "id": "workspace", "type": "frontend", "label": "Next.js Research Workspace", "sublabel": "唯一前端 · apps/web", "sources": [{ "path": "apps/web/src/components/shell/app-shell.tsx", "line": 1, "label": "App Shell" }], "pos": [224, 304], "size": [178, 72] },
+    { "id": "api", "type": "backend", "label": "FastAPI Research API", "sublabel": "唯一后端入口", "pos": [446, 304], "size": [170, 72] },
+    { "id": "runtime", "type": "backend", "label": "Research Runtime", "sublabel": "DAG · checkpoint · typed tools", "pos": [660, 304], "size": [172, 72] },
+    { "id": "evidence", "type": "external", "label": "FinEvidence", "sublabel": "独立证据基础设施", "pos": [880, 304], "size": [166, 72] },
+    { "id": "synthesis", "type": "backend", "label": "Thesis / Decision", "sublabel": "claims · bull/base/bear", "pos": [1080, 304], "size": [150, 72] },
+    { "id": "contracts", "type": "security", "label": "Domain Contracts", "sublabel": "Pydantic · versioned", "sources": [{ "path": "apps/web/src/domain/research.ts", "line": 1, "label": "Zod contracts" }], "pos": [446, 492], "size": [170, 72] },
+    { "id": "store", "type": "database", "label": "SQLite Durable Store", "sublabel": "state · events · evidence refs", "pos": [660, 492], "size": [172, 72] },
+    { "id": "evaluation", "type": "backend", "label": "Evaluation System", "sublabel": "golden cases · score · trace", "pos": [876, 492], "size": [166, 72] }
+  ],
+  "connections": [
+    { "id": "ask", "from": "analyst", "to": "workspace", "label": "research question", "variant": "emphasis", "labelDy": -30 },
+    { "id": "submit", "from": "workspace", "to": "api", "label": "typed HTTP", "labelDy": -30 },
+    { "id": "orchestrate", "from": "api", "to": "runtime", "label": "create / resume run", "variant": "emphasis", "labelDy": -30 },
+    { "id": "consume", "from": "runtime", "to": "evidence", "label": "evidence request", "variant": "dashed", "labelDy": -30 },
+    { "id": "synthesize", "from": "evidence", "to": "synthesis", "label": "qualified evidence", "labelDy": -30 },
+    { "id": "contract", "from": "runtime", "to": "contracts" },
+    { "id": "durable", "from": "runtime", "to": "store" },
+    { "id": "evaluate", "from": "runtime", "to": "evaluation" }
+  ],
+  "cards": [
+    { "dot": "cyan", "title": "Canonical ownership", "items": ["Runtime owns orchestration and recovery", "FinEvidence owns evidence infrastructure"] },
+    { "dot": "amber", "title": "Truth boundary", "items": ["Model output is not outcome evidence", "Every claim links to qualified evidence and trace"] }
+  ]
+}
