@@ -3,6 +3,7 @@ from deepresearch.runtime.evidence import (
     DeterministicEvidenceProvider,
     EvidenceProvider,
     EvidenceProviderError,
+    FinEvidenceClient,
     HttpEvidenceProvider,
 )
 from deepresearch.runtime.planner import (
@@ -13,4 +14,4 @@ from deepresearch.runtime.planner import (
     create_configured_research_planner,
 )
 
-__all__ = ["DeterministicEvidenceProvider", "EvidenceProvider", "EvidenceProviderError", "HttpEvidenceProvider", "DeterministicResearchPlanner", "LLMResearchPlanner", "PlannerProviderError", "ResearchPlanner", "ResearchEngine", "create_configured_research_planner", "validate_task_dag"]
+__all__ = ["DeterministicEvidenceProvider", "EvidenceProvider", "EvidenceProviderError", "FinEvidenceClient", "HttpEvidenceProvider", "DeterministicResearchPlanner", "LLMResearchPlanner", "PlannerProviderError", "ResearchPlanner", "ResearchEngine", "create_configured_research_planner", "validate_task_dag"]

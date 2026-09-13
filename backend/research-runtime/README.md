@@ -15,8 +15,21 @@ python -m venv .venv
 `/api/v1/research-runs/{run_id}/trace` 查看证据资格、provenance 完整性和
 claim-to-evidence 链接。
 
-设置 `FINEVIDENCE_BASE_URL` 后，API 会使用 HTTP provider；未设置时使用
-明确标记的 deterministic provider，保证本地测试不需要网络或凭证。
+设置 `FINEVIDENCE_BASE_URL` 后，API 会使用真实的 FinEvidence v1 HTTP
+provider；未设置时使用明确标记的 deterministic provider，保证本地测试不
+需要网络或凭证。FinEvidence 的启动方式（另一个冻结仓库）是：
+
+```powershell
+cd "D:\01_work\Enterprise Multimodal RAG\finevidence"
+\.venv\Scripts\python.exe -m uvicorn finevidence.api.app:app --host 127.0.0.1 --port 8000
+```
+
+随后在本项目启动前设置：
+
+```powershell
+$env:FINEVIDENCE_BASE_URL = "http://127.0.0.1:8000"
+$env:FINEVIDENCE_TIMEOUT_SECONDS = "120"
+```
 
 Planner 默认也是 deterministic。只有显式设置
 `DEEPRESEARCH_PLANNER=llm`，并提供 `DEEPSEEK_API_KEY`、
@@ -36,10 +49,15 @@ DAG 校验；调用失败不会静默回退为另一份 plan。
   deepresearch.evaluation` 会独立输出 planner quality 和 runtime execution
   两组结果，并对 completed/partial run 检查 memo sections 与 artifact links。
 - Deterministic provider 是本地演示数据，不是 live market data，也不是 FinEvidence。
-- 已实现 provider transport boundary：`HttpEvidenceProvider` 只消费
-  FinEvidence-compatible payload，不实现 FinEvidence 本身；协议版本、来源
-  identity、URL、locator、hash、source version 和失败语义都在边界校验。
+- 已实现 FinEvidence v1 provider transport boundary：`FinEvidenceClient` 只
+  通过 `/health`、`/api/v1/evidence/search`、`coverage`、`citation`、
+  `/api/v1/table/query` 和 `/api/v1/evidence/verify` 消费外部 API，不实现
+  FinEvidence 本身；协议版本、来源 identity、URL、page/table locator、hash、
+  verification status 和失败语义都在边界校验。每个研究 requirement 只有在
+  外部 coverage 为 `ELIGIBLE` 且 evidence 为 `SUPPORTED` 时才会进入
+  runtime 的 `QUALIFIED` 集合；runtime 不会重新提升外部 `PARTIAL` 或
+  `UNSUPPORTED` 证据。
 - LLM planner adapter 已实现并通过一次真实配置预检；它不是默认路径，也没有
-  静默 fallback。尚未实现：真实 FinEvidence deployment、live filing/market
-  providers、PostgreSQL adapter、生产级 auth/tenant policy、文档解析和交易
-  执行。
+  静默 fallback。尚未实现：live filing/market providers、PostgreSQL adapter、
+  生产级 auth/tenant policy、文档解析和交易执行。FinEvidence 的 evidence
+  retrieval、parser、table IR、evaluation 和 CLIP implementation 不属于本仓库。

@@ -129,6 +129,40 @@ def test_engine_requires_complete_provenance_before_qualifying_evidence(tmp_path
     }
 
 
+def test_engine_preserves_external_finevidence_qualification(tmp_path) -> None:
+    class ExternalProvider:
+        qualification_authority = "external"
+
+        def collect(self, task, case):
+            return [
+                EvidenceRecord(
+                    task_id=task.id,
+                    requirement_id=task.evidence_requirements[0].id,
+                    stance="SUPPORTING",
+                    qualification="NEEDS_REVIEW",
+                    source_id="finevidence-doc",
+                    source_title="External document",
+                    excerpt="FinEvidence marked the requirement partial.",
+                    provider="finevidence-http",
+                    source_url="https://example.test/document",
+                    locator="page:1",
+                    content_hash="b" * 64,
+                    provenance={"finevidence": {"coverage_status": "PARTIAL"}},
+                )
+            ]
+
+    engine = ResearchEngine(SQLiteStore(tmp_path / "runtime.sqlite3"), ExternalProvider())
+    run = engine.create_run(
+        ResearchCase(id="case-external", question="Assess ACME evidence", target="ACME"),
+        [make_task("market")],
+    )
+
+    result = engine.execute(run.id)
+
+    assert result.state == "PARTIAL"
+    assert result.evidence[0].qualification == "NEEDS_REVIEW"
+
+
 def test_engine_records_provider_failure_without_successful_tool_execution(tmp_path) -> None:
     class FailingProvider(DeterministicEvidenceProvider):
         def collect(self, task, case):

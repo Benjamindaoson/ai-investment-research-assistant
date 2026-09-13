@@ -50,7 +50,8 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
     configured_provider = provider
     if configured_provider is None:
         base_url = os.environ.get("FINEVIDENCE_BASE_URL")
-        configured_provider = HttpEvidenceProvider(base_url) if base_url else DeterministicEvidenceProvider()
+        timeout = float(os.environ.get("FINEVIDENCE_TIMEOUT_SECONDS", "120"))
+        configured_provider = HttpEvidenceProvider(base_url, timeout) if base_url else DeterministicEvidenceProvider()
     engine = ResearchEngine(runtime_store, configured_provider, planner=planner or create_configured_research_planner())
     financial_analysis = FinancialAnalysisTool()
     app = FastAPI(title="Financial DeepResearch Runtime", version="0.1.0")

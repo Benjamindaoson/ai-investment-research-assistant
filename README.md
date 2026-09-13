@@ -17,7 +17,7 @@ Next.js Research Workspace
   → typed service / repository boundary
   → FastAPI Research Runtime
   → ResearchCase / ResearchPlan / ResearchRun / Task DAG
-  → Evidence Requirements / FinEvidence Provider
+  → Evidence Requirements / FinEvidence v1 HTTP Client
   → Claims / Evidence-grounded Thesis / Memo / Human Decision
   → Investment Memory / Financial Analysis
   → SQLite events + checkpoints / Evaluation
@@ -44,6 +44,11 @@ not autonomous trading or a broad financial super-app.
 The frontend currently uses explicitly labelled synthetic fixtures. The
 backend has a deterministic local provider so the durable runtime and review
 semantics can be exercised without external credentials or live market data.
+When `FINEVIDENCE_BASE_URL` is set, the runtime uses the frozen FinEvidence
+Evidence Backend v1 contract: search → requirement coverage → citation. This
+repository does not import FinEvidence retrieval, parser, table IR, eval, or
+CLIP modules, and it does not silently fall back when the external service
+fails.
 
 ## Run locally
 
@@ -60,14 +65,19 @@ To use the connected runtime workspace, start the backend first, configure its
 allowed browser origin, and start Next.js with the runtime URL:
 
 ```powershell
-# Terminal 1, from backend/research-runtime
-Set-Location backend/research-runtime
-$env:RESEARCH_RUNTIME_CORS_ORIGINS = "http://localhost:3000"
-.\.venv\Scripts\python -m uvicorn deepresearch.api:app --reload --port 8000
+# Terminal 1, from FinEvidence (optional external service)
+Set-Location "D:\01_work\Enterprise Multimodal RAG\finevidence"
+\.venv\Scripts\python.exe -m uvicorn finevidence.api.app:app --host 127.0.0.1 --port 8000
 
-# Terminal 2, from the repository root
+# Terminal 2, from backend/research-runtime
+Set-Location backend/research-runtime
+$env:FINEVIDENCE_BASE_URL = "http://127.0.0.1:8000" # use FinEvidence v1
+$env:RESEARCH_RUNTIME_CORS_ORIGINS = "http://localhost:3000"
+.\.venv\Scripts\python -m uvicorn deepresearch.api:app --reload --port 8010
+
+# Terminal 3, from the repository root
 Set-Location ../..
-$env:NEXT_PUBLIC_RESEARCH_RUNTIME_URL = "http://127.0.0.1:8000"
+$env:NEXT_PUBLIC_RESEARCH_RUNTIME_URL = "http://127.0.0.1:8010"
 pnpm dev
 ```
 
@@ -79,10 +89,10 @@ Run the backend from `backend/research-runtime`:
 ```powershell
 python -m venv .venv
 .\.venv\Scripts\python -m pip install -e ".[dev]"
-.\.venv\Scripts\python -m uvicorn deepresearch.api:app --reload --port 8000
+.\.venv\Scripts\python -m uvicorn deepresearch.api:app --reload --port 8010
 ```
 
-Health endpoint: `http://127.0.0.1:8000/api/v1/health`.
+Health endpoint: `http://127.0.0.1:8010/api/v1/health`.
 
 ## Verification
 
@@ -113,10 +123,11 @@ memory reads, Decimal financial analysis, decision endpoints, typed
 Next.js runtime transport, live runtime workspace, case-scoped reruns, and an honest evaluation
 scorer.
 
-Incomplete by design: FinEvidence production deployment, live filing and market
-providers, LLM plan quality promotion, PostgreSQL, authentication, document
-parsing, monitoring triggers, rich memo export, and trading execution. No output
-should be interpreted as investment advice.
+Incomplete by design: live filing and market providers, LLM plan quality
+promotion, PostgreSQL, authentication, document parsing, monitoring triggers,
+rich memo export, and trading execution. FinEvidence remains an independent
+service; its deployment, retrieval, provenance, and evidence qualification are
+outside this repository. No output should be interpreted as investment advice.
 
 The runtime transport can be enabled for an external-compatible provider with
 `NEXT_PUBLIC_RESEARCH_RUNTIME_URL`; without it, the workspace remains in its

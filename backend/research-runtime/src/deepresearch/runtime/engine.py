@@ -270,6 +270,8 @@ class ResearchEngine:
         return self.get_memory(case.target)
 
     def _qualify(self, record: EvidenceRecord, task: ResearchTask) -> EvidenceRecord:
+        if getattr(self.provider, "qualification_authority", "runtime") == "external":
+            return record
         requirement = next(item for item in task.evidence_requirements if item.id == record.requirement_id)
         record.qualification = (
             "QUALIFIED"
