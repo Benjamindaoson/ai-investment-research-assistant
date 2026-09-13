@@ -97,6 +97,13 @@ The runtime transport can be enabled for an external-compatible provider with
 `NEXT_PUBLIC_RESEARCH_RUNTIME_URL`; without it, the workspace remains in its
 explicit synthetic-data mode.
 
+Planner quality is evaluated independently from execution quality. The local
+evaluation command reports plan coverage, dependency edges, evidence
+requirements, counter-evidence coverage, task ceiling, and duplicate-task
+checks separately from the executed run checks. A future LLM planner must beat
+this deterministic baseline on the same authored golden cases before it is
+treated as a product improvement.
+
 The branch audit and selection record is in
 [`docs/audit/branch-audit.md`](docs/audit/branch-audit.md); the source-evidence
 architecture artifact is in `docs/architecture/`.

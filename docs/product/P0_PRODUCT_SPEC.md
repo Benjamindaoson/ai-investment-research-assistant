@@ -66,6 +66,9 @@ Research Question
   approval or rejection.
 - `ToolExecution`, `Checkpoint`, and append-only events make execution
   auditable and recoverable.
+- Planner quality is evaluated separately from execution quality; a plan must
+  cover required research dimensions, dependencies, evidence requirements, and
+  disconfirming conditions before it is compared with a future LLM planner.
 
 The system must never silently fabricate sources, citations, financial facts,
 tool results, or completed work. Unknown, partial, failed, cancelled, and

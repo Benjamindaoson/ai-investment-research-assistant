@@ -24,10 +24,12 @@ claim-to-evidence 链接。
   planner provenance 的 ResearchPlan、依赖 DAG 校验、SQLite durable state、
   append-only events、checkpoint read-back、resume 去重、evidence
   qualification、claims/thesis、human decision API、plan/trace API、可执行
-  scorer。
+  scorer。`python -m deepresearch.evaluation` 会独立输出 planner quality
+  和 runtime execution 两组结果。
 - Deterministic provider 是本地演示数据，不是 live market data，也不是 FinEvidence。
 - 已实现 provider transport boundary：`HttpEvidenceProvider` 只消费
   FinEvidence-compatible payload，不实现 FinEvidence 本身；协议版本、来源
   identity、URL、locator、hash、source version 和失败语义都在边界校验。
 - 尚未实现：真实 FinEvidence deployment、live filing/market providers、LLM
-  planner、PostgreSQL adapter、生产级 auth/tenant policy、文档解析和交易执行。
+  planner（当前 golden case 只用于约束未来比较）、PostgreSQL adapter、生产级
+  auth/tenant policy、文档解析和交易执行。
