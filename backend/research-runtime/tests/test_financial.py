@@ -29,6 +29,14 @@ def test_financial_analysis_uses_decimal_math_and_hashes_inputs() -> None:
     assert len(result.input_hash) == 64
 
 
+def test_financial_analysis_preserves_field_level_evidence_links() -> None:
+    snapshot = FinancialSnapshot(period="FY2025", revenue=Decimal("100"))
+
+    result = FinancialAnalysisTool().analyze(snapshot, {"revenue": ["evidence-1"]})
+
+    assert result.evidence_ids == {"revenue": ["evidence-1"]}
+
+
 def test_financial_analysis_preserves_negative_free_cash_flow() -> None:
     snapshot = FinancialSnapshot(period="Q1", revenue=Decimal("100"), operating_cash_flow=Decimal("-5"), capex=Decimal("10"))
 

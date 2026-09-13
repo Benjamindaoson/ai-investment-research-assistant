@@ -100,6 +100,32 @@ describe("ResearchRuntimeRepository", () => {
     expect(JSON.parse(requestBody)).toMatchObject({ period: "FY2025", revenue: "120.00", prior_revenue: "100.00" });
   });
 
+  it("posts run-scoped financial analysis with field-level evidence links", async () => {
+    let requestBody = "";
+    let requestUrl = "";
+    const fetchImpl = (async (input, init) => {
+      requestUrl = String(input);
+      requestBody = String(init?.body);
+      return new Response(JSON.stringify({
+        period: "FY2025", input_hash: "a".repeat(64), revenue_growth_pct: "20.0",
+        gross_margin_pct: null, operating_margin_pct: null, free_cash_flow: null,
+        fcf_margin_pct: null, net_cash: null, unavailable_metrics: ["gross_margin_pct"],
+        evidence_ids: { revenue: ["evidence-1"], prior_revenue: ["evidence-1"] },
+      }), { status: 200 });
+    }) as typeof fetch;
+    const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+
+    await expect(repository.analyzeFinancialsForRun("run/1", {
+      snapshot: { period: "FY2025", revenue: "120.00", prior_revenue: "100.00" },
+      evidence_ids: { revenue: ["evidence-1"], prior_revenue: ["evidence-1"] },
+    })).resolves.toMatchObject({ evidence_ids: { revenue: ["evidence-1"] } });
+    expect(requestUrl).toBe("http://runtime.test/api/v1/research-runs/run%2F1/financial-analysis");
+    expect(JSON.parse(requestBody)).toEqual({
+      snapshot: { period: "FY2025", revenue: "120.00", prior_revenue: "100.00" },
+      evidence_ids: { revenue: ["evidence-1"], prior_revenue: ["evidence-1"] },
+    });
+  });
+
   it("posts a cancellation reason and validates the terminal run state", async () => {
     let request: RequestInit | undefined;
     const fetchImpl = (async (_input, init) => {

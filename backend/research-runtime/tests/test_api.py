@@ -108,6 +108,112 @@ def test_api_calculates_financial_snapshot(tmp_path) -> None:
     assert response.json()["unavailable_metrics"] == []
 
 
+def test_api_calculates_only_with_qualified_run_evidence(tmp_path) -> None:
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+    created = client.post("/api/v1/research-cases", json={"question": "Assess ACME revenue", "target": "ACME"})
+    run_id = created.json()["run_id"]
+    run = client.post(f"/api/v1/research-runs/{run_id}/execute").json()
+    evidence_id = run["evidence"][0]["id"]
+
+    response = client.post(
+        f"/api/v1/research-runs/{run_id}/financial-analysis",
+        json={
+            "snapshot": {"period": "FY2025", "revenue": "120", "prior_revenue": "100"},
+            "evidence_ids": {"revenue": [evidence_id], "prior_revenue": [evidence_id]},
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["revenue_growth_pct"] == "20.0"
+    assert response.json()["evidence_ids"] == {"revenue": [evidence_id], "prior_revenue": [evidence_id]}
+
+
+def test_api_rejects_financial_evidence_not_in_run(tmp_path) -> None:
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+    created = client.post("/api/v1/research-cases", json={"question": "Assess ACME revenue", "target": "ACME"})
+    run_id = created.json()["run_id"]
+
+    response = client.post(
+        f"/api/v1/research-runs/{run_id}/financial-analysis",
+        json={
+            "snapshot": {"period": "FY2025", "revenue": "120"},
+            "evidence_ids": {"revenue": ["not-in-run"]},
+        },
+    )
+
+    assert response.status_code == 422
+    assert "not found in run" in response.json()["detail"]
+
+
+def test_api_rejects_financial_evidence_that_needs_review(tmp_path) -> None:
+    class IncompleteEvidenceProvider(DeterministicEvidenceProvider):
+        def collect(self, task, case):
+            return [
+                record.model_copy(update={"source_url": None, "locator": None, "content_hash": None})
+                for record in super().collect(task, case)
+            ]
+
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3"), provider=IncompleteEvidenceProvider()))
+    created = client.post("/api/v1/research-cases", json={"question": "Assess ACME revenue", "target": "ACME"})
+    run_id = created.json()["run_id"]
+    run = client.post(f"/api/v1/research-runs/{run_id}/execute").json()
+    evidence_id = run["evidence"][0]["id"]
+
+    response = client.post(
+        f"/api/v1/research-runs/{run_id}/financial-analysis",
+        json={
+            "snapshot": {"period": "FY2025", "revenue": "120"},
+            "evidence_ids": {"revenue": [evidence_id]},
+        },
+    )
+
+    assert response.status_code == 422
+    assert "not qualified" in response.json()["detail"]
+
+
+def test_api_rejects_unusable_financial_evidence_fields(tmp_path) -> None:
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+    created = client.post("/api/v1/research-cases", json={"question": "Assess ACME revenue", "target": "ACME"})
+    run_id = created.json()["run_id"]
+
+    response = client.post(
+        f"/api/v1/research-runs/{run_id}/financial-analysis",
+        json={
+            "snapshot": {"period": "FY2025", "revenue": "120"},
+            "evidence_ids": {"revenue": ["evidence-1"], "cash": ["evidence-1"]},
+        },
+    )
+
+    assert response.status_code == 422
+    assert "supplied financial fields" in str(response.json()["detail"])
+
+
+def test_api_rejects_unknown_or_missing_financial_evidence_links(tmp_path) -> None:
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+    created = client.post("/api/v1/research-cases", json={"question": "Assess ACME revenue", "target": "ACME"})
+    run_id = created.json()["run_id"]
+
+    unknown = client.post(
+        f"/api/v1/research-runs/{run_id}/financial-analysis",
+        json={
+            "snapshot": {"period": "FY2025", "revenue": "120"},
+            "evidence_ids": {"revenue": ["evidence-1"], "ebitda": ["evidence-1"]},
+        },
+    )
+    missing = client.post(
+        f"/api/v1/research-runs/{run_id}/financial-analysis",
+        json={
+            "snapshot": {"period": "FY2025", "revenue": "120", "prior_revenue": "100"},
+            "evidence_ids": {"revenue": ["evidence-1"]},
+        },
+    )
+
+    assert unknown.status_code == 422
+    assert "unknown financial evidence fields" in str(unknown.json()["detail"])
+    assert missing.status_code == 422
+    assert "missing evidence links" in str(missing.json()["detail"])
+
+
 def test_api_reads_target_investment_memory(tmp_path) -> None:
     client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
     created_ids = []

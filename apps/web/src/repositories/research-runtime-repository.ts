@@ -1,4 +1,4 @@
-import type { FinancialAnalysisResult, FinancialSnapshotInput, InvestmentMemory, ResearchRuntimeService, RuntimeCaseInput, RuntimeCaseResult, RuntimeMemo, RuntimeRun, RuntimeRunControl, RuntimeTrace } from "@/services/research-runtime-service";
+import type { EvidenceLinkedFinancialAnalysisInput, FinancialAnalysisResult, FinancialSnapshotInput, InvestmentMemory, ResearchRuntimeService, RuntimeCaseInput, RuntimeCaseResult, RuntimeMemo, RuntimeRun, RuntimeRunControl, RuntimeTrace } from "@/services/research-runtime-service";
 
 export class ResearchRuntimeRepository {
   constructor(private readonly service: ResearchRuntimeService) {}
@@ -16,4 +16,7 @@ export class ResearchRuntimeRepository {
   getMemory(target: string): Promise<InvestmentMemory> { return this.service.getMemory(target); }
   getMemoryForRun(runId: string): Promise<InvestmentMemory> { return this.service.getMemoryForRun(runId); }
   analyzeFinancials(snapshot: FinancialSnapshotInput): Promise<FinancialAnalysisResult> { return this.service.analyzeFinancials(snapshot); }
+  analyzeFinancialsForRun(runId: string, input: EvidenceLinkedFinancialAnalysisInput): Promise<FinancialAnalysisResult> {
+    return this.service.analyzeFinancialsForRun(runId, input);
+  }
 }

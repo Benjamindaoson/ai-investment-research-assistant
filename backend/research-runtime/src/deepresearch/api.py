@@ -7,7 +7,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, Field, model_validator
 
 from deepresearch.domain.models import DecisionRecord, FinancialSnapshot, ResearchCase
 from deepresearch.persistence.store import SQLiteStore
@@ -45,6 +45,31 @@ class DecisionRequest(BaseModel):
     rationale: str = Field(min_length=3, max_length=4000)
 
 
+class EvidenceLinkedFinancialAnalysisRequest(BaseModel):
+    snapshot: FinancialSnapshot
+    evidence_ids: dict[str, list[str]] = Field(min_length=1)
+
+    @model_validator(mode="after")
+    def validate_evidence_links(self) -> "EvidenceLinkedFinancialAnalysisRequest":
+        allowed = set(FinancialSnapshot.model_fields) - {"period"}
+        supplied = {
+            key for key, value in self.snapshot.model_dump().items() if key != "period" and value is not None
+        }
+        unknown = set(self.evidence_ids) - allowed
+        missing = supplied - set(self.evidence_ids)
+        unused = set(self.evidence_ids) - supplied
+        empty = {key for key, ids in self.evidence_ids.items() if not ids}
+        if unknown:
+            raise ValueError(f"unknown financial evidence fields: {sorted(unknown)}")
+        if missing:
+            raise ValueError(f"missing evidence links for financial fields: {sorted(missing)}")
+        if unused:
+            raise ValueError(f"evidence links require supplied financial fields: {sorted(unused)}")
+        if empty:
+            raise ValueError(f"financial evidence links must not be empty: {sorted(empty)}")
+        return self
+
+
 def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | None = None, planner: ResearchPlanner | None = None) -> FastAPI:
     runtime_store = store or SQLiteStore(Path(".data/deepresearch.sqlite3"))
     configured_provider = provider
@@ -77,6 +102,24 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
     @app.post("/api/v1/financial-analysis")
     def analyze_financials(snapshot: FinancialSnapshot) -> dict[str, Any]:
         return financial_analysis.analyze(snapshot).model_dump(mode="json")
+
+    @app.post("/api/v1/research-runs/{run_id}/financial-analysis")
+    def analyze_run_financials(run_id: str, request: EvidenceLinkedFinancialAnalysisRequest) -> dict[str, Any]:
+        try:
+            run = engine.get_run(run_id)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research run not found") from error
+        records = {record.id: record for record in run.evidence}
+        requested_ids = {evidence_id for ids in request.evidence_ids.values() for evidence_id in ids}
+        missing = sorted(requested_ids - records.keys())
+        if missing:
+            raise HTTPException(status_code=422, detail=f"financial evidence not found in run: {missing}")
+        unqualified = sorted(
+            evidence_id for evidence_id in requested_ids if records[evidence_id].qualification != "QUALIFIED"
+        )
+        if unqualified:
+            raise HTTPException(status_code=422, detail=f"financial evidence is not qualified: {unqualified}")
+        return financial_analysis.analyze(request.snapshot, request.evidence_ids).model_dump(mode="json")
 
     @app.post("/api/v1/research-cases", status_code=status.HTTP_201_CREATED)
     def create_case(request: CreateCaseRequest) -> dict[str, str]:

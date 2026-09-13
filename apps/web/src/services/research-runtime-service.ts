@@ -131,8 +131,14 @@ const financialAnalysisResultSchema = z.object({
   fcf_margin_pct: z.string().nullable(),
   net_cash: z.string().nullable(),
   unavailable_metrics: z.array(z.string()),
+  evidence_ids: z.record(z.string(), z.array(z.string())).default({}),
 });
 export type FinancialAnalysisResult = z.infer<typeof financialAnalysisResultSchema>;
+const evidenceLinkedFinancialAnalysisInputSchema = z.object({
+  snapshot: financialSnapshotSchema,
+  evidence_ids: z.record(z.string(), z.array(z.string().min(1)).min(1)),
+});
+export type EvidenceLinkedFinancialAnalysisInput = z.infer<typeof evidenceLinkedFinancialAnalysisInputSchema>;
 
 export interface ResearchRuntimeService {
   createCase(input: RuntimeCaseInput): Promise<RuntimeCaseResult>;
@@ -145,6 +151,7 @@ export interface ResearchRuntimeService {
   getMemory(target: string): Promise<InvestmentMemory>;
   getMemoryForRun(runId: string): Promise<InvestmentMemory>;
   analyzeFinancials(snapshot: FinancialSnapshotInput): Promise<FinancialAnalysisResult>;
+  analyzeFinancialsForRun(runId: string, input: EvidenceLinkedFinancialAnalysisInput): Promise<FinancialAnalysisResult>;
 }
 
 export class HttpResearchRuntimeService implements ResearchRuntimeService {
@@ -220,6 +227,15 @@ export class HttpResearchRuntimeService implements ResearchRuntimeService {
       body: JSON.stringify(input),
     }));
   }
+
+  async analyzeFinancialsForRun(runId: string, input: EvidenceLinkedFinancialAnalysisInput): Promise<FinancialAnalysisResult> {
+    const body = evidenceLinkedFinancialAnalysisInputSchema.parse(input);
+    return financialAnalysisResultSchema.parse(await this.requestJson("/api/v1/research-runs/" + encodeURIComponent(runId) + "/financial-analysis", {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }));
+  }
 }
 
 class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
@@ -237,6 +253,7 @@ class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
   async getMemory(): Promise<InvestmentMemory> { return this.unavailable(); }
   async getMemoryForRun(): Promise<InvestmentMemory> { return this.unavailable(); }
   async analyzeFinancials(): Promise<FinancialAnalysisResult> { return this.unavailable(); }
+  async analyzeFinancialsForRun(): Promise<FinancialAnalysisResult> { return this.unavailable(); }
 }
 
 export function createResearchRuntimeService(baseUrl: string | undefined, fetchImpl: FetchLike = fetch.bind(globalThis)): ResearchRuntimeService {

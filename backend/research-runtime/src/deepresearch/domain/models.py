@@ -55,6 +55,7 @@ class FinancialAnalysisResult(DomainModel):
     fcf_margin_pct: Decimal | None = None
     net_cash: Decimal | None = None
     unavailable_metrics: list[str] = Field(default_factory=list)
+    evidence_ids: dict[str, list[str]] = Field(default_factory=dict)
 
 
 class EvidenceRequirement(DomainModel):

@@ -11,7 +11,7 @@ from deepresearch.domain.models import FinancialAnalysisResult, FinancialSnapsho
 class FinancialAnalysisTool:
     """Compute transparent metrics without fetching or inventing financial data."""
 
-    def analyze(self, snapshot: FinancialSnapshot) -> FinancialAnalysisResult:
+    def analyze(self, snapshot: FinancialSnapshot, evidence_ids: dict[str, list[str]] | None = None) -> FinancialAnalysisResult:
         input_hash = sha256(snapshot.model_dump_json().encode()).hexdigest()
         unavailable: list[str] = []
 
@@ -53,6 +53,7 @@ class FinancialAnalysisTool:
             fcf_margin_pct=fcf_margin,
             net_cash=net_cash,
             unavailable_metrics=unavailable,
+            evidence_ids=evidence_ids or {},
         )
 
     @staticmethod

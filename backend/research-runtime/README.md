@@ -53,6 +53,12 @@ DAG 校验；调用失败不会静默回退为另一份 plan。
   只重置受影响 task 及其下游，并从新 checkpoint 恢复执行。重试不会用重复
   evidence 制造 coverage。
 - Deterministic provider 是本地演示数据，不是 live market data，也不是 FinEvidence。
+- The run-scoped financial analysis endpoint accepts only an explicit Decimal
+  snapshot and field-level evidence_ids. Every non-null financial field must
+  link to evidence already present in the same run with QUALIFIED status. The
+  runtime does not guess financial fields from table/query responses. The
+  legacy financial-analysis endpoint remains backward-compatible but is not
+  evidence-backed.
 - 已实现 FinEvidence v1 provider transport boundary：`FinEvidenceClient` 只
   通过 `/health`、`/api/v1/evidence/search`、`coverage`、`citation`、
   `/api/v1/table/query` 和 `/api/v1/evidence/verify` 消费外部 API，不实现
