@@ -32,7 +32,7 @@ DAG 校验；调用失败不会静默回退为另一份 plan。
   evidence qualification、evidence-grounded claims/thesis、human decision API、
   durable investment memo projection（含 evidence-linked structured sections）、Decimal financial analysis、
   target-level Investment Memory with observed ThesisDelta、run-scoped memory read、plan/trace/memo/memory/financial-analysis
-  API、durable cancellation、可执行 scorer。`python -m
+  API、case-scoped rerun、durable cancellation、可执行 scorer。`python -m
   deepresearch.evaluation` 会独立输出 planner quality 和 runtime execution
   两组结果。
 - Deterministic provider 是本地演示数据，不是 live market data，也不是 FinEvidence。

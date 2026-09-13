@@ -88,6 +88,20 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
             raise HTTPException(status_code=422, detail=str(error)) from error
         return {"case_id": case.id, "run_id": run.id}
 
+    @app.post("/api/v1/research-cases/{case_id}/runs", status_code=status.HTTP_201_CREATED)
+    def create_case_run(case_id: str) -> dict[str, str]:
+        try:
+            case = engine.get_case(case_id)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research case not found") from error
+        try:
+            run = engine.create_run(case)
+        except PlannerProviderError as error:
+            raise HTTPException(status_code=503, detail=str(error)) from error
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        return {"case_id": case.id, "run_id": run.id}
+
     @app.get("/api/v1/research-cases/{case_id}")
     def get_case(case_id: str) -> dict[str, Any]:
         try:

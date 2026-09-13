@@ -137,6 +137,24 @@ def test_api_reads_memory_from_run_without_client_target(tmp_path) -> None:
     assert client.get("/api/v1/research-runs/missing/memory").status_code == 404
 
 
+def test_api_reruns_existing_case_without_overwriting_original(tmp_path) -> None:
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+    created = client.post("/api/v1/research-cases", json={"question": "Assess ACME rerun", "target": "ACME"})
+    case_id = created.json()["case_id"]
+    original_id = created.json()["run_id"]
+    original = client.get(f"/api/v1/research-runs/{original_id}").json()
+
+    rerun = client.post(f"/api/v1/research-cases/{case_id}/runs")
+    original_after = client.get(f"/api/v1/research-runs/{original_id}")
+
+    assert rerun.status_code == 201
+    assert rerun.json()["case_id"] == case_id
+    assert rerun.json()["run_id"] != original_id
+    assert original_after.status_code == 200
+    assert original_after.json() == original
+    assert client.post("/api/v1/research-cases/missing/runs").status_code == 404
+
+
 def test_api_cancels_run_and_prevents_execution(tmp_path) -> None:
     client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
     created = client.post("/api/v1/research-cases", json={"question": "Assess ACME risk", "target": "ACME"})

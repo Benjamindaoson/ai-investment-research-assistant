@@ -109,7 +109,7 @@ cancellation, evidence qualification, evidence-grounded claim/thesis
 synthesis, durable uniquely identified research runs, investment memos with structured evidence-linked review
 sections, target-level Investment Memory with observed ThesisDelta and run-scoped
 memory reads, Decimal financial analysis, decision endpoints, typed
-Next.js runtime transport, live runtime workspace, and an honest evaluation
+Next.js runtime transport, live runtime workspace, case-scoped reruns, and an honest evaluation
 scorer.
 
 Incomplete by design: FinEvidence production deployment, live filing and market
