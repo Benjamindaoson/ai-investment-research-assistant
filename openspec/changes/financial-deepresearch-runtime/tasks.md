@@ -26,4 +26,4 @@
 - [x] 5.1 Retarget the kept frontend fixtures and product specification to financial research semantics.
 - [x] 5.2 Update root and backend documentation with run commands and mock/incomplete boundaries.
 - [x] 5.3 Delete `legacy_imports` and reject the main-only Iowa/Vite/Figma product from the canonical tree.
-- [ ] 5.4 Run lint, typecheck, tests, build, API smoke checks, architecture delivery, and final Git audit.
+- [x] 5.4 Run lint, typecheck, tests, build, API smoke checks, architecture delivery, and final Git audit.
