@@ -30,6 +30,13 @@ const runtimeTraceSchema = z.object({
 export type RuntimeTrace = z.infer<typeof runtimeTraceSchema>;
 export type FetchLike = typeof fetch;
 
+const runtimeRunControlSchema = z.object({
+  id: z.string(),
+  case_id: z.string(),
+  state: z.enum(["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED"]),
+});
+export type RuntimeRunControl = z.infer<typeof runtimeRunControlSchema>;
+
 const runtimeMemoSchema = z.object({
   id: z.string(),
   run_id: z.string(),
@@ -92,6 +99,7 @@ export type FinancialAnalysisResult = z.infer<typeof financialAnalysisResultSche
 
 export interface ResearchRuntimeService {
   getTrace(runId: string): Promise<RuntimeTrace>;
+  cancelRun(runId: string, reason: string): Promise<RuntimeRunControl>;
   getMemo(runId: string): Promise<RuntimeMemo>;
   getMemory(target: string): Promise<InvestmentMemory>;
   analyzeFinancials(snapshot: FinancialSnapshotInput): Promise<FinancialAnalysisResult>;
@@ -110,6 +118,15 @@ export class HttpResearchRuntimeService implements ResearchRuntimeService {
 
   async getTrace(runId: string): Promise<RuntimeTrace> {
     return runtimeTraceSchema.parse(await this.requestJson(`/api/v1/research-runs/${encodeURIComponent(runId)}/trace`, { headers: { accept: "application/json" } }));
+  }
+
+  async cancelRun(runId: string, reason: string): Promise<RuntimeRunControl> {
+    if (reason.trim().length < 3) throw new Error("Cancellation reason must be at least 3 characters.");
+    return runtimeRunControlSchema.parse(await this.requestJson(`/api/v1/research-runs/${encodeURIComponent(runId)}/cancel`, {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/json" },
+      body: JSON.stringify({ reason }),
+    }));
   }
 
   async getMemo(runId: string): Promise<RuntimeMemo> {
@@ -136,6 +153,7 @@ class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
   }
 
   async getTrace(): Promise<RuntimeTrace> { return this.unavailable(); }
+  async cancelRun(): Promise<RuntimeRunControl> { return this.unavailable(); }
   async getMemo(): Promise<RuntimeMemo> { return this.unavailable(); }
   async getMemory(): Promise<InvestmentMemory> { return this.unavailable(); }
   async analyzeFinancials(): Promise<FinancialAnalysisResult> { return this.unavailable(); }

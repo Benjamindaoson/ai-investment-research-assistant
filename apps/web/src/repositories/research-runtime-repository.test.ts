@@ -58,6 +58,30 @@ describe("ResearchRuntimeRepository", () => {
     expect(JSON.parse(requestBody)).toMatchObject({ period: "FY2025", revenue: "120.00", prior_revenue: "100.00" });
   });
 
+  it("posts a cancellation reason and validates the terminal run state", async () => {
+    let request: RequestInit | undefined;
+    const fetchImpl = (async (_input, init) => {
+      request = init;
+      return new Response(JSON.stringify({ id: "run-1", case_id: "case-1", state: "CANCELLED" }), { status: 200 });
+    }) as typeof fetch;
+    const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+
+    await expect(repository.cancelRun("run-1", "Analyst stopped the run")).resolves.toEqual({ id: "run-1", case_id: "case-1", state: "CANCELLED" });
+    expect(JSON.parse(String(request?.body))).toEqual({ reason: "Analyst stopped the run" });
+  });
+
+  it("rejects an invalid cancellation response", async () => {
+    const fetchImpl = (async () => new Response(JSON.stringify({ id: "run-1", state: "COMPLETE" }), { status: 200 })) as typeof fetch;
+    const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+    await expect(repository.cancelRun("run-1", "Stop now")).rejects.toThrow();
+  });
+
+  it("surfaces cancellation HTTP errors", async () => {
+    const fetchImpl = (async () => new Response("busy", { status: 409 })) as typeof fetch;
+    const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+    await expect(repository.cancelRun("run-1", "Stop now")).rejects.toThrow("HTTP 409");
+  });
+
   it("rejects an invalid memo response at the Zod boundary", async () => {
     const fetchImpl = (async () => new Response(JSON.stringify({ id: "memo-1" }), { status: 200 })) as typeof fetch;
     const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
