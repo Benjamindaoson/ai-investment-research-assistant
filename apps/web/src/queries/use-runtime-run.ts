@@ -2,10 +2,11 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { researchRuntimeRepository } from "@/repositories";
-import type { DecisionRecordInput, EvidenceLinkedFinancialAnalysisInput, RedTeamReviewInput, RuntimeCaseInput, RuntimeRun } from "@/services/research-runtime-service";
+import type { DecisionRecordInput, EvidenceLinkedFinancialAnalysisInput, RedTeamReviewInput, RuntimeCaseInput, RuntimeRun, RuntimeTrace } from "@/services/research-runtime-service";
 
 export const runtimeRunQueryKey = (runId: string) => ["runtime", "run", runId] as const;
 export const runtimeMemoryQueryKey = (runId: string) => ["runtime", "memory", runId] as const;
+export const runtimeTraceQueryKey = (runId: string) => ["runtime", "trace", runId] as const;
 
 export function useCreateRuntimeCaseMutation() {
   return useMutation({ mutationFn: (input: RuntimeCaseInput) => researchRuntimeRepository.createCase(input) });
@@ -17,6 +18,10 @@ export function useRuntimeRunQuery(runId: string) {
 
 export function useRuntimeMemoryQuery(runId: string, enabled: boolean) {
   return useQuery({ queryKey: runtimeMemoryQueryKey(runId), queryFn: () => researchRuntimeRepository.getMemoryForRun(runId), enabled });
+}
+
+export function useRuntimeTraceQuery(runId: string) {
+  return useQuery<RuntimeTrace>({ queryKey: runtimeTraceQueryKey(runId), queryFn: () => researchRuntimeRepository.getTrace(runId) });
 }
 
 export function useExecuteRuntimeRunMutation(runId: string) {

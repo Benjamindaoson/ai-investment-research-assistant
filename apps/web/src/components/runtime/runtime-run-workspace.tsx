@@ -8,11 +8,13 @@ import { RuntimeDecisionForm } from "@/components/runtime/runtime-decision-form"
 import { RuntimeEvidenceTrace } from "@/components/runtime/runtime-evidence-trace";
 import { RuntimeClaimTrace } from "@/components/runtime/runtime-claim-trace";
 import { RuntimePlanContext } from "@/components/runtime/runtime-plan-context";
-import { useCancelRuntimeRunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeMemoryQuery, useRuntimeRunQuery } from "@/queries/use-runtime-run";
+import { RuntimeTaskContract } from "@/components/runtime/runtime-task-contract";
+import { useCancelRuntimeRunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeMemoryQuery, useRuntimeRunQuery, useRuntimeTraceQuery } from "@/queries/use-runtime-run";
 
 export function RuntimeRunWorkspace({ runId }: { runId: string }) {
   const query = useRuntimeRunQuery(runId);
   const memoryQuery = useRuntimeMemoryQuery(runId, Boolean(query.data?.memo));
+  const traceQuery = useRuntimeTraceQuery(runId);
   const execute = useExecuteRuntimeRunMutation(runId);
   const replan = useReplanRuntimeRunMutation(runId);
   const cancel = useCancelRuntimeRunMutation(runId);
@@ -36,7 +38,7 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
         {(execute.isError || cancel.isError || replan.isError) && <p className="form-error" role="alert">{(execute.error ?? cancel.error ?? replan.error)?.message}</p>}
       </section>
       <RuntimePlanContext plan={run.plan} />
-      <section className="decision-panel"><header><div><small>TASK CONTRACT</small><h2>Research tasks</h2></div><span>{run.tasks.filter((task) => task.state === "COMPLETED").length} / {run.tasks.length} completed</span></header><div className="runtime-task-list">{run.tasks.map((task) => <article className="runtime-task" key={task.id}><b>{task.title}</b><span>{task.id}</span><em>{task.state}</em></article>)}</div></section>
+      <RuntimeTaskContract tasks={run.tasks} traceTasks={traceQuery.data?.tasks} />
       <RuntimeEvidenceTrace evidence={run.evidence} />
       <RuntimeClaimTrace claims={run.claims} evidence={run.evidence} />
       <section className="company-section-grid"><article className="company-section"><header><h3>Evidence coverage</h3><span>{run.evidence.length} observed</span></header><p>{qualified} qualified · {needsReview} needs review · {counter} counter/conflicting</p></article><article className="company-section"><header><h3>Memo projection</h3><span>{run.memo?.status ?? "not generated"}</span></header><p>{run.memo?.executive_summary ?? "Memo is generated after synthesis."}</p></article></section>

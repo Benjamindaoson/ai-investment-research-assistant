@@ -186,6 +186,25 @@ const runtimePlanSchema = z.object({
 });
 export type RuntimePlan = z.infer<typeof runtimePlanSchema>;
 
+const runtimeEvidenceRequirementSchema = z.object({
+  id: z.string(),
+  description: z.string(),
+  minimum_records: z.number().int().positive(),
+  required_stances: z.array(z.enum(["SUPPORTING", "COUNTER", "CONFLICTING"])),
+});
+export type RuntimeEvidenceRequirement = z.infer<typeof runtimeEvidenceRequirementSchema>;
+
+const runtimeTaskSchema = z.object({
+  id: z.string(),
+  title: z.string(),
+  state: z.enum(["PENDING", "RUNNING", "COMPLETED", "FAILED"]),
+  purpose: z.string().optional(),
+  depends_on: z.array(z.string()).optional(),
+  tool_name: z.string().optional(),
+  evidence_requirements: z.array(runtimeEvidenceRequirementSchema).optional(),
+});
+export type RuntimeTask = z.infer<typeof runtimeTaskSchema>;
+
 const runtimeClaimSchema = z.object({
   id: z.string(),
   task_id: z.string().optional(),
@@ -201,7 +220,7 @@ const runtimeRunSchema = z.object({
   case_id: z.string(),
   plan: runtimePlanSchema.optional(),
   state: z.enum(["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED"]),
-  tasks: z.array(z.object({ id: z.string(), title: z.string(), state: z.enum(["PENDING", "RUNNING", "COMPLETED", "FAILED"]) })),
+  tasks: z.array(runtimeTaskSchema),
   evidence: z.array(runtimeEvidenceSchema),
   claims: z.array(runtimeClaimSchema),
   thesis: z.object({ id: z.string(), statement: z.string(), bull: z.string(), base: z.string(), bear: z.string(), claim_ids: z.array(z.string()), review_status: z.enum(["PENDING_REVIEW", "APPROVED", "NEEDS_REVIEW"]) }).nullable(),

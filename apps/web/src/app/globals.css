@@ -166,6 +166,17 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .runtime-plan-grid span { display: grid; gap: 3px; min-width: 0; }
 .runtime-plan-grid span:nth-last-child(2), .runtime-plan-grid span:last-child { overflow-wrap: anywhere; }
 .runtime-plan-grid b { color: var(--color-muted); font-size: var(--font-size-2xs); text-transform: uppercase; letter-spacing: .05em; }
+.runtime-task-contract .runtime-task-list { display: grid; gap: var(--space-3); padding: var(--space-4); }
+.runtime-task-contract .runtime-task { display: grid; gap: var(--space-2); border: var(--border-width) solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-3); }
+.runtime-task-contract .runtime-task > header, .runtime-task-contract .runtime-task > footer { display: flex; align-items: flex-start; gap: var(--space-2); flex-wrap: wrap; }
+.runtime-task-contract .runtime-task > header { justify-content: space-between; }
+.runtime-task-contract .runtime-task header b, .runtime-task-contract .runtime-task header small { display: block; }
+.runtime-task-contract .runtime-task header small, .runtime-task-contract .runtime-task footer { color: var(--color-muted); font-size: var(--font-size-2xs); }
+.runtime-task-contract .runtime-task > p { margin: 0; color: var(--color-ink-soft); }
+.runtime-task-contract .runtime-task footer { overflow-wrap: anywhere; }
+.runtime-requirement-list { display: grid; gap: var(--space-2); border-top: var(--border-width) solid var(--border-color); padding-top: var(--space-2); }
+.runtime-requirement-list div { display: grid; gap: 2px; color: var(--color-muted); font-size: var(--font-size-2xs); }
+.runtime-requirement-list b { color: var(--color-ink-soft); }
 .red-team-grid label small { color: var(--color-muted); font-weight: var(--weight-regular); }
 .context-summary { display: grid; gap: var(--space-1); border-top: var(--border-width) solid var(--border-color); padding-top: var(--space-4); }
 .context-summary small { color: var(--color-muted-subtle); font-size: var(--font-size-2xs); letter-spacing: .08em; margin-top: var(--space-3); }
