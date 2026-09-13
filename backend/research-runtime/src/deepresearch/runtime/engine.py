@@ -122,11 +122,13 @@ class ResearchEngine:
             raise ValueError("partial run has no unresolved requirements")
         replan = getattr(self.planner, "replan", None)
         plan = replan(case, unresolved) if callable(replan) else self.planner.plan(case)
-        existing_task_ids = {task.id for task in run.tasks}
-        plan = plan.model_copy(update={"tasks": [task for task in plan.tasks if task.id in existing_task_ids]})
         if not plan.tasks:
-            raise ValueError("replanner did not retain any existing task")
-        self._validate_plan(plan, case)
+            raise ValueError("replanner returned no tasks")
+        existing_task_ids = {task.id for task in run.tasks}
+        if not getattr(self.planner, "supports_dynamic_tasks", False):
+            plan = plan.model_copy(update={"tasks": [task for task in plan.tasks if task.id in existing_task_ids]})
+            if not plan.tasks:
+                raise ValueError("replanner did not retain an existing task")
 
         reset_task_ids = {item.split(":", 1)[0] for item in unresolved}
         changed = True
@@ -142,8 +144,15 @@ class ResearchEngine:
             refreshed = planned.get(task.id, task)
             state = task.state if task.id not in reset_task_ids else "PENDING"
             merged_tasks.append(refreshed.model_copy(update={"state": state}))
+        merged_tasks.extend(
+            task.model_copy(update={"state": "PENDING"})
+            for task in plan.tasks
+            if task.id not in existing_task_ids
+        )
+        merged_plan = plan.model_copy(update={"tasks": merged_tasks})
+        self._validate_plan(merged_plan, case)
 
-        run.plan = plan
+        run.plan = merged_plan
         run.tasks = merged_tasks
         run.state = "CREATED"
         run.completed_at = None

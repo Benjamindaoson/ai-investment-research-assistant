@@ -21,6 +21,7 @@ def research_input_hash(case: ResearchCase) -> str:
 class ResearchPlanner(Protocol):
     name: str
     version: str
+    supports_dynamic_tasks: bool
 
     def plan(self, case: ResearchCase) -> ResearchPlan: ...
 
@@ -41,6 +42,7 @@ class LLMResearchPlanner:
     """OpenAI-compatible structured planner; model output remains untrusted."""
 
     version = "v1"
+    supports_dynamic_tasks = True
 
     def __init__(self, api_key: str, base_url: str, model: str, timeout_seconds: float = 30.0) -> None:
         if not api_key.strip():
@@ -170,6 +172,7 @@ class DeterministicResearchPlanner:
 
     name = "deterministic-financial-planner"
     version = "v1"
+    supports_dynamic_tasks = False
 
     def plan(self, case: ResearchCase) -> ResearchPlan:
         return self._plan(case, [])

@@ -2,11 +2,13 @@ from deepresearch.domain.models import (
     EvidenceRecord,
     EvidenceRequirement,
     ResearchCase,
+    ResearchPlan,
     ResearchTask,
 )
 from deepresearch.persistence.store import SQLiteStore
 from deepresearch.runtime.engine import ResearchEngine
 from deepresearch.runtime.evidence import DeterministicEvidenceProvider
+from deepresearch.runtime.planner import research_input_hash
 
 
 def make_task(task_id: str, depends_on: list[str] | None = None) -> ResearchTask:
@@ -213,6 +215,96 @@ def test_engine_replan_rejects_completed_run_without_mutation(tmp_path) -> None:
         raise AssertionError("completed run was replanned")
 
     assert engine.get_run(run.id) == completed
+    assert engine.store.events(run.id) == before
+
+
+def test_engine_replan_adds_new_task_and_preserves_completed_work(tmp_path) -> None:
+    class ExpandingPlanner:
+        name = "expanding-test-planner"
+        version = "v1"
+        supports_dynamic_tasks = True
+
+        def plan(self, case):
+            return ResearchPlan(
+                case_id=case.id,
+                question=case.question,
+                planner_name=self.name,
+                planner_version=self.version,
+                input_hash=research_input_hash(case),
+                tasks=[make_task("market"), make_task("risk", ["market"]), make_task("new")],
+            )
+
+        def replan(self, case, unresolved_requirement_ids):
+            return self.plan(case)
+
+    class PartialProvider(DeterministicEvidenceProvider):
+        def collect(self, task, case):
+            if task.id == "risk" and task.id not in self.calls:
+                self.calls.append(task.id)
+                return []
+            return super().collect(task, case)
+
+    provider = PartialProvider()
+    engine = ResearchEngine(SQLiteStore(tmp_path / "runtime.sqlite3"), provider, planner=ExpandingPlanner())
+    run = engine.create_run(
+        ResearchCase(id="case-dynamic", question="Assess ACME evidence", target="ACME"),
+        [make_task("market"), make_task("risk", ["market"])],
+    )
+
+    partial = engine.execute(run.id)
+    replanned = engine.replan(run.id)
+    completed = engine.execute(run.id)
+
+    assert partial.state == "PARTIAL"
+    assert replanned.id == run.id
+    assert [task.id for task in replanned.tasks] == ["market", "risk", "new"]
+    assert replanned.tasks[0].state == "COMPLETED"
+    assert len(replanned.evidence) == 2
+    assert completed.state == "COMPLETED"
+    assert completed.tasks[-1].state == "COMPLETED"
+    assert [event["event_type"] for event in engine.store.events(run.id)].count("RUN_REPLANNED") == 1
+
+
+def test_engine_replan_rejects_unknown_dependency_without_mutation(tmp_path) -> None:
+    class InvalidExpandingPlanner:
+        name = "invalid-expanding-test-planner"
+        version = "v1"
+        supports_dynamic_tasks = True
+
+        def plan(self, case):
+            return ResearchPlan(
+                case_id=case.id,
+                question=case.question,
+                planner_name=self.name,
+                planner_version=self.version,
+                input_hash=research_input_hash(case),
+                tasks=[make_task("market"), make_task("new", ["missing"])],
+            )
+
+        def replan(self, case, unresolved_requirement_ids):
+            return self.plan(case)
+
+    class EmptyProvider(DeterministicEvidenceProvider):
+        def collect(self, task, case):
+            self.calls.append(task.id)
+            return []
+
+    engine = ResearchEngine(SQLiteStore(tmp_path / "runtime.sqlite3"), EmptyProvider(), planner=InvalidExpandingPlanner())
+    run = engine.create_run(
+        ResearchCase(id="case-invalid-dynamic", question="Assess ACME evidence", target="ACME"),
+        [make_task("market")],
+    )
+    partial = engine.execute(run.id)
+    before = engine.store.events(run.id)
+
+    try:
+        engine.replan(run.id)
+    except ValueError as error:
+        assert "unknown tasks" in str(error)
+    else:
+        raise AssertionError("invalid dynamic plan was accepted")
+
+    assert engine.get_run(run.id) == partial
     assert engine.store.events(run.id) == before
 
 
