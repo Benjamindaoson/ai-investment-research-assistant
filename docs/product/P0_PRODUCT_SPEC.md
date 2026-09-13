@@ -1,5 +1,32 @@
 # Financial DeepResearch Agent — P0 Product Specification
 
+## Strategic positioning
+
+The north-star product is an **AI Investment Analyst OS** for PE, VC, hedge
+fund, and corporate-strategy teams. It automates the repetitive research work
+around an investment question while keeping evidence, assumptions, uncertainty,
+and human decision authority inspectable.
+
+The first commercial workflow is not a general financial chatbot. It is:
+
+```text
+Investment Question
+→ Research Plan
+→ Autonomous Investigation
+→ Evidence Map
+→ Financial Analysis
+→ Bull / Bear Debate
+→ Investment Memo
+→ Continuous Monitoring
+```
+
+Investment Memory is the long-term moat: previous theses, financial history,
+risks, catalysts, open questions, and decision history should be available to a
+later run. The repository owns the research/runtime and thesis/decision layer;
+FinEvidence remains the independent evidence infrastructure. A future IC
+workflow can add structured Bull, Bear, Financial, Industry, and Partner
+reviews, but must remain evidence-linked and human-review-gated.
+
 ## Product boundary
 
 Financial DeepResearch Agent is an evidence-first research operating system
@@ -20,10 +47,12 @@ firm's compliance controls. Its differentiator is the auditable chain from
 research question to evidence-backed claim, counter-evidence, scenario thesis,
 checkpoint, and human decision.
 
-For an individual investor, the product is a focused research memo system. It
-must reduce research time while making source quality, uncertainty,
-disconfirming evidence, and assumptions inspectable. A generic conversational
-stock assistant is not a sufficient product wedge.
+The first go-to-market user is an institutional investment or strategy team. An
+individual investor can use the same evidence-first memo workflow later, but is
+not the initial product wedge. In both cases, the product must reduce research
+time while making source quality, uncertainty, disconfirming evidence, and
+assumptions inspectable. A generic conversational stock assistant is not a
+sufficient product wedge.
 
 The first commercial proof point is an evidence-backed investment memo that a
 user can reproduce and review later. Autonomous trade execution and broad

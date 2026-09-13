@@ -1,6 +1,7 @@
 """Framework-independent contracts persisted and replayed by the runtime."""
 
 from datetime import UTC, datetime
+from decimal import Decimal
 from typing import Any, Literal
 from uuid import uuid4
 
@@ -30,6 +31,30 @@ class ResearchCase(DomainModel):
     question: str = Field(min_length=3, max_length=5000)
     target: str = Field(min_length=1, max_length=300)
     created_at: datetime = Field(default_factory=utc_now)
+
+
+class FinancialSnapshot(DomainModel):
+    period: str = Field(min_length=1, max_length=100)
+    revenue: Decimal = Field(ge=0)
+    prior_revenue: Decimal | None = Field(default=None, ge=0)
+    gross_profit: Decimal | None = Field(default=None)
+    operating_income: Decimal | None = Field(default=None)
+    operating_cash_flow: Decimal | None = Field(default=None)
+    capex: Decimal | None = Field(default=None, ge=0)
+    cash: Decimal | None = Field(default=None, ge=0)
+    debt: Decimal | None = Field(default=None, ge=0)
+
+
+class FinancialAnalysisResult(DomainModel):
+    period: str
+    input_hash: str = Field(min_length=64, max_length=64)
+    revenue_growth_pct: Decimal | None = None
+    gross_margin_pct: Decimal | None = None
+    operating_margin_pct: Decimal | None = None
+    free_cash_flow: Decimal | None = None
+    fcf_margin_pct: Decimal | None = None
+    net_cash: Decimal | None = None
+    unavailable_metrics: list[str] = Field(default_factory=list)
 
 
 class EvidenceRequirement(DomainModel):

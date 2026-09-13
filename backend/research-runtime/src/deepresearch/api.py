@@ -8,7 +8,7 @@ from uuid import uuid4
 from fastapi import FastAPI, HTTPException, status
 from pydantic import BaseModel, Field
 
-from deepresearch.domain.models import DecisionRecord, ResearchCase
+from deepresearch.domain.models import DecisionRecord, FinancialSnapshot, ResearchCase
 from deepresearch.persistence.store import SQLiteStore
 from deepresearch.runtime.engine import ResearchEngine
 from deepresearch.runtime.evidence import (
@@ -16,6 +16,7 @@ from deepresearch.runtime.evidence import (
     EvidenceProvider,
     HttpEvidenceProvider,
 )
+from deepresearch.runtime.financial import FinancialAnalysisTool
 from deepresearch.runtime.planner import ResearchPlanner, create_configured_research_planner
 
 
@@ -42,11 +43,16 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
         base_url = os.environ.get("FINEVIDENCE_BASE_URL")
         configured_provider = HttpEvidenceProvider(base_url) if base_url else DeterministicEvidenceProvider()
     engine = ResearchEngine(runtime_store, configured_provider, planner=planner or create_configured_research_planner())
+    financial_analysis = FinancialAnalysisTool()
     app = FastAPI(title="Financial DeepResearch Runtime", version="0.1.0")
 
     @app.get("/api/v1/health")
     def health() -> dict[str, str]:
         return {"status": "ok", "service": "financial-deepresearch-runtime"}
+
+    @app.post("/api/v1/financial-analysis")
+    def analyze_financials(snapshot: FinancialSnapshot) -> dict[str, Any]:
+        return financial_analysis.analyze(snapshot).model_dump(mode="json")
 
     @app.post("/api/v1/research-cases", status_code=status.HTTP_201_CREATED)
     def create_case(request: CreateCaseRequest) -> dict[str, str]:

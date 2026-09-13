@@ -52,3 +52,27 @@ def test_api_creates_and_executes_case(tmp_path) -> None:
     assert all(not claim["unresolved_evidence_ids"] for claim in trace.json()["claims"])
     assert client.get("/api/v1/research-runs/missing/trace").status_code == 404
     assert client.get("/api/v1/research-runs/missing/memo").status_code == 404
+
+
+def test_api_calculates_financial_snapshot(tmp_path) -> None:
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+
+    response = client.post(
+        "/api/v1/financial-analysis",
+        json={
+            "period": "FY2025",
+            "revenue": "120",
+            "prior_revenue": "100",
+            "gross_profit": "60",
+            "operating_income": "30",
+            "operating_cash_flow": "35",
+            "capex": "10",
+            "cash": "50",
+            "debt": "20",
+        },
+    )
+
+    assert response.status_code == 200
+    assert response.json()["gross_margin_pct"] == "50.0"
+    assert response.json()["free_cash_flow"] == "25"
+    assert response.json()["unavailable_metrics"] == []
