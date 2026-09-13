@@ -104,6 +104,27 @@ const evidenceLinkedFinancialAnalysisInputSchema = z.object({
 });
 export type EvidenceLinkedFinancialAnalysisInput = z.infer<typeof evidenceLinkedFinancialAnalysisInputSchema>;
 
+const redTeamReviewSchema = z.object({
+  id: z.string(),
+  run_id: z.string(),
+  thesis_id: z.string(),
+  reviewer: z.string(),
+  challenge: z.string(),
+  evidence_ids: z.array(z.string()),
+  outcome: z.enum(["OPEN", "SUPPORTED", "REJECTED", "REQUIRES_RESEARCH"]),
+  rationale: z.string(),
+  created_at: z.string().datetime(),
+});
+const redTeamReviewInputSchema = z.object({
+  reviewer: z.string().trim().min(1).max(200),
+  challenge: z.string().trim().min(1),
+  evidence_ids: z.array(z.string().min(1)).min(1),
+  outcome: z.enum(["OPEN", "SUPPORTED", "REJECTED", "REQUIRES_RESEARCH"]),
+  rationale: z.string().trim().min(1),
+});
+export type RedTeamReview = z.infer<typeof redTeamReviewSchema>;
+export type RedTeamReviewInput = z.infer<typeof redTeamReviewInputSchema>;
+
 const runtimeRunSchema = z.object({
   id: z.string(),
   case_id: z.string(),
@@ -114,17 +135,7 @@ const runtimeRunSchema = z.object({
   thesis: z.object({ id: z.string(), statement: z.string(), bull: z.string(), base: z.string(), bear: z.string(), claim_ids: z.array(z.string()), review_status: z.enum(["PENDING_REVIEW", "APPROVED", "NEEDS_REVIEW"]) }).nullable(),
   memo: runtimeMemoSchema.nullable(),
   financial_analysis: financialAnalysisResultSchema.nullable().default(null),
-  red_team_reviews: z.array(z.object({
-    id: z.string(),
-    run_id: z.string(),
-    thesis_id: z.string(),
-    reviewer: z.string(),
-    challenge: z.string(),
-    evidence_ids: z.array(z.string()),
-    outcome: z.enum(["OPEN", "SUPPORTED", "REJECTED", "REQUIRES_RESEARCH"]),
-    rationale: z.string(),
-    created_at: z.string().datetime(),
-  })).default([]),
+  red_team_reviews: z.array(redTeamReviewSchema).default([]),
 }).passthrough();
 export type RuntimeRun = z.infer<typeof runtimeRunSchema>;
 
@@ -166,6 +177,8 @@ export interface ResearchRuntimeService {
   analyzeFinancials(snapshot: FinancialSnapshotInput): Promise<FinancialAnalysisResult>;
   analyzeFinancialsForRun(runId: string, input: EvidenceLinkedFinancialAnalysisInput): Promise<FinancialAnalysisResult>;
   getFinancialAnalysisForRun(runId: string): Promise<FinancialAnalysisResult>;
+  createRedTeamReview(runId: string, input: RedTeamReviewInput): Promise<RuntimeRun>;
+  getRedTeamReviews(runId: string): Promise<RedTeamReview[]>;
 }
 
 export class HttpResearchRuntimeService implements ResearchRuntimeService {
@@ -256,6 +269,19 @@ export class HttpResearchRuntimeService implements ResearchRuntimeService {
       headers: { accept: "application/json" },
     }));
   }
+
+  async createRedTeamReview(runId: string, input: RedTeamReviewInput): Promise<RuntimeRun> {
+    const body = redTeamReviewInputSchema.parse(input);
+    return runtimeRunSchema.parse(await this.requestJson("/api/v1/research-runs/" + encodeURIComponent(runId) + "/red-team-reviews", {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }));
+  }
+
+  async getRedTeamReviews(runId: string): Promise<RedTeamReview[]> {
+    return z.array(redTeamReviewSchema).parse(await this.requestJson("/api/v1/research-runs/" + encodeURIComponent(runId) + "/red-team-reviews", { headers: { accept: "application/json" } }));
+  }
 }
 
 class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
@@ -275,6 +301,8 @@ class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
   async analyzeFinancials(): Promise<FinancialAnalysisResult> { return this.unavailable(); }
   async analyzeFinancialsForRun(): Promise<FinancialAnalysisResult> { return this.unavailable(); }
   async getFinancialAnalysisForRun(): Promise<FinancialAnalysisResult> { return this.unavailable(); }
+  async createRedTeamReview(): Promise<RuntimeRun> { return this.unavailable(); }
+  async getRedTeamReviews(): Promise<RedTeamReview[]> { return this.unavailable(); }
 }
 
 export function createResearchRuntimeService(baseUrl: string | undefined, fetchImpl: FetchLike = fetch.bind(globalThis)): ResearchRuntimeService {

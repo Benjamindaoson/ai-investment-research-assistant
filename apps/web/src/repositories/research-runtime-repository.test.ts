@@ -147,6 +147,32 @@ describe("ResearchRuntimeRepository", () => {
     expect(requestUrl).toBe("http://runtime.test/api/v1/research-runs/run-1/financial-analysis");
   });
 
+  it("creates and lists red-team reviews through the typed service boundary", async () => {
+    const review = {
+      id: "review-1", run_id: "run-1", thesis_id: "thesis-1", reviewer: "Analyst",
+      challenge: "Demand may soften.", evidence_ids: ["evidence-2"], outcome: "REQUIRES_RESEARCH",
+      rationale: "Counter evidence is material.", created_at: "2026-09-14T00:00:00.000Z",
+    };
+    let postBody = "";
+    const fetchImpl = (async (input, init) => {
+      const url = String(input);
+      if (init?.method === "POST") postBody = String(init.body ?? "");
+      if (url.endsWith("/red-team-reviews") && init?.method !== "POST") return new Response(JSON.stringify([review]), { status: 200 });
+      return new Response(JSON.stringify({ ...run, red_team_reviews: [review] }), { status: 200 });
+    }) as typeof fetch;
+    const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+
+    await expect(repository.createRedTeamReview("run-1", {
+      reviewer: "Analyst", challenge: "Demand may soften.", evidence_ids: ["evidence-2"],
+      outcome: "REQUIRES_RESEARCH", rationale: "Counter evidence is material.",
+    })).resolves.toMatchObject({ red_team_reviews: [{ id: "review-1" }] });
+    await expect(repository.getRedTeamReviews("run-1")).resolves.toEqual([review]);
+    expect(JSON.parse(postBody)).toEqual({
+      reviewer: "Analyst", challenge: "Demand may soften.", evidence_ids: ["evidence-2"],
+      outcome: "REQUIRES_RESEARCH", rationale: "Counter evidence is material.",
+    });
+  });
+
   it("posts a cancellation reason and validates the terminal run state", async () => {
     let request: RequestInit | undefined;
     const fetchImpl = (async (_input, init) => {
