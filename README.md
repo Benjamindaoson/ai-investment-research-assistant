@@ -120,9 +120,9 @@ cancellation, evidence qualification, evidence-grounded claim/thesis
 synthesis, durable uniquely identified research runs with case-scoped history,
 investment memos with structured evidence-linked review
 sections, target-level Investment Memory with observed ThesisDelta and run-scoped
-memory reads, Decimal financial analysis, run-scoped financial analysis that
-requires field-level links to qualified evidence already present in the same
-run, decision endpoints, typed
+memory reads, Decimal financial analysis, durable run-scoped financial analysis
+artifacts that require field-level links to qualified evidence already present
+in the same run, decision endpoints, typed
 Next.js runtime transport, live runtime workspace, case-scoped reruns, durable
 requirement-driven replanning, and an honest evaluation scorer.
 

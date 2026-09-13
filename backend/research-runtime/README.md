@@ -58,7 +58,9 @@ DAG 校验；调用失败不会静默回退为另一份 plan。
   link to evidence already present in the same run with QUALIFIED status. The
   runtime does not guess financial fields from table/query responses. The
   legacy financial-analysis endpoint remains backward-compatible but is not
-  evidence-backed.
+  evidence-backed. A successful run-scoped calculation is persisted on the
+  ResearchRun, emits FINANCIAL_ANALYSIS_RECORDED, and can be read back from
+  GET /api/v1/research-runs/{run_id}/financial-analysis.
 - 已实现 FinEvidence v1 provider transport boundary：`FinEvidenceClient` 只
   通过 `/health`、`/api/v1/evidence/search`、`coverage`、`citation`、
   `/api/v1/table/query` 和 `/api/v1/evidence/verify` 消费外部 API，不实现

@@ -106,20 +106,20 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
     @app.post("/api/v1/research-runs/{run_id}/financial-analysis")
     def analyze_run_financials(run_id: str, request: EvidenceLinkedFinancialAnalysisRequest) -> dict[str, Any]:
         try:
-            run = engine.get_run(run_id)
+            analysis = financial_analysis.analyze(request.snapshot, request.evidence_ids)
+            engine.record_financial_analysis(run_id, analysis)
         except KeyError as error:
             raise HTTPException(status_code=404, detail="research run not found") from error
-        records = {record.id: record for record in run.evidence}
-        requested_ids = {evidence_id for ids in request.evidence_ids.values() for evidence_id in ids}
-        missing = sorted(requested_ids - records.keys())
-        if missing:
-            raise HTTPException(status_code=422, detail=f"financial evidence not found in run: {missing}")
-        unqualified = sorted(
-            evidence_id for evidence_id in requested_ids if records[evidence_id].qualification != "QUALIFIED"
-        )
-        if unqualified:
-            raise HTTPException(status_code=422, detail=f"financial evidence is not qualified: {unqualified}")
-        return financial_analysis.analyze(request.snapshot, request.evidence_ids).model_dump(mode="json")
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        return analysis.model_dump(mode="json")
+
+    @app.get("/api/v1/research-runs/{run_id}/financial-analysis")
+    def get_run_financials(run_id: str) -> dict[str, Any]:
+        try:
+            return engine.get_financial_analysis(run_id).model_dump(mode="json")
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research financial analysis not found") from error
 
     @app.post("/api/v1/research-cases", status_code=status.HTTP_201_CREATED)
     def create_case(request: CreateCaseRequest) -> dict[str, str]:

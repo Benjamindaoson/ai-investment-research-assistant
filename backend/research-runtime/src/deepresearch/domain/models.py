@@ -220,6 +220,7 @@ class ResearchRun(DomainModel):
     claims: list[Claim] = Field(default_factory=list)
     thesis: Thesis | None = None
     memo: InvestmentMemo | None = None
+    financial_analysis: FinancialAnalysisResult | None = None
     decisions: list[DecisionRecord] = Field(default_factory=list)
     checkpoint: Checkpoint | None = None
     state_version: int = Field(default=1, ge=1)

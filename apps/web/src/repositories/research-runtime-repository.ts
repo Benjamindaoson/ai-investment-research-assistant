@@ -19,4 +19,5 @@ export class ResearchRuntimeRepository {
   analyzeFinancialsForRun(runId: string, input: EvidenceLinkedFinancialAnalysisInput): Promise<FinancialAnalysisResult> {
     return this.service.analyzeFinancialsForRun(runId, input);
   }
+  getFinancialAnalysisForRun(runId: string): Promise<FinancialAnalysisResult> { return this.service.getFinancialAnalysisForRun(runId); }
 }

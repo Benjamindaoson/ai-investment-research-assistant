@@ -33,7 +33,7 @@ const memory: InvestmentMemory = {
 
 const run: RuntimeRun = {
   id: "run-1", case_id: "case-1", state: "CREATED", tasks: [{ id: "market", title: "Market", state: "PENDING" }],
-  evidence: [], claims: [], thesis: null, memo: null,
+  evidence: [], claims: [], thesis: null, memo: null, financial_analysis: null,
 };
 
 describe("ResearchRuntimeRepository", () => {
@@ -124,6 +124,24 @@ describe("ResearchRuntimeRepository", () => {
       snapshot: { period: "FY2025", revenue: "120.00", prior_revenue: "100.00" },
       evidence_ids: { revenue: ["evidence-1"], prior_revenue: ["evidence-1"] },
     });
+  });
+
+  it("reads a persisted run-scoped financial analysis artifact", async () => {
+    const artifact = {
+      period: "FY2025", input_hash: "a".repeat(64), revenue_growth_pct: "20.0",
+      gross_margin_pct: null, operating_margin_pct: null, free_cash_flow: null,
+      fcf_margin_pct: null, net_cash: null, unavailable_metrics: ["gross_margin_pct"],
+      evidence_ids: { revenue: ["evidence-1"], prior_revenue: ["evidence-1"] },
+    };
+    let requestUrl = "";
+    const fetchImpl = (async (input) => {
+      requestUrl = String(input);
+      return new Response(JSON.stringify(artifact), { status: 200 });
+    }) as typeof fetch;
+    const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+
+    await expect(repository.getFinancialAnalysisForRun("run-1")).resolves.toEqual(artifact);
+    expect(requestUrl).toBe("http://runtime.test/api/v1/research-runs/run-1/financial-analysis");
   });
 
   it("posts a cancellation reason and validates the terminal run state", async () => {

@@ -12,6 +12,7 @@ from deepresearch.domain.models import (
     Claim,
     DecisionRecord,
     EvidenceRecord,
+    FinancialAnalysisResult,
     InvestmentMemo,
     InvestmentMemory,
     MemoSection,
@@ -329,6 +330,36 @@ class ResearchEngine:
         if run.memo is None:
             raise KeyError(f"memo missing for {run_id}")
         return run.memo
+
+    def get_financial_analysis(self, run_id: str) -> FinancialAnalysisResult:
+        run = self.get_run(run_id)
+        if run.financial_analysis is None:
+            raise KeyError(f"financial analysis missing for {run_id}")
+        return run.financial_analysis
+
+    def record_financial_analysis(self, run_id: str, analysis: FinancialAnalysisResult) -> ResearchRun:
+        run = self.get_run(run_id)
+        records = {record.id: record for record in run.evidence}
+        requested_ids = {evidence_id for ids in analysis.evidence_ids.values() for evidence_id in ids}
+        missing = sorted(requested_ids - records.keys())
+        if missing:
+            raise ValueError(f"financial evidence not found in run: {missing}")
+        unqualified = sorted(
+            evidence_id for evidence_id in requested_ids if records[evidence_id].qualification != "QUALIFIED"
+        )
+        if unqualified:
+            raise ValueError(f"financial evidence is not qualified: {unqualified}")
+        run.financial_analysis = analysis
+        self._persist(
+            run,
+            "FINANCIAL_ANALYSIS_RECORDED",
+            {
+                "period": analysis.period,
+                "input_hash": analysis.input_hash,
+                "evidence_ids": analysis.evidence_ids,
+            },
+        )
+        return run
 
     def get_memory(self, target: str) -> InvestmentMemory:
         payload = self.store.get_memory(target)

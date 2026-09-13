@@ -126,6 +126,12 @@ def test_api_calculates_only_with_qualified_run_evidence(tmp_path) -> None:
     assert response.status_code == 200
     assert response.json()["revenue_growth_pct"] == "20.0"
     assert response.json()["evidence_ids"] == {"revenue": [evidence_id], "prior_revenue": [evidence_id]}
+    persisted = client.get(f"/api/v1/research-runs/{run_id}/financial-analysis")
+    assert persisted.status_code == 200
+    assert persisted.json() == response.json()
+    events = client.get(f"/api/v1/research-runs/{run_id}/events").json()
+    analysis_event = next(item for item in events if item["event_type"] == "FINANCIAL_ANALYSIS_RECORDED")
+    assert analysis_event["payload"]["evidence_ids"] == {"revenue": [evidence_id], "prior_revenue": [evidence_id]}
 
 
 def test_api_rejects_financial_evidence_not_in_run(tmp_path) -> None:
@@ -143,6 +149,29 @@ def test_api_rejects_financial_evidence_not_in_run(tmp_path) -> None:
 
     assert response.status_code == 422
     assert "not found in run" in response.json()["detail"]
+    assert client.get(f"/api/v1/research-runs/{run_id}/financial-analysis").status_code == 404
+
+
+def test_financial_analysis_survives_runtime_reconstruction(tmp_path) -> None:
+    store_path = tmp_path / "runtime.sqlite3"
+    first_client = TestClient(create_app(SQLiteStore(store_path)))
+    created = first_client.post("/api/v1/research-cases", json={"question": "Assess ACME revenue", "target": "ACME"})
+    run_id = created.json()["run_id"]
+    evidence_id = first_client.post(f"/api/v1/research-runs/{run_id}/execute").json()["evidence"][0]["id"]
+    posted = first_client.post(
+        f"/api/v1/research-runs/{run_id}/financial-analysis",
+        json={
+            "snapshot": {"period": "FY2025", "revenue": "120"},
+            "evidence_ids": {"revenue": [evidence_id]},
+        },
+    )
+
+    second_client = TestClient(create_app(SQLiteStore(store_path)))
+    restored = second_client.get(f"/api/v1/research-runs/{run_id}/financial-analysis")
+
+    assert posted.status_code == 200
+    assert restored.status_code == 200
+    assert restored.json() == posted.json()
 
 
 def test_api_rejects_financial_evidence_that_needs_review(tmp_path) -> None:

@@ -70,43 +70,6 @@ const runtimeMemoSchema = z.object({
 });
 export type RuntimeMemo = z.infer<typeof runtimeMemoSchema>;
 
-const runtimeRunSchema = z.object({
-  id: z.string(),
-  case_id: z.string(),
-  state: z.enum(["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED"]),
-  tasks: z.array(z.object({ id: z.string(), title: z.string(), state: z.enum(["PENDING", "RUNNING", "COMPLETED", "FAILED"]) })),
-  evidence: z.array(z.object({ id: z.string(), stance: z.enum(["SUPPORTING", "COUNTER", "CONFLICTING"]), qualification: z.enum(["QUALIFIED", "NEEDS_REVIEW", "UNQUALIFIED"]) })),
-  claims: z.array(z.object({ id: z.string(), status: z.enum(["DRAFT", "QUALIFIED", "NEEDS_REVIEW", "REJECTED"]), evidence_ids: z.array(z.string()) })),
-  thesis: z.object({ id: z.string(), statement: z.string(), bull: z.string(), base: z.string(), bear: z.string(), claim_ids: z.array(z.string()), review_status: z.enum(["PENDING_REVIEW", "APPROVED", "NEEDS_REVIEW"]) }).nullable(),
-  memo: runtimeMemoSchema.nullable(),
-}).passthrough();
-export type RuntimeRun = z.infer<typeof runtimeRunSchema>;
-
-const investmentMemorySchema = z.object({
-  id: z.string(),
-  target: z.string(),
-  case_ids: z.array(z.string()),
-  run_ids: z.array(z.string()),
-  memo_ids: z.array(z.string()),
-  thesis_ids: z.array(z.string()),
-  latest_run_id: z.string(),
-  latest_thesis_id: z.string(),
-  previous_thesis_id: z.string().nullable(),
-  latest_thesis_delta: z.object({
-    previous_thesis_id: z.string(),
-    current_thesis_id: z.string(),
-    qualified_evidence_delta: z.number().int(),
-    counter_conflicting_evidence_delta: z.number().int(),
-    unresolved_requirement_delta: z.number().int(),
-    summary: z.string(),
-    observed_at: z.string().datetime(),
-  }).nullable().default(null),
-  unresolved_requirement_ids: z.array(z.string()),
-  decision_ids: z.array(z.string()),
-  updated_at: z.string().datetime(),
-});
-export type InvestmentMemory = z.infer<typeof investmentMemorySchema>;
-
 const decimalStringSchema = z.string().regex(/^-?\d+(\.\d+)?$/, "Expected a decimal string.");
 const financialSnapshotSchema = z.object({
   period: z.string().min(1),
@@ -140,6 +103,44 @@ const evidenceLinkedFinancialAnalysisInputSchema = z.object({
 });
 export type EvidenceLinkedFinancialAnalysisInput = z.infer<typeof evidenceLinkedFinancialAnalysisInputSchema>;
 
+const runtimeRunSchema = z.object({
+  id: z.string(),
+  case_id: z.string(),
+  state: z.enum(["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED"]),
+  tasks: z.array(z.object({ id: z.string(), title: z.string(), state: z.enum(["PENDING", "RUNNING", "COMPLETED", "FAILED"]) })),
+  evidence: z.array(z.object({ id: z.string(), stance: z.enum(["SUPPORTING", "COUNTER", "CONFLICTING"]), qualification: z.enum(["QUALIFIED", "NEEDS_REVIEW", "UNQUALIFIED"]) })),
+  claims: z.array(z.object({ id: z.string(), status: z.enum(["DRAFT", "QUALIFIED", "NEEDS_REVIEW", "REJECTED"]), evidence_ids: z.array(z.string()) })),
+  thesis: z.object({ id: z.string(), statement: z.string(), bull: z.string(), base: z.string(), bear: z.string(), claim_ids: z.array(z.string()), review_status: z.enum(["PENDING_REVIEW", "APPROVED", "NEEDS_REVIEW"]) }).nullable(),
+  memo: runtimeMemoSchema.nullable(),
+  financial_analysis: financialAnalysisResultSchema.nullable().default(null),
+}).passthrough();
+export type RuntimeRun = z.infer<typeof runtimeRunSchema>;
+
+const investmentMemorySchema = z.object({
+  id: z.string(),
+  target: z.string(),
+  case_ids: z.array(z.string()),
+  run_ids: z.array(z.string()),
+  memo_ids: z.array(z.string()),
+  thesis_ids: z.array(z.string()),
+  latest_run_id: z.string(),
+  latest_thesis_id: z.string(),
+  previous_thesis_id: z.string().nullable(),
+  latest_thesis_delta: z.object({
+    previous_thesis_id: z.string(),
+    current_thesis_id: z.string(),
+    qualified_evidence_delta: z.number().int(),
+    counter_conflicting_evidence_delta: z.number().int(),
+    unresolved_requirement_delta: z.number().int(),
+    summary: z.string(),
+    observed_at: z.string().datetime(),
+  }).nullable().default(null),
+  unresolved_requirement_ids: z.array(z.string()),
+  decision_ids: z.array(z.string()),
+  updated_at: z.string().datetime(),
+});
+export type InvestmentMemory = z.infer<typeof investmentMemorySchema>;
+
 export interface ResearchRuntimeService {
   createCase(input: RuntimeCaseInput): Promise<RuntimeCaseResult>;
   getRun(runId: string): Promise<RuntimeRun>;
@@ -152,6 +153,7 @@ export interface ResearchRuntimeService {
   getMemoryForRun(runId: string): Promise<InvestmentMemory>;
   analyzeFinancials(snapshot: FinancialSnapshotInput): Promise<FinancialAnalysisResult>;
   analyzeFinancialsForRun(runId: string, input: EvidenceLinkedFinancialAnalysisInput): Promise<FinancialAnalysisResult>;
+  getFinancialAnalysisForRun(runId: string): Promise<FinancialAnalysisResult>;
 }
 
 export class HttpResearchRuntimeService implements ResearchRuntimeService {
@@ -236,6 +238,12 @@ export class HttpResearchRuntimeService implements ResearchRuntimeService {
       body: JSON.stringify(body),
     }));
   }
+
+  async getFinancialAnalysisForRun(runId: string): Promise<FinancialAnalysisResult> {
+    return financialAnalysisResultSchema.parse(await this.requestJson("/api/v1/research-runs/" + encodeURIComponent(runId) + "/financial-analysis", {
+      headers: { accept: "application/json" },
+    }));
+  }
 }
 
 class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
@@ -254,6 +262,7 @@ class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
   async getMemoryForRun(): Promise<InvestmentMemory> { return this.unavailable(); }
   async analyzeFinancials(): Promise<FinancialAnalysisResult> { return this.unavailable(); }
   async analyzeFinancialsForRun(): Promise<FinancialAnalysisResult> { return this.unavailable(); }
+  async getFinancialAnalysisForRun(): Promise<FinancialAnalysisResult> { return this.unavailable(); }
 }
 
 export function createResearchRuntimeService(baseUrl: string | undefined, fetchImpl: FetchLike = fetch.bind(globalThis)): ResearchRuntimeService {
