@@ -3,8 +3,8 @@
 ### Requirement: Financial analysis is durable within a research run
 
 The runtime MUST persist the latest evidence-linked financial analysis on the
-ResearchRun after a successful calculation, including its exact field-level
-evidence mapping.
+ResearchRun after a successful calculation, including the explicit input
+snapshot and exact field-level evidence mapping.
 
 #### Scenario: Analysis survives a run read
 

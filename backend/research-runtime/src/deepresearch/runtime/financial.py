@@ -45,6 +45,7 @@ class FinancialAnalysisTool:
 
         return FinancialAnalysisResult(
             period=snapshot.period,
+            snapshot=snapshot,
             input_hash=input_hash,
             revenue_growth_pct=revenue_growth,
             gross_margin_pct=gross_margin,

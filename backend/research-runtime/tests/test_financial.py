@@ -35,6 +35,7 @@ def test_financial_analysis_preserves_field_level_evidence_links() -> None:
     result = FinancialAnalysisTool().analyze(snapshot, {"revenue": ["evidence-1"]})
 
     assert result.evidence_ids == {"revenue": ["evidence-1"]}
+    assert result.snapshot == snapshot
 
 
 def test_financial_analysis_preserves_negative_free_cash_flow() -> None:

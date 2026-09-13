@@ -86,7 +86,8 @@ describe("ResearchRuntimeRepository", () => {
       if (url.endsWith("/research-runs/run-1/memory")) return new Response(JSON.stringify(memory), { status: 200 });
       requestBody = String(init?.body);
       return new Response(JSON.stringify({
-        period: "FY2025", input_hash: "a".repeat(64), revenue_growth_pct: "20.0", gross_margin_pct: "50.0",
+        period: "FY2025", snapshot: { period: "FY2025", revenue: "120.00", prior_revenue: "100.00" },
+        input_hash: "a".repeat(64), revenue_growth_pct: "20.0", gross_margin_pct: "50.0",
         operating_margin_pct: "25.0", free_cash_flow: "25", fcf_margin_pct: "20.8333", net_cash: "30", unavailable_metrics: [],
       }), { status: 200 });
     }) as typeof fetch;
@@ -107,7 +108,8 @@ describe("ResearchRuntimeRepository", () => {
       requestUrl = String(input);
       requestBody = String(init?.body);
       return new Response(JSON.stringify({
-        period: "FY2025", input_hash: "a".repeat(64), revenue_growth_pct: "20.0",
+        period: "FY2025", snapshot: { period: "FY2025", revenue: "120.00", prior_revenue: "100.00" },
+        input_hash: "a".repeat(64), revenue_growth_pct: "20.0",
         gross_margin_pct: null, operating_margin_pct: null, free_cash_flow: null,
         fcf_margin_pct: null, net_cash: null, unavailable_metrics: ["gross_margin_pct"],
         evidence_ids: { revenue: ["evidence-1"], prior_revenue: ["evidence-1"] },
@@ -128,7 +130,8 @@ describe("ResearchRuntimeRepository", () => {
 
   it("reads a persisted run-scoped financial analysis artifact", async () => {
     const artifact = {
-      period: "FY2025", input_hash: "a".repeat(64), revenue_growth_pct: "20.0",
+      period: "FY2025", snapshot: { period: "FY2025", revenue: "120.00", prior_revenue: "100.00" },
+      input_hash: "a".repeat(64), revenue_growth_pct: "20.0",
       gross_margin_pct: null, operating_margin_pct: null, free_cash_flow: null,
       fcf_margin_pct: null, net_cash: null, unavailable_metrics: ["gross_margin_pct"],
       evidence_ids: { revenue: ["evidence-1"], prior_revenue: ["evidence-1"] },

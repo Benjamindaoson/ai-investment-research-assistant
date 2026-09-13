@@ -47,6 +47,7 @@ class FinancialSnapshot(DomainModel):
 
 class FinancialAnalysisResult(DomainModel):
     period: str
+    snapshot: FinancialSnapshot
     input_hash: str = Field(min_length=64, max_length=64)
     revenue_growth_pct: Decimal | None = None
     gross_margin_pct: Decimal | None = None

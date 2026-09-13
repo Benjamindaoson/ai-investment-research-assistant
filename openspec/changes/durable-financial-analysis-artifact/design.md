@@ -22,7 +22,8 @@ projection.
 
 ## Decisions
 
-Store the latest result as an optional financial_analysis field on ResearchRun.
+Store the latest result, including the explicit input snapshot, as an optional
+financial_analysis field on ResearchRun.
 This is the smallest durable shape compatible with the current single-snapshot
 endpoint; a future version can introduce versioned artifacts when the product
 has a real multi-period workflow.

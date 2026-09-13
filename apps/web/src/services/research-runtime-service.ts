@@ -86,6 +86,7 @@ export type FinancialSnapshotInput = z.infer<typeof financialSnapshotSchema>;
 
 const financialAnalysisResultSchema = z.object({
   period: z.string(),
+  snapshot: financialSnapshotSchema,
   input_hash: z.string().length(64),
   revenue_growth_pct: z.string().nullable(),
   gross_margin_pct: z.string().nullable(),
