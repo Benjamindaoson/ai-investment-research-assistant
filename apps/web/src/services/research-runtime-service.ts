@@ -155,12 +155,31 @@ const decisionRecordInputSchema = z.object({
 export type DecisionRecord = z.infer<typeof decisionRecordSchema>;
 export type DecisionRecordInput = z.infer<typeof decisionRecordInputSchema>;
 
+const runtimeEvidenceSchema = z.object({
+  id: z.string(),
+  task_id: z.string().optional(),
+  requirement_id: z.string().optional(),
+  stance: z.enum(["SUPPORTING", "COUNTER", "CONFLICTING"]),
+  qualification: z.enum(["QUALIFIED", "NEEDS_REVIEW", "UNQUALIFIED"]),
+  source_id: z.string().optional(),
+  source_title: z.string().optional(),
+  excerpt: z.string().optional(),
+  provider: z.string().optional(),
+  source_url: z.string().optional(),
+  source_version: z.string().optional(),
+  locator: z.string().optional(),
+  content_hash: z.string().optional(),
+  retrieved_at: z.string().datetime().optional(),
+  provenance: z.record(z.string(), z.unknown()).optional(),
+});
+export type RuntimeEvidence = z.infer<typeof runtimeEvidenceSchema>;
+
 const runtimeRunSchema = z.object({
   id: z.string(),
   case_id: z.string(),
   state: z.enum(["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED"]),
   tasks: z.array(z.object({ id: z.string(), title: z.string(), state: z.enum(["PENDING", "RUNNING", "COMPLETED", "FAILED"]) })),
-  evidence: z.array(z.object({ id: z.string(), source_title: z.string().optional(), stance: z.enum(["SUPPORTING", "COUNTER", "CONFLICTING"]), qualification: z.enum(["QUALIFIED", "NEEDS_REVIEW", "UNQUALIFIED"]) })),
+  evidence: z.array(runtimeEvidenceSchema),
   claims: z.array(z.object({ id: z.string(), status: z.enum(["DRAFT", "QUALIFIED", "NEEDS_REVIEW", "REJECTED"]), evidence_ids: z.array(z.string()) })),
   thesis: z.object({ id: z.string(), statement: z.string(), bull: z.string(), base: z.string(), bear: z.string(), claim_ids: z.array(z.string()), review_status: z.enum(["PENDING_REVIEW", "APPROVED", "NEEDS_REVIEW"]) }).nullable(),
   memo: runtimeMemoSchema.nullable(),

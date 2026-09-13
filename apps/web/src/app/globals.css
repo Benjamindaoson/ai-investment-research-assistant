@@ -136,6 +136,20 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .runtime-decision-grid label:last-child { grid-column: 1 / -1; }
 .runtime-decision-grid .text-control { margin-top: 0; }
 .runtime-decision-history { display: grid; gap: var(--space-3); padding: var(--space-4); }
+.runtime-evidence-list { display: grid; gap: var(--space-3); padding: var(--space-4); }
+.runtime-evidence-record { border: var(--border-width) solid var(--border-color); border-left: 3px solid var(--color-accent); border-radius: var(--radius-md); padding: var(--space-3); }
+.runtime-evidence-record.counter, .runtime-evidence-record.conflicting { border-left-color: var(--color-warning); }
+.runtime-evidence-record > header, .runtime-evidence-record > footer { display: flex; align-items: flex-start; gap: var(--space-2); flex-wrap: wrap; }
+.runtime-evidence-record > header { justify-content: space-between; }
+.runtime-evidence-record header b, .runtime-evidence-record header small { display: block; }
+.runtime-evidence-record header small, .runtime-evidence-record footer { color: var(--color-muted); font-size: var(--font-size-2xs); }
+.runtime-evidence-record > p { margin: var(--space-3) 0; color: var(--color-ink-soft); }
+.runtime-evidence-badges { display: flex; gap: var(--space-1); }
+.runtime-evidence-badges span { border-radius: var(--radius-sm); background: var(--surface-subtle); padding: 3px 6px; font-size: var(--font-size-2xs); }
+.runtime-evidence-record footer a { color: var(--color-accent); }
+.runtime-evidence-record footer span:not(:first-child), .runtime-evidence-record footer a { border-left: var(--border-width) solid var(--border-color); padding-left: var(--space-2); }
+.provenance-complete { color: var(--color-success); }
+.provenance-incomplete { color: var(--color-warning); }
 .red-team-grid label small { color: var(--color-muted); font-weight: var(--weight-regular); }
 .context-summary { display: grid; gap: var(--space-1); border-top: var(--border-width) solid var(--border-color); padding-top: var(--space-4); }
 .context-summary small { color: var(--color-muted-subtle); font-size: var(--font-size-2xs); letter-spacing: .08em; margin-top: var(--space-3); }
