@@ -33,6 +33,11 @@ from deepresearch.runtime.planner import (
     ResearchPlanner,
     research_input_hash,
 )
+from deepresearch.runtime.synthesis import (
+    DeterministicResearchSynthesizer,
+    ResearchSynthesizer,
+    SynthesisProviderError,
+)
 
 
 def validate_task_dag(tasks: Iterable[ResearchTask]) -> list[str]:
@@ -67,12 +72,20 @@ class RunLeaseLostError(RuntimeError):
 
 
 class ResearchEngine:
-    def __init__(self, store: SQLiteStore, provider: EvidenceProvider, planner: ResearchPlanner | None = None, lease_seconds: float = 300.0) -> None:
+    def __init__(
+        self,
+        store: SQLiteStore,
+        provider: EvidenceProvider,
+        planner: ResearchPlanner | None = None,
+        synthesizer: ResearchSynthesizer | None = None,
+        lease_seconds: float = 300.0,
+    ) -> None:
         if lease_seconds <= 0:
             raise ValueError("lease_seconds must be positive")
         self.store = store
         self.provider = provider
         self.planner = planner or DeterministicResearchPlanner()
+        self.synthesizer = synthesizer or DeterministicResearchSynthesizer()
         self.lease_seconds = lease_seconds
 
     def create_run(self, case: ResearchCase, tasks: list[ResearchTask] | None = None) -> ResearchRun:
@@ -386,8 +399,8 @@ class ResearchEngine:
         run.state = "VERIFYING"
         self._persist(run, "RUN_VERIFYING", {}, lease_id)
         try:
-            self._synthesize(run)
-        except EvidenceProviderError as error:
+            self._synthesize(run, case)
+        except (EvidenceProviderError, SynthesisProviderError) as error:
             self._ensure_lease(heartbeat_lost)
             return self._fail(run, f"claim verification failed: {error}", lease_id)
         self._ensure_lease(heartbeat_lost)
@@ -558,63 +571,52 @@ class ResearchEngine:
                 return False
         return True
 
-    def _synthesize(self, run: ResearchRun) -> None:
+    def _synthesize(self, run: ResearchRun, case: ResearchCase) -> None:
+        draft = self.synthesizer.synthesize(case, run)
+        tasks_by_id = {task.id: task for task in run.tasks}
+        evidence_by_id = {record.id: record for record in run.evidence}
+        if {claim.task_id for claim in draft.claims} != set(tasks_by_id) or len(draft.claims) != len(tasks_by_id):
+            raise SynthesisProviderError("synthesis must return exactly one claim for every research task")
         run.claims = []
-        for task in run.tasks:
-            observed = [record for record in run.evidence if record.task_id == task.id]
-            qualified = [record for record in observed if record.qualification == "QUALIFIED"]
-            stance_counts = ", ".join(
-                f"{stance.lower()}={sum(record.stance == stance for record in observed)}"
-                for stance in ("SUPPORTING", "COUNTER", "CONFLICTING")
+        for proposed in draft.claims:
+            if proposed.task_id not in tasks_by_id:
+                raise SynthesisProviderError(f"synthesis claim references unknown task: {proposed.task_id}")
+            evidence_ids = list(dict.fromkeys(proposed.evidence_ids))
+            missing = sorted(set(evidence_ids) - evidence_by_id.keys())
+            if missing:
+                raise SynthesisProviderError(f"synthesis claim references unknown evidence: {missing}")
+            unqualified = sorted(
+                evidence_id for evidence_id in evidence_ids if evidence_by_id[evidence_id].qualification != "QUALIFIED"
             )
-            statement = (
-                f"{task.title}: {len(qualified)} of {len(observed)} observed evidence records qualified "
-                f"({stance_counts})."
-            )
+            if unqualified:
+                raise SynthesisProviderError(f"synthesis claim references unqualified evidence: {unqualified}")
             claim = Claim(
-                task_id=task.id,
-                statement=statement,
-                evidence_ids=list(dict.fromkeys(item.id for item in qualified)),
-                status="QUALIFIED" if self._task_is_qualified(run, task) else "NEEDS_REVIEW",
-                confidence=round(len(qualified) / len(observed), 4) if observed else 0.0,
+                task_id=proposed.task_id,
+                statement=proposed.statement,
+                evidence_ids=evidence_ids,
+                status="QUALIFIED" if evidence_ids and self._task_is_qualified(run, tasks_by_id[proposed.task_id]) else "NEEDS_REVIEW",
+                confidence=proposed.confidence,
             )
             verify_claim = getattr(self.provider, "verify_claim", None)
-            if claim.status == "QUALIFIED" and claim.evidence_ids and callable(verify_claim) and not verify_claim(claim.statement, claim.evidence_ids):
+            if claim.status == "QUALIFIED" and callable(verify_claim) and not verify_claim(claim.statement, claim.evidence_ids):
                 claim.status = "NEEDS_REVIEW"
             run.claims.append(claim)
         claim_ids = [claim.id for claim in run.claims]
-        qualified_count = sum(claim.status == "QUALIFIED" for claim in run.claims)
-        qualified_supporting = self._task_titles_with_stance(run, "SUPPORTING")
-        qualified_downside = self._task_titles_with_stance(run, "COUNTER") + self._task_titles_with_stance(run, "CONFLICTING")
         unresolved = [
             f"{task.id}:{requirement.id}"
             for task in run.tasks
             for requirement in task.evidence_requirements
             if not self._requirement_is_qualified(run, task, requirement.id)
         ]
-        bull_subjects = ", ".join(qualified_supporting) or "no task"
-        downside_subjects = ", ".join(dict.fromkeys(qualified_downside)) or "no task"
-        unresolved_text = ", ".join(unresolved) or "none"
         run.thesis = Thesis(
-            statement=f"Observed evidence qualifies {qualified_count} of {len(run.tasks)} task claims; interpretation requires human review.",
-            bull=f"Bull scenario: qualified supporting evidence is observed for {bull_subjects}; assumptions remain subject to review.",
-            base=f"Base scenario: {qualified_count} of {len(run.tasks)} task claims are qualified, with unresolved requirements {unresolved_text}.",
-            bear=f"Bear scenario: qualified counter or conflicting evidence is observed for {downside_subjects}; unresolved requirements are {unresolved_text}.",
+            statement=draft.thesis.statement,
+            bull=draft.thesis.bull,
+            base=draft.thesis.base,
+            bear=draft.thesis.bear,
             claim_ids=claim_ids,
             review_status="PENDING_REVIEW" if not unresolved else "NEEDS_REVIEW",
+            provenance=draft.provenance,
         )
-
-    def _task_titles_with_stance(self, run: ResearchRun, stance: str) -> list[str]:
-        return [
-            task.title
-            for task in run.tasks
-            if any(
-                record.task_id == task.id
-                and record.stance == stance
-                and record.qualification == "QUALIFIED"
-                for record in run.evidence
-            )
-        ]
 
     def _requirement_is_qualified(self, run: ResearchRun, task: ResearchTask, requirement_id: str) -> bool:
         requirement = next(item for item in task.evidence_requirements if item.id == requirement_id)

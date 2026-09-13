@@ -181,6 +181,7 @@ class Thesis(DomainModel):
     bear: str = Field(min_length=1, max_length=3000)
     claim_ids: list[str] = Field(default_factory=list)
     review_status: Literal["PENDING_REVIEW", "APPROVED", "NEEDS_REVIEW"] = "PENDING_REVIEW"
+    provenance: dict[str, Any] = Field(default_factory=dict)
 
 
 class MemoSection(DomainModel):

@@ -251,7 +251,7 @@ const runtimeRunSchema = z.object({
   tool_executions: z.array(runtimeToolExecutionSchema).default([]),
   evidence: z.array(runtimeEvidenceSchema),
   claims: z.array(runtimeClaimSchema),
-  thesis: z.object({ id: z.string(), statement: z.string(), bull: z.string(), base: z.string(), bear: z.string(), claim_ids: z.array(z.string()), review_status: z.enum(["PENDING_REVIEW", "APPROVED", "NEEDS_REVIEW"]) }).nullable(),
+  thesis: z.object({ id: z.string(), statement: z.string(), bull: z.string(), base: z.string(), bear: z.string(), claim_ids: z.array(z.string()), review_status: z.enum(["PENDING_REVIEW", "APPROVED", "NEEDS_REVIEW"]), provenance: z.record(z.string(), z.unknown()).optional() }).nullable(),
   memo: runtimeMemoSchema.nullable(),
   financial_analysis: financialAnalysisResultSchema.nullable().default(null),
   red_team_reviews: z.array(redTeamReviewSchema).default([]),

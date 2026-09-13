@@ -45,6 +45,13 @@ Planner 默认也是 deterministic。只有显式设置
 才会调用 OpenAI-compatible planner。LLM 输出必须先通过结构化 schema 和
 DAG 校验；调用失败不会静默回退为另一份 plan。
 
+Synthesis 默认也是 deterministic。只有显式设置
+`DEEPRESEARCH_SYNTHESIZER=llm` 并提供同一组 LLM 配置时，API 才会调用
+structured claim/thesis synthesizer。模型只能提交 claim、qualified evidence
+ID 和 Bull/Base/Bear 草案；runtime 仍负责 evidence ID 校验、claim verification、
+memo/memory 投影和人工 review。synthesis 请求/响应 hash 会保存在 thesis provenance，
+配置失败不会静默回退为 deterministic synthesis。
+
 ## 当前能力边界
 
 - 已真实实现：Pydantic domain contracts、deterministic planner boundary、unique durable run identity、带

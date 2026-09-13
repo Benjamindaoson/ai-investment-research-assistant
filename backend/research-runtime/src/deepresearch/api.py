@@ -29,6 +29,10 @@ from deepresearch.runtime.planner import (
     ResearchPlanner,
     create_configured_research_planner,
 )
+from deepresearch.runtime.synthesis import (
+    ResearchSynthesizer,
+    create_configured_research_synthesizer,
+)
 
 
 class CreateCaseRequest(BaseModel):
@@ -85,7 +89,12 @@ class EvidenceLinkedFinancialAnalysisRequest(BaseModel):
         return self
 
 
-def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | None = None, planner: ResearchPlanner | None = None) -> FastAPI:
+def create_app(
+    store: SQLiteStore | None = None,
+    provider: EvidenceProvider | None = None,
+    planner: ResearchPlanner | None = None,
+    synthesizer: ResearchSynthesizer | None = None,
+) -> FastAPI:
     runtime_store = store or SQLiteStore(Path(".data/deepresearch.sqlite3"))
     configured_provider = provider
     if configured_provider is None:
@@ -97,6 +106,7 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
         runtime_store,
         configured_provider,
         planner=planner or create_configured_research_planner(),
+        synthesizer=synthesizer or create_configured_research_synthesizer(),
         lease_seconds=lease_seconds,
     )
     financial_analysis = FinancialAnalysisTool()
