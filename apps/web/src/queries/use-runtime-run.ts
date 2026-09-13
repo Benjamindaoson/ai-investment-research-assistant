@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { researchRuntimeRepository } from "@/repositories";
-import type { EvidenceLinkedFinancialAnalysisInput, RedTeamReviewInput, RuntimeCaseInput, RuntimeRun } from "@/services/research-runtime-service";
+import type { DecisionRecordInput, EvidenceLinkedFinancialAnalysisInput, RedTeamReviewInput, RuntimeCaseInput, RuntimeRun } from "@/services/research-runtime-service";
 
 export const runtimeRunQueryKey = (runId: string) => ["runtime", "run", runId] as const;
 export const runtimeMemoryQueryKey = (runId: string) => ["runtime", "memory", runId] as const;
@@ -64,5 +64,16 @@ export function useCreateRedTeamReviewMutation(runId: string) {
   return useMutation({
     mutationFn: (input: RedTeamReviewInput) => researchRuntimeRepository.createRedTeamReview(runId, input),
     onSuccess: (data) => queryClient.setQueryData<RuntimeRun>(runtimeRunQueryKey(runId), data),
+  });
+}
+
+export function useRecordRuntimeDecisionMutation(runId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: DecisionRecordInput) => researchRuntimeRepository.recordDecision(runId, input),
+    onSuccess: (data) => {
+      queryClient.setQueryData(runtimeRunQueryKey(runId), data);
+      void queryClient.invalidateQueries({ queryKey: runtimeMemoryQueryKey(runId) });
+    },
   });
 }

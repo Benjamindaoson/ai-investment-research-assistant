@@ -138,6 +138,23 @@ const redTeamReviewInputSchema = z.object({
 export type RedTeamReview = z.infer<typeof redTeamReviewSchema>;
 export type RedTeamReviewInput = z.infer<typeof redTeamReviewInputSchema>;
 
+const decisionRecordSchema = z.object({
+  id: z.string(),
+  actor: z.string(),
+  action: z.enum(["APPROVE_THESIS", "REJECT_THESIS", "REQUEST_RESEARCH"]),
+  target_id: z.string(),
+  rationale: z.string(),
+  created_at: z.string().datetime(),
+});
+const decisionRecordInputSchema = z.object({
+  actor: z.string().trim().min(1).max(200),
+  action: z.enum(["APPROVE_THESIS", "REJECT_THESIS", "REQUEST_RESEARCH"]),
+  target_id: z.string().min(1),
+  rationale: z.string().trim().min(3).max(4000),
+});
+export type DecisionRecord = z.infer<typeof decisionRecordSchema>;
+export type DecisionRecordInput = z.infer<typeof decisionRecordInputSchema>;
+
 const runtimeRunSchema = z.object({
   id: z.string(),
   case_id: z.string(),
@@ -149,6 +166,7 @@ const runtimeRunSchema = z.object({
   memo: runtimeMemoSchema.nullable(),
   financial_analysis: financialAnalysisResultSchema.nullable().default(null),
   red_team_reviews: z.array(redTeamReviewSchema).default([]),
+  decisions: z.array(decisionRecordSchema).default([]),
 }).passthrough();
 export type RuntimeRun = z.infer<typeof runtimeRunSchema>;
 
@@ -192,6 +210,7 @@ export interface ResearchRuntimeService {
   getFinancialAnalysisForRun(runId: string): Promise<FinancialAnalysisResult>;
   createRedTeamReview(runId: string, input: RedTeamReviewInput): Promise<RuntimeRun>;
   getRedTeamReviews(runId: string): Promise<RedTeamReview[]>;
+  recordDecision(runId: string, input: DecisionRecordInput): Promise<RuntimeRun>;
 }
 
 export class HttpResearchRuntimeService implements ResearchRuntimeService {
@@ -295,6 +314,15 @@ export class HttpResearchRuntimeService implements ResearchRuntimeService {
   async getRedTeamReviews(runId: string): Promise<RedTeamReview[]> {
     return z.array(redTeamReviewSchema).parse(await this.requestJson("/api/v1/research-runs/" + encodeURIComponent(runId) + "/red-team-reviews", { headers: { accept: "application/json" } }));
   }
+
+  async recordDecision(runId: string, input: DecisionRecordInput): Promise<RuntimeRun> {
+    const body = decisionRecordInputSchema.parse(input);
+    return runtimeRunSchema.parse(await this.requestJson("/api/v1/research-runs/" + encodeURIComponent(runId) + "/decisions", {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }));
+  }
 }
 
 class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
@@ -316,6 +344,7 @@ class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
   async getFinancialAnalysisForRun(): Promise<FinancialAnalysisResult> { return this.unavailable(); }
   async createRedTeamReview(): Promise<RuntimeRun> { return this.unavailable(); }
   async getRedTeamReviews(): Promise<RedTeamReview[]> { return this.unavailable(); }
+  async recordDecision(): Promise<RuntimeRun> { return this.unavailable(); }
 }
 
 export function createResearchRuntimeService(baseUrl: string | undefined, fetchImpl: FetchLike = fetch.bind(globalThis)): ResearchRuntimeService {

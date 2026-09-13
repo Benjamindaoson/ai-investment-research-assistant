@@ -11,7 +11,7 @@ vi.mock("@/repositories", () => ({ researchRuntimeRepository: { analyzeFinancial
 
 const run: RuntimeRun = {
   id: "run-1", case_id: "case-1", state: "COMPLETED", tasks: [], evidence: [], claims: [], thesis: null, memo: null,
-  financial_analysis: null, red_team_reviews: [],
+  financial_analysis: null, red_team_reviews: [], decisions: [],
 };
 const analysis: FinancialAnalysisResult = {
   period: "FY2025", snapshot: { period: "FY2025", revenue: "120.00" }, input_hash: "a".repeat(64),

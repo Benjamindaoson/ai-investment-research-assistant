@@ -33,7 +33,7 @@ const memory: InvestmentMemory = {
 
 const run: RuntimeRun = {
   id: "run-1", case_id: "case-1", state: "CREATED", tasks: [{ id: "market", title: "Market", state: "PENDING" }],
-  evidence: [], claims: [], thesis: null, memo: null, financial_analysis: null, red_team_reviews: [],
+  evidence: [], claims: [], thesis: null, memo: null, financial_analysis: null, red_team_reviews: [], decisions: [],
 };
 
 describe("ResearchRuntimeRepository", () => {
@@ -204,6 +204,23 @@ describe("ResearchRuntimeRepository", () => {
       reviewer: "Analyst", challenge: "Demand may soften.", evidence_ids: ["evidence-2"],
       outcome: "REQUIRES_RESEARCH", rationale: "Counter evidence is material.",
     });
+  });
+
+  it("records a thesis decision and parses an older run without decision history", async () => {
+    let requestBody = "";
+    const fetchImpl = (async (_input, init) => {
+      requestBody = String(init?.body);
+      return new Response(JSON.stringify({ ...run, thesis: { id: "thesis-1", statement: "Thesis", bull: "Bull", base: "Base", bear: "Bear", claim_ids: [], review_status: "APPROVED" }, decisions: [{ id: "decision-1", actor: "Analyst", action: "APPROVE_THESIS", target_id: "thesis-1", rationale: "Evidence reviewed.", created_at: "2026-09-14T00:00:00.000Z" }] }), { status: 200 });
+    }) as typeof fetch;
+    const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+
+    await expect(repository.recordDecision("run-1", {
+      actor: "Analyst", action: "APPROVE_THESIS", target_id: "thesis-1", rationale: "Evidence reviewed.",
+    })).resolves.toMatchObject({ decisions: [{ id: "decision-1", action: "APPROVE_THESIS" }] });
+    expect(JSON.parse(requestBody)).toEqual({ actor: "Analyst", action: "APPROVE_THESIS", target_id: "thesis-1", rationale: "Evidence reviewed." });
+
+    const oldRunFetch = (async () => new Response(JSON.stringify({ ...run, decisions: undefined }), { status: 200 })) as typeof fetch;
+    await expect(new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", oldRunFetch)).getRun("run-1")).resolves.toMatchObject({ decisions: [] });
   });
 
   it("posts a cancellation reason and validates the terminal run state", async () => {
