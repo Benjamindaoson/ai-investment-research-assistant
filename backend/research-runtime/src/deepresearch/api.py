@@ -91,7 +91,7 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
     @app.get("/api/v1/research-cases/{case_id}")
     def get_case(case_id: str) -> dict[str, Any]:
         try:
-            return engine.get_run(f"run-{case_id}").model_dump(mode="json")
+            return engine.get_case(case_id).model_dump(mode="json")
         except KeyError as error:
             raise HTTPException(status_code=404, detail="research case not found") from error
 

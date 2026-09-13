@@ -31,6 +31,11 @@ def test_api_creates_and_executes_case(tmp_path) -> None:
         json={"question": "Assess ACME's margin durability", "target": "ACME"},
     )
     assert created.status_code == 201
+    case = client.get(f"/api/v1/research-cases/{created.json()['case_id']}")
+    assert case.status_code == 200
+    assert case.json()["id"] == created.json()["case_id"]
+    assert case.json()["target"] == "ACME"
+    assert "state" not in case.json()
     run_id = created.json()["run_id"]
 
     plan = client.get(f"/api/v1/research-runs/{run_id}/plan")
@@ -75,6 +80,7 @@ def test_api_creates_and_executes_case(tmp_path) -> None:
     assert all(not claim["unresolved_evidence_ids"] for claim in trace.json()["claims"])
     assert client.get("/api/v1/research-runs/missing/trace").status_code == 404
     assert client.get("/api/v1/research-runs/missing/memo").status_code == 404
+    assert client.get("/api/v1/research-cases/missing").status_code == 404
 
 
 def test_api_calculates_financial_snapshot(tmp_path) -> None:
