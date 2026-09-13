@@ -223,6 +223,15 @@ describe("ResearchRuntimeRepository", () => {
     await expect(new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", oldRunFetch)).getRun("run-1")).resolves.toMatchObject({ decisions: [] });
   });
 
+  it("parses the validated plan mandate from a runtime run", async () => {
+    const fetchImpl = (async () => new Response(JSON.stringify({ ...run, plan: {
+      id: "plan-1", case_id: "case-1", question: "Assess ACME", planner_name: "planner", planner_version: "v1",
+      input_hash: "a".repeat(64), status: "VALIDATED",
+      mandate: { decision_type: "SCREENING", time_horizon: "90 days", materiality: "LOW", required_outputs: ["screening note"], constraints: [] },
+    } }), { status: 200 })) as typeof fetch;
+    await expect(new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl)).getRun("run-1")).resolves.toMatchObject({ plan: { planner_name: "planner", mandate: { decision_type: "SCREENING" } } });
+  });
+
   it("posts a cancellation reason and validates the terminal run state", async () => {
     let request: RequestInit | undefined;
     const fetchImpl = (async (_input, init) => {

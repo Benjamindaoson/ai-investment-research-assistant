@@ -174,9 +174,22 @@ const runtimeEvidenceSchema = z.object({
 });
 export type RuntimeEvidence = z.infer<typeof runtimeEvidenceSchema>;
 
+const runtimePlanSchema = z.object({
+  id: z.string(),
+  case_id: z.string(),
+  question: z.string(),
+  planner_name: z.string(),
+  planner_version: z.string(),
+  input_hash: z.string().length(64),
+  status: z.enum(["PROPOSED", "VALIDATED", "REJECTED"]),
+  mandate: researchMandateSchema,
+});
+export type RuntimePlan = z.infer<typeof runtimePlanSchema>;
+
 const runtimeRunSchema = z.object({
   id: z.string(),
   case_id: z.string(),
+  plan: runtimePlanSchema.optional(),
   state: z.enum(["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED"]),
   tasks: z.array(z.object({ id: z.string(), title: z.string(), state: z.enum(["PENDING", "RUNNING", "COMPLETED", "FAILED"]) })),
   evidence: z.array(runtimeEvidenceSchema),
