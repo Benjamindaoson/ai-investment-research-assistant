@@ -87,6 +87,21 @@ def test_llm_planner_prompt_requires_evidence_contract(monkeypatch: pytest.Monke
     system_prompt = body["messages"][0]["content"]
     assert '"evidence_requirements"' in system_prompt
     assert "Do not include rationale" in system_prompt
+    assert "3 to 5 tasks" in system_prompt
+
+
+def test_llm_planner_rejects_overlarge_draft(monkeypatch: pytest.MonkeyPatch) -> None:
+    case = ResearchCase(id="case-1", question="Assess ACME margin durability", target="ACME")
+    tasks = DeterministicResearchPlanner().plan(case).tasks
+    for index in range(3):
+        tasks.append(tasks[-1].model_copy(update={"id": f"extra-{index}", "title": f"Extra task {index}"}))
+    monkeypatch.setattr(
+        "deepresearch.runtime.planner.urlopen",
+        lambda *args, **kwargs: FakeResponse({"choices": [{"message": {"content": json.dumps({"tasks": [task.model_dump(mode="json") for task in tasks]})}}]}),
+    )
+
+    with pytest.raises(PlannerProviderError, match="response contract invalid"):
+        LLMResearchPlanner("secret", "https://llm.example", "model").plan(case)
 
 
 def test_llm_planner_preserves_http_failure(monkeypatch: pytest.MonkeyPatch) -> None:

@@ -32,7 +32,7 @@ class PlannerProviderError(RuntimeError):
 class LLMPlannerDraft(BaseModel):
     model_config = ConfigDict(extra="forbid")
 
-    tasks: list[ResearchTask] = Field(min_length=1)
+    tasks: list[ResearchTask] = Field(min_length=1, max_length=5)
 
 
 class LLMResearchPlanner:
@@ -70,6 +70,7 @@ class LLMResearchPlanner:
                             '"depends_on":[],"tool_name":"...","evidence_requirements":['
                             '{"id":"requirement-id","description":"...","minimum_records":1,'
                             '"required_stances":["SUPPORTING"]}]}]} . '
+                            "Use 3 to 5 tasks so the plan remains bounded. "
                             "Every task must include purpose, tool_name, and at least one evidence requirement. "
                             "Every evidence requirement must include id, description, minimum_records, and "
                             "required_stances; use SUPPORTING, COUNTER, or CONFLICTING for stances. "

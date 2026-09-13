@@ -1,6 +1,6 @@
 ## 1. Structured planner adapter
 
-- [x] 1.1 Add LLM planner configuration, response draft contract, and request/response hashing.
+- [x] 1.1 Add LLM planner configuration, bounded response draft contract, and request/response hashing.
 - [x] 1.2 Implement OpenAI-compatible standard-library transport with explicit errors and bounded timeout.
 - [x] 1.3 Add mocked transport tests for valid, malformed, HTTP failure, timeout, and secret-free provenance behavior.
 
