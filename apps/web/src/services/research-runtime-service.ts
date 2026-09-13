@@ -30,8 +30,71 @@ const runtimeTraceSchema = z.object({
 export type RuntimeTrace = z.infer<typeof runtimeTraceSchema>;
 export type FetchLike = typeof fetch;
 
+const runtimeMemoSchema = z.object({
+  id: z.string(),
+  run_id: z.string(),
+  case_id: z.string(),
+  title: z.string(),
+  status: z.enum(["DRAFT", "READY_FOR_REVIEW", "APPROVED"]),
+  executive_summary: z.string(),
+  thesis_id: z.string(),
+  claim_ids: z.array(z.string()),
+  evidence_ids: z.array(z.string()),
+  counter_evidence_ids: z.array(z.string()),
+  unresolved_requirement_ids: z.array(z.string()),
+  provenance: z.record(z.string(), z.unknown()),
+  generated_at: z.string().datetime(),
+});
+export type RuntimeMemo = z.infer<typeof runtimeMemoSchema>;
+
+const investmentMemorySchema = z.object({
+  id: z.string(),
+  target: z.string(),
+  case_ids: z.array(z.string()),
+  run_ids: z.array(z.string()),
+  memo_ids: z.array(z.string()),
+  thesis_ids: z.array(z.string()),
+  latest_run_id: z.string(),
+  latest_thesis_id: z.string(),
+  previous_thesis_id: z.string().nullable(),
+  unresolved_requirement_ids: z.array(z.string()),
+  decision_ids: z.array(z.string()),
+  updated_at: z.string().datetime(),
+});
+export type InvestmentMemory = z.infer<typeof investmentMemorySchema>;
+
+const decimalStringSchema = z.string().regex(/^-?\d+(\.\d+)?$/, "Expected a decimal string.");
+const financialSnapshotSchema = z.object({
+  period: z.string().min(1),
+  revenue: z.string().regex(/^\d+(\.\d+)?$/, "Expected a non-negative decimal string."),
+  prior_revenue: z.string().regex(/^\d+(\.\d+)?$/).optional(),
+  gross_profit: decimalStringSchema.optional(),
+  operating_income: decimalStringSchema.optional(),
+  operating_cash_flow: decimalStringSchema.optional(),
+  capex: z.string().regex(/^\d+(\.\d+)?$/).optional(),
+  cash: z.string().regex(/^\d+(\.\d+)?$/).optional(),
+  debt: z.string().regex(/^\d+(\.\d+)?$/).optional(),
+});
+export type FinancialSnapshotInput = z.infer<typeof financialSnapshotSchema>;
+
+const financialAnalysisResultSchema = z.object({
+  period: z.string(),
+  input_hash: z.string().length(64),
+  revenue_growth_pct: z.string().nullable(),
+  gross_margin_pct: z.string().nullable(),
+  operating_margin_pct: z.string().nullable(),
+  free_cash_flow: z.string().nullable(),
+  fcf_margin_pct: z.string().nullable(),
+  net_cash: z.string().nullable(),
+  unavailable_metrics: z.array(z.string()),
+});
+export type FinancialAnalysisResult = z.infer<typeof financialAnalysisResultSchema>;
+
 export interface ResearchRuntimeService {
   getTrace(runId: string): Promise<RuntimeTrace>;
+  getMemo(runId: string): Promise<RuntimeMemo>;
+  getMemory(target: string): Promise<InvestmentMemory>;
+  analyzeFinancials(snapshot: FinancialSnapshotInput): Promise<FinancialAnalysisResult>;
 }
 
 export class HttpResearchRuntimeService implements ResearchRuntimeService {
@@ -39,17 +102,43 @@ export class HttpResearchRuntimeService implements ResearchRuntimeService {
     if (!baseUrl.trim()) throw new Error("Research Runtime base URL must not be blank.");
   }
 
-  async getTrace(runId: string): Promise<RuntimeTrace> {
-    const response = await this.fetchImpl(`${this.baseUrl.replace(/\/$/, "")}/api/v1/research-runs/${encodeURIComponent(runId)}/trace`, { headers: { accept: "application/json" } });
+  private async requestJson(path: string, init?: RequestInit): Promise<unknown> {
+    const response = await this.fetchImpl(`${this.baseUrl.replace(/\/$/, "")}${path}`, init);
     if (!response.ok) throw new Error(`Research Runtime request failed with HTTP ${response.status}.`);
-    return runtimeTraceSchema.parse(await response.json());
+    return response.json();
+  }
+
+  async getTrace(runId: string): Promise<RuntimeTrace> {
+    return runtimeTraceSchema.parse(await this.requestJson(`/api/v1/research-runs/${encodeURIComponent(runId)}/trace`, { headers: { accept: "application/json" } }));
+  }
+
+  async getMemo(runId: string): Promise<RuntimeMemo> {
+    return runtimeMemoSchema.parse(await this.requestJson(`/api/v1/research-runs/${encodeURIComponent(runId)}/memo`, { headers: { accept: "application/json" } }));
+  }
+
+  async getMemory(target: string): Promise<InvestmentMemory> {
+    return investmentMemorySchema.parse(await this.requestJson(`/api/v1/investment-memory/${encodeURIComponent(target)}`, { headers: { accept: "application/json" } }));
+  }
+
+  async analyzeFinancials(snapshot: FinancialSnapshotInput): Promise<FinancialAnalysisResult> {
+    const input = financialSnapshotSchema.parse(snapshot);
+    return financialAnalysisResultSchema.parse(await this.requestJson("/api/v1/financial-analysis", {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/json" },
+      body: JSON.stringify(input),
+    }));
   }
 }
 
 class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
-  async getTrace(): Promise<RuntimeTrace> {
+  private unavailable(): never {
     throw new Error("Research Runtime URL is not configured; local UI is using synthetic workspace data.");
   }
+
+  async getTrace(): Promise<RuntimeTrace> { return this.unavailable(); }
+  async getMemo(): Promise<RuntimeMemo> { return this.unavailable(); }
+  async getMemory(): Promise<InvestmentMemory> { return this.unavailable(); }
+  async analyzeFinancials(): Promise<FinancialAnalysisResult> { return this.unavailable(); }
 }
 
 export function createResearchRuntimeService(baseUrl: string | undefined, fetchImpl: FetchLike = fetch): ResearchRuntimeService {
