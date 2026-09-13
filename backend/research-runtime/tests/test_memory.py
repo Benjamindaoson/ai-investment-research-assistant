@@ -17,6 +17,7 @@ def test_investment_memory_retains_target_versions_and_decisions(tmp_path) -> No
     assert first_memory.run_ids == [first.id]
     assert first_memory.latest_run_id == first.id
     assert first_memory.previous_thesis_id is None
+    assert first_memory.latest_thesis_delta is None
 
     decision = DecisionRecord(
         actor="analyst@example.com",
@@ -25,7 +26,13 @@ def test_investment_memory_retains_target_versions_and_decisions(tmp_path) -> No
         rationale="Keep the thesis under review until counter-evidence is resolved.",
     )
     engine.record_decision(first.id, decision)
-    second = engine.execute(engine.create_run(second_case).id)
+    class EmptyProvider(DeterministicEvidenceProvider):
+        def collect(self, task, case):
+            self.calls.append(task.id)
+            return []
+
+    second_engine = ResearchEngine(store, EmptyProvider())
+    second = second_engine.execute(second_engine.create_run(second_case).id)
 
     memory = engine.get_memory("ACME")
     assert memory.case_ids == [first_case.id, second_case.id]
@@ -36,6 +43,14 @@ def test_investment_memory_retains_target_versions_and_decisions(tmp_path) -> No
     assert memory.latest_thesis_id == second.thesis.id
     assert memory.previous_thesis_id == first.thesis.id
     assert memory.decision_ids == [decision.id]
+    assert second.thesis is not None
+    assert memory.latest_thesis_delta is not None
+    assert memory.latest_thesis_delta.previous_thesis_id == first.thesis.id
+    assert memory.latest_thesis_delta.current_thesis_id == second.thesis.id
+    assert memory.latest_thesis_delta.qualified_evidence_delta == -3
+    assert memory.latest_thesis_delta.counter_conflicting_evidence_delta == -3
+    assert memory.latest_thesis_delta.unresolved_requirement_delta == 3
+    assert "not a confidence estimate" in memory.latest_thesis_delta.summary
 
     reloaded = ResearchEngine(SQLiteStore(tmp_path / "runtime.sqlite3"), DeterministicEvidenceProvider())
     assert reloaded.get_memory("ACME") == memory

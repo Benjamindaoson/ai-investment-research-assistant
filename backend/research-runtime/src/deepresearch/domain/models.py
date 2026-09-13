@@ -154,6 +154,16 @@ class InvestmentMemo(DomainModel):
     generated_at: datetime = Field(default_factory=utc_now)
 
 
+class ThesisDelta(DomainModel):
+    previous_thesis_id: str
+    current_thesis_id: str
+    qualified_evidence_delta: int
+    counter_conflicting_evidence_delta: int
+    unresolved_requirement_delta: int
+    summary: str = Field(min_length=3, max_length=2000)
+    observed_at: datetime = Field(default_factory=utc_now)
+
+
 class InvestmentMemory(DomainModel):
     id: str = Field(default_factory=lambda: f"memory-{uuid4().hex}")
     target: str = Field(min_length=1, max_length=300)
@@ -164,6 +174,7 @@ class InvestmentMemory(DomainModel):
     latest_run_id: str
     latest_thesis_id: str
     previous_thesis_id: str | None = None
+    latest_thesis_delta: ThesisDelta | None = None
     unresolved_requirement_ids: list[str] = Field(default_factory=list)
     decision_ids: list[str] = Field(default_factory=list)
     updated_at: datetime = Field(default_factory=utc_now)

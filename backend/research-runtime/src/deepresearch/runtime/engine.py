@@ -18,6 +18,7 @@ from deepresearch.domain.models import (
     ResearchRun,
     ResearchTask,
     Thesis,
+    ThesisDelta,
     ToolExecution,
 )
 from deepresearch.persistence.store import SQLiteStore
@@ -377,6 +378,14 @@ class ResearchEngine:
         )
         previous = self.store.get_memory(target)
         memory = InvestmentMemory.model_validate(previous) if previous is not None else None
+        previous_run = None
+        if memory is not None:
+            previous_payload = self.store.get_run(memory.latest_run_id)
+            if previous_payload is not None:
+                try:
+                    previous_run = ResearchRun.model_validate(previous_payload)
+                except ValueError:
+                    previous_run = None
         run_thesis_id = run.thesis.id
         if memory is None:
             memory = InvestmentMemory(
@@ -392,9 +401,47 @@ class ResearchEngine:
         memory.run_ids.append(run.id)
         memory.memo_ids.append(run.memo.id)
         memory.thesis_ids.append(run_thesis_id)
+        memory.latest_thesis_delta = self._thesis_delta(previous_run, run, memory)
         memory.unresolved_requirement_ids = unresolved
         memory.updated_at = datetime.now(UTC)
         self.store.save_memory(memory.model_dump(mode="json"))
+
+    def _thesis_delta(
+        self,
+        previous_run: ResearchRun | None,
+        current_run: ResearchRun,
+        previous_memory: InvestmentMemory,
+    ) -> ThesisDelta | None:
+        if previous_run is None or previous_run.thesis is None or current_run.thesis is None:
+            return None
+        previous_counter = sum(
+            record.stance in {"COUNTER", "CONFLICTING"} for record in previous_run.evidence
+        )
+        current_counter = sum(
+            record.stance in {"COUNTER", "CONFLICTING"} for record in current_run.evidence
+        )
+        previous_qualified = sum(record.qualification == "QUALIFIED" for record in previous_run.evidence)
+        current_qualified = sum(record.qualification == "QUALIFIED" for record in current_run.evidence)
+        unresolved = [
+            f"{task.id}:{requirement.id}"
+            for task in current_run.tasks
+            for requirement in task.evidence_requirements
+            if not self._requirement_is_qualified(current_run, task, requirement.id)
+        ]
+        return ThesisDelta(
+            previous_thesis_id=previous_run.thesis.id,
+            current_thesis_id=current_run.thesis.id,
+            qualified_evidence_delta=current_qualified - previous_qualified,
+            counter_conflicting_evidence_delta=current_counter - previous_counter,
+            unresolved_requirement_delta=len(unresolved) - len(previous_memory.unresolved_requirement_ids),
+            summary=(
+                "Observed count change: "
+                f"qualified_evidence={current_qualified - previous_qualified:+d}, "
+                f"counter_conflicting_evidence={current_counter - previous_counter:+d}, "
+                f"unresolved_requirements={len(unresolved) - len(previous_memory.unresolved_requirement_ids):+d}. "
+                "This is not a confidence estimate or investment advice."
+            ),
+        )
 
     def _checkpoint(self, run: ResearchRun, completed: set[str]) -> None:
         run.state_version += 1

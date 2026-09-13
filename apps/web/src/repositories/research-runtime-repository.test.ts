@@ -21,6 +21,12 @@ const memo: RuntimeMemo = {
 const memory: InvestmentMemory = {
   id: "memory-1", target: "ACME", case_ids: ["case-1"], run_ids: ["run-1"], memo_ids: ["memo-1"],
   thesis_ids: ["thesis-1"], latest_run_id: "run-1", latest_thesis_id: "thesis-1", previous_thesis_id: null,
+  latest_thesis_delta: {
+    previous_thesis_id: "thesis-0", current_thesis_id: "thesis-1", qualified_evidence_delta: -1,
+    counter_conflicting_evidence_delta: 1, unresolved_requirement_delta: 1,
+    summary: "Observed count change; this is not a confidence estimate or investment advice.",
+    observed_at: "2026-09-14T00:00:00.000Z",
+  },
   unresolved_requirement_ids: [], decision_ids: [], updated_at: "2026-09-14T00:00:00.000Z",
 };
 

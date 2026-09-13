@@ -13,6 +13,7 @@ from deepresearch.domain.models import (
     ResearchRun,
     ResearchTask,
     Thesis,
+    ThesisDelta,
     ToolExecution,
 )
 
@@ -31,5 +32,6 @@ __all__ = [
     "ResearchRun",
     "ResearchTask",
     "Thesis",
+    "ThesisDelta",
     "ToolExecution",
 ]
