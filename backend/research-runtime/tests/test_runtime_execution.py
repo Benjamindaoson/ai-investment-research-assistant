@@ -79,3 +79,22 @@ def test_engine_records_provider_failure_without_successful_tool_execution(tmp_p
     assert result.tasks[0].state == "FAILED"
     assert result.tool_executions == []
     assert any(event["event_type"] == "RUN_FAILED" for event in engine.store.events(run.id))
+
+
+def test_engine_cancellation_is_terminal_idempotent_and_not_resumable(tmp_path) -> None:
+    provider = DeterministicEvidenceProvider()
+    engine = ResearchEngine(SQLiteStore(tmp_path / "runtime.sqlite3"), provider)
+    case = ResearchCase(id="case-4", question="Assess ACME's downside risk", target="ACME")
+    run = engine.create_run(case, [make_task("risk")])
+
+    cancelled = engine.cancel(run.id, "Analyst stopped the run")
+    repeated = engine.cancel(run.id, "Repeated request")
+    executed = engine.execute(run.id)
+
+    assert cancelled.state == "CANCELLED"
+    assert cancelled.completed_at is not None
+    assert cancelled.thesis is None
+    assert repeated == cancelled
+    assert executed.state == "CANCELLED"
+    assert provider.calls == []
+    assert [event["event_type"] for event in engine.store.events(run.id)].count("RUN_CANCELLED") == 1

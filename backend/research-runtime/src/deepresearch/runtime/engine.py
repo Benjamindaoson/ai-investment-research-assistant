@@ -211,6 +211,15 @@ class ResearchEngine:
         self._persist(run, "RUN_COMPLETED" if run.state == "COMPLETED" else "RUN_PARTIAL", {"claim_count": len(run.claims)})
         return run
 
+    def cancel(self, run_id: str, reason: str) -> ResearchRun:
+        run = self.get_run(run_id)
+        if run.state in {"COMPLETED", "PARTIAL", "FAILED", "CANCELLED"}:
+            return run
+        run.completed_at = datetime.now(UTC)
+        run.state = "CANCELLED"
+        self._persist(run, "RUN_CANCELLED", {"reason": reason})
+        return run
+
     def record_decision(self, run_id: str, decision: DecisionRecord) -> ResearchRun:
         run = self.get_run(run_id)
         if decision.target_id != (run.thesis.id if run.thesis else decision.target_id):

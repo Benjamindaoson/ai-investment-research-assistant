@@ -29,6 +29,10 @@ class ExecuteRequest(BaseModel):
     stop_after_tasks: int | None = Field(default=None, ge=1, le=100)
 
 
+class CancelRequest(BaseModel):
+    reason: str = Field(default="Analyst requested cancellation.", min_length=3, max_length=500)
+
+
 class DecisionRequest(BaseModel):
     actor: str = Field(min_length=1, max_length=200)
     action: str
@@ -85,6 +89,14 @@ def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | No
     def execute(run_id: str, request: ExecuteRequest | None = None) -> dict[str, Any]:
         try:
             return engine.execute(run_id, request.stop_after_tasks if request else None).model_dump(mode="json")
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research run not found") from error
+
+    @app.post("/api/v1/research-runs/{run_id}/cancel")
+    def cancel(run_id: str, request: CancelRequest | None = None) -> dict[str, Any]:
+        try:
+            reason = request.reason if request else "Analyst requested cancellation."
+            return engine.cancel(run_id, reason).model_dump(mode="json")
         except KeyError as error:
             raise HTTPException(status_code=404, detail="research run not found") from error
 

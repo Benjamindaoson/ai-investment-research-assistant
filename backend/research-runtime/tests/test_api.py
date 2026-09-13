@@ -92,3 +92,17 @@ def test_api_reads_target_investment_memory(tmp_path) -> None:
     assert memory.status_code == 200
     assert memory.json()["run_ids"] == created_ids
     assert memory.json()["latest_run_id"] == created_ids[-1]
+
+
+def test_api_cancels_run_and_prevents_execution(tmp_path) -> None:
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+    created = client.post("/api/v1/research-cases", json={"question": "Assess ACME risk", "target": "ACME"})
+    run_id = created.json()["run_id"]
+
+    cancelled = client.post(f"/api/v1/research-runs/{run_id}/cancel", json={"reason": "Analyst stopped the run"})
+    executed = client.post(f"/api/v1/research-runs/{run_id}/execute")
+
+    assert cancelled.status_code == 200
+    assert cancelled.json()["state"] == "CANCELLED"
+    assert executed.status_code == 200
+    assert executed.json()["state"] == "CANCELLED"
