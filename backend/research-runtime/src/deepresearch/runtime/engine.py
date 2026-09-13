@@ -12,6 +12,7 @@ from deepresearch.domain.models import (
     DecisionRecord,
     EvidenceRecord,
     InvestmentMemo,
+    InvestmentMemory,
     ResearchCase,
     ResearchPlan,
     ResearchRun,
@@ -206,7 +207,7 @@ class ResearchEngine:
         self._synthesize(run)
         run.completed_at = datetime.now(UTC)
         run.state = "COMPLETED" if all(self._task_is_qualified(run, task) for task in run.tasks) else "PARTIAL"
-        self._build_memo(run)
+        self._build_memo(run, case.target)
         self._persist(run, "RUN_COMPLETED" if run.state == "COMPLETED" else "RUN_PARTIAL", {"claim_count": len(run.claims)})
         return run
 
@@ -225,6 +226,14 @@ class ResearchEngine:
             if run.memo is not None:
                 run.memo.status = "READY_FOR_REVIEW" if run.state == "COMPLETED" else "DRAFT"
         run.decisions.append(decision)
+        case = self.get_case(run.case_id)
+        memory_payload = self.store.get_memory(case.target)
+        if memory_payload is not None:
+            memory = InvestmentMemory.model_validate(memory_payload)
+            if decision.id not in memory.decision_ids:
+                memory.decision_ids.append(decision.id)
+                memory.updated_at = datetime.now(UTC)
+                self.store.save_memory(memory.model_dump(mode="json"))
         self._persist(run, "HUMAN_DECISION", decision.model_dump(mode="json"))
         return run
 
@@ -233,6 +242,12 @@ class ResearchEngine:
         if run.memo is None:
             raise KeyError(f"memo missing for {run_id}")
         return run.memo
+
+    def get_memory(self, target: str) -> InvestmentMemory:
+        payload = self.store.get_memory(target)
+        if payload is None:
+            raise KeyError(target)
+        return InvestmentMemory.model_validate(payload)
 
     def _qualify(self, record: EvidenceRecord, task: ResearchTask) -> EvidenceRecord:
         requirement = next(item for item in task.evidence_requirements if item.id == record.requirement_id)
@@ -314,7 +329,7 @@ class ResearchEngine:
             for record in run.evidence
         ) >= requirement.minimum_records
 
-    def _build_memo(self, run: ResearchRun) -> None:
+    def _build_memo(self, run: ResearchRun, target: str) -> None:
         if run.thesis is None:
             raise ValueError("cannot build a memo without a thesis")
         unresolved = [
@@ -351,6 +366,26 @@ class ResearchEngine:
                 "run_state": run.state,
             },
         )
+        previous = self.store.get_memory(target)
+        memory = InvestmentMemory.model_validate(previous) if previous is not None else None
+        run_thesis_id = run.thesis.id
+        if memory is None:
+            memory = InvestmentMemory(
+                target=target,
+                latest_run_id=run.id,
+                latest_thesis_id=run_thesis_id,
+            )
+        else:
+            memory.previous_thesis_id = memory.latest_thesis_id
+            memory.latest_run_id = run.id
+            memory.latest_thesis_id = run_thesis_id
+        memory.case_ids.append(run.case_id)
+        memory.run_ids.append(run.id)
+        memory.memo_ids.append(run.memo.id)
+        memory.thesis_ids.append(run_thesis_id)
+        memory.unresolved_requirement_ids = unresolved
+        memory.updated_at = datetime.now(UTC)
+        self.store.save_memory(memory.model_dump(mode="json"))
 
     def _checkpoint(self, run: ResearchRun, completed: set[str]) -> None:
         run.state_version += 1

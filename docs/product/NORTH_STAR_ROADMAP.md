@@ -25,6 +25,8 @@ not define the architecture.
 - Durable local SQLite state, append-only events, DAG execution, resume, trace,
   explicit provider/planner boundaries, and deterministic evaluation.
 - Evidence-linked memo projection and a pure financial calculation boundary.
+- Target-level Investment Memory that retains version references and unresolved
+  requirements without copying chat transcripts.
 
 ### P1 — Production analyst workflow
 
@@ -37,7 +39,7 @@ not define the architecture.
 - Connect the Next.js workspace to runtime case/run/trace/memo APIs; retain a
   clearly labelled synthetic mode for local design work.
 
-### P2 — Investment memory and review loop
+### P2 — Investment memory and review loop (beyond the current reference index)
 
 - Persist company memory as versioned research artifacts, not an unbounded
   chat transcript.

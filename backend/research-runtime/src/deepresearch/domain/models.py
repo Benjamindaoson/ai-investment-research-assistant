@@ -154,6 +154,21 @@ class InvestmentMemo(DomainModel):
     generated_at: datetime = Field(default_factory=utc_now)
 
 
+class InvestmentMemory(DomainModel):
+    id: str = Field(default_factory=lambda: f"memory-{uuid4().hex}")
+    target: str = Field(min_length=1, max_length=300)
+    case_ids: list[str] = Field(default_factory=list)
+    run_ids: list[str] = Field(default_factory=list)
+    memo_ids: list[str] = Field(default_factory=list)
+    thesis_ids: list[str] = Field(default_factory=list)
+    latest_run_id: str
+    latest_thesis_id: str
+    previous_thesis_id: str | None = None
+    unresolved_requirement_ids: list[str] = Field(default_factory=list)
+    decision_ids: list[str] = Field(default_factory=list)
+    updated_at: datetime = Field(default_factory=utc_now)
+
+
 class DecisionRecord(DomainModel):
     id: str = Field(default_factory=lambda: f"decision-{uuid4().hex}")
     actor: str = Field(min_length=1, max_length=200)

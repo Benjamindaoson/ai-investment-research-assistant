@@ -52,6 +52,11 @@ class SQLiteStore:
                     payload TEXT NOT NULL,
                     created_at TEXT NOT NULL
                 );
+                CREATE TABLE IF NOT EXISTS investment_memory (
+                    target TEXT PRIMARY KEY,
+                    payload TEXT NOT NULL,
+                    updated_at TEXT NOT NULL
+                );
                 """
             )
 
@@ -118,3 +123,16 @@ class SQLiteStore:
                 (run_id,),
             ).fetchone()
         return {"id": row["id"], "run_id": row["run_id"], "payload": json.loads(row["payload"]), "created_at": row["created_at"]} if row else None
+
+    def save_memory(self, payload: dict[str, Any]) -> None:
+        with self._transaction() as connection:
+            connection.execute(
+                """INSERT INTO investment_memory(target, payload, updated_at) VALUES (?, ?, ?)
+                ON CONFLICT(target) DO UPDATE SET payload=excluded.payload, updated_at=excluded.updated_at""",
+                (payload["target"], json.dumps(payload), payload["updated_at"]),
+            )
+
+    def get_memory(self, target: str) -> dict[str, Any] | None:
+        with self._transaction() as connection:
+            row = connection.execute("SELECT payload FROM investment_memory WHERE target = ?", (target,)).fetchone()
+        return json.loads(row["payload"]) if row else None

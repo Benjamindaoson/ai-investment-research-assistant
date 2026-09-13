@@ -76,3 +76,19 @@ def test_api_calculates_financial_snapshot(tmp_path) -> None:
     assert response.json()["gross_margin_pct"] == "50.0"
     assert response.json()["free_cash_flow"] == "25"
     assert response.json()["unavailable_metrics"] == []
+
+
+def test_api_reads_target_investment_memory(tmp_path) -> None:
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+    created_ids = []
+    for question in ("Assess ACME margins", "Reassess ACME margins"):
+        created = client.post("/api/v1/research-cases", json={"question": question, "target": "ACME"})
+        run_id = created.json()["run_id"]
+        client.post(f"/api/v1/research-runs/{run_id}/execute")
+        created_ids.append(run_id)
+
+    memory = client.get("/api/v1/investment-memory/ACME")
+
+    assert memory.status_code == 200
+    assert memory.json()["run_ids"] == created_ids
+    assert memory.json()["latest_run_id"] == created_ids[-1]
