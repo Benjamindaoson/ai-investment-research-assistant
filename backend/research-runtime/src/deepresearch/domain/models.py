@@ -58,6 +58,7 @@ class ResearchPlan(DomainModel):
     input_hash: str = Field(min_length=64, max_length=64)
     status: Literal["PROPOSED", "VALIDATED", "REJECTED"] = "PROPOSED"
     tasks: list[ResearchTask] = Field(min_length=1)
+    provenance: dict[str, Any] = Field(default_factory=dict)
     created_at: datetime = Field(default_factory=utc_now)
 
 

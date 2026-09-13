@@ -16,6 +16,7 @@ from deepresearch.runtime.evidence import (
     EvidenceProvider,
     HttpEvidenceProvider,
 )
+from deepresearch.runtime.planner import ResearchPlanner, create_configured_research_planner
 
 
 class CreateCaseRequest(BaseModel):
@@ -34,13 +35,13 @@ class DecisionRequest(BaseModel):
     rationale: str = Field(min_length=3, max_length=4000)
 
 
-def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | None = None) -> FastAPI:
+def create_app(store: SQLiteStore | None = None, provider: EvidenceProvider | None = None, planner: ResearchPlanner | None = None) -> FastAPI:
     runtime_store = store or SQLiteStore(Path(".data/deepresearch.sqlite3"))
     configured_provider = provider
     if configured_provider is None:
         base_url = os.environ.get("FINEVIDENCE_BASE_URL")
         configured_provider = HttpEvidenceProvider(base_url) if base_url else DeterministicEvidenceProvider()
-    engine = ResearchEngine(runtime_store, configured_provider)
+    engine = ResearchEngine(runtime_store, configured_provider, planner=planner or create_configured_research_planner())
     app = FastAPI(title="Financial DeepResearch Runtime", version="0.1.0")
 
     @app.get("/api/v1/health")

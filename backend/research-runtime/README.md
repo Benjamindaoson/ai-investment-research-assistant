@@ -18,6 +18,12 @@ claim-to-evidence 链接。
 设置 `FINEVIDENCE_BASE_URL` 后，API 会使用 HTTP provider；未设置时使用
 明确标记的 deterministic provider，保证本地测试不需要网络或凭证。
 
+Planner 默认也是 deterministic。只有显式设置
+`DEEPRESEARCH_PLANNER=llm`，并提供 `DEEPSEEK_API_KEY`、
+`DEEPSEEK_BASE_URL`、`DEEPSEEK_MODEL`（或对应的 `LLM_*` 变量）时，API
+才会调用 OpenAI-compatible planner。LLM 输出必须先通过结构化 schema 和
+DAG 校验；调用失败不会静默回退为另一份 plan。
+
 ## 当前能力边界
 
 - 已真实实现：Pydantic domain contracts、deterministic planner boundary、带
