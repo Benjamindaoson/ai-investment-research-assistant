@@ -18,6 +18,7 @@ Next.js Research Workspace
   → FastAPI Research Runtime
   → ResearchCase / ResearchPlan / ResearchRun / Task DAG
   → Evidence Requirements / FinEvidence v1 HTTP Client
+  → Partial Coverage / Durable Replanning
   → Claims / Evidence-grounded Thesis / Memo / Human Decision
   → Investment Memory / Financial Analysis
   → SQLite events + checkpoints / Evaluation
@@ -120,8 +121,8 @@ synthesis, durable uniquely identified research runs with case-scoped history,
 investment memos with structured evidence-linked review
 sections, target-level Investment Memory with observed ThesisDelta and run-scoped
 memory reads, Decimal financial analysis, decision endpoints, typed
-Next.js runtime transport, live runtime workspace, case-scoped reruns, and an honest evaluation
-scorer.
+Next.js runtime transport, live runtime workspace, case-scoped reruns, durable
+requirement-driven replanning, and an honest evaluation scorer.
 
 Incomplete by design: live filing and market providers, LLM plan quality
 promotion, PostgreSQL, authentication, document parsing, monitoring triggers,

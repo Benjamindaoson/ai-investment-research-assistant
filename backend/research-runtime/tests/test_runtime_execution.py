@@ -163,6 +163,100 @@ def test_engine_preserves_external_finevidence_qualification(tmp_path) -> None:
     assert result.evidence[0].qualification == "NEEDS_REVIEW"
 
 
+def test_engine_replans_partial_run_and_resumes_same_run(tmp_path) -> None:
+    class EventuallyAvailable(DeterministicEvidenceProvider):
+        attempt = 0
+
+        def collect(self, task, case):
+            self.attempt += 1
+            if self.attempt == 1:
+                self.calls.append(task.id)
+                return []
+            return super().collect(task, case)
+
+    provider = EventuallyAvailable()
+    engine = ResearchEngine(SQLiteStore(tmp_path / "runtime.sqlite3"), provider)
+    run = engine.create_run(
+        ResearchCase(id="case-replan", question="Assess ACME evidence", target="ACME"),
+        [make_task("market")],
+    )
+
+    partial = engine.execute(run.id)
+    replanned = engine.replan(run.id)
+    completed = engine.execute(run.id)
+
+    assert partial.state == "PARTIAL"
+    assert replanned.id == run.id
+    assert replanned.state == "CREATED"
+    assert replanned.plan is not None
+    assert replanned.plan.provenance["replan_unresolved_requirement_ids"] == ["market:req-market"]
+    assert completed.state == "COMPLETED"
+    assert completed.id == run.id
+    assert len(completed.evidence) == 2
+    assert [event["event_type"] for event in engine.store.events(run.id)].count("RUN_REPLANNED") == 1
+
+
+def test_engine_replan_rejects_completed_run_without_mutation(tmp_path) -> None:
+    engine = ResearchEngine(SQLiteStore(tmp_path / "runtime.sqlite3"), DeterministicEvidenceProvider())
+    run = engine.create_run(
+        ResearchCase(id="case-no-replan", question="Assess ACME evidence", target="ACME"),
+        [make_task("market")],
+    )
+    completed = engine.execute(run.id)
+    before = engine.store.events(run.id)
+
+    try:
+        engine.replan(run.id)
+    except ValueError as error:
+        assert str(error) == "only partial runs can be replanned"
+    else:
+        raise AssertionError("completed run was replanned")
+
+    assert engine.get_run(run.id) == completed
+    assert engine.store.events(run.id) == before
+
+
+def test_engine_retries_replace_same_evidence_when_qualification_changes(tmp_path) -> None:
+    class QualificationProvider:
+        qualification_authority = "external"
+        attempt = 0
+
+        def collect(self, task, case):
+            self.attempt += 1
+            return [
+                EvidenceRecord(
+                    id="stable-evidence",
+                    task_id=task.id,
+                    requirement_id=task.evidence_requirements[0].id,
+                    stance="SUPPORTING",
+                    qualification="NEEDS_REVIEW" if self.attempt == 1 else "QUALIFIED",
+                    source_id="source",
+                    source_title="Source",
+                    excerpt="Observed evidence",
+                    provider="finevidence-http",
+                    source_url="https://example.test/source",
+                    locator="page:1",
+                    content_hash="c" * 64,
+                    provenance={"finevidence": {"coverage_status": "PARTIAL"}},
+                )
+            ]
+
+    provider = QualificationProvider()
+    engine = ResearchEngine(SQLiteStore(tmp_path / "runtime.sqlite3"), provider)
+    run = engine.create_run(
+        ResearchCase(id="case-evidence-retry", question="Assess ACME evidence", target="ACME"),
+        [make_task("market")],
+    )
+
+    engine.execute(run.id)
+    engine.replan(run.id)
+    completed = engine.execute(run.id)
+
+    assert completed.state == "COMPLETED"
+    assert len(completed.evidence) == 1
+    assert completed.evidence[0].qualification == "QUALIFIED"
+
+
 def test_engine_records_provider_failure_without_successful_tool_execution(tmp_path) -> None:
     class FailingProvider(DeterministicEvidenceProvider):
         def collect(self, task, case):

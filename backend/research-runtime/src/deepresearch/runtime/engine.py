@@ -106,6 +106,62 @@ class ResearchEngine:
     def list_runs(self, case_id: str) -> list[ResearchRun]:
         return [ResearchRun.model_validate(payload) for payload in self.store.list_runs(case_id)]
 
+    def replan(self, run_id: str) -> ResearchRun:
+        run = self.get_run(run_id)
+        if run.state != "PARTIAL":
+            raise ValueError("only partial runs can be replanned")
+        case = self.get_case(run.case_id)
+        unresolved = [
+            f"{task.id}:{requirement.id}"
+            for task in run.tasks
+            for requirement in task.evidence_requirements
+            if not self._requirement_is_qualified(run, task, requirement.id)
+        ]
+        if not unresolved:
+            raise ValueError("partial run has no unresolved requirements")
+        replan = getattr(self.planner, "replan", None)
+        plan = replan(case, unresolved) if callable(replan) else self.planner.plan(case)
+        existing_task_ids = {task.id for task in run.tasks}
+        plan = plan.model_copy(update={"tasks": [task for task in plan.tasks if task.id in existing_task_ids]})
+        if not plan.tasks:
+            raise ValueError("replanner did not retain any existing task")
+        self._validate_plan(plan, case)
+
+        reset_task_ids = {item.split(":", 1)[0] for item in unresolved}
+        changed = True
+        while changed:
+            changed = False
+            for task in run.tasks:
+                if task.id not in reset_task_ids and reset_task_ids.intersection(task.depends_on):
+                    reset_task_ids.add(task.id)
+                    changed = True
+        planned = {task.id: task for task in plan.tasks}
+        merged_tasks = []
+        for task in run.tasks:
+            refreshed = planned.get(task.id, task)
+            state = task.state if task.id not in reset_task_ids else "PENDING"
+            merged_tasks.append(refreshed.model_copy(update={"state": state}))
+
+        run.plan = plan
+        run.tasks = merged_tasks
+        run.state = "CREATED"
+        run.completed_at = None
+        run.claims = []
+        run.thesis = None
+        run.memo = None
+        run.checkpoint = None
+        run.state_version += 1
+        self._persist(
+            run,
+            "RUN_REPLANNED",
+            {
+                "unresolved_requirement_ids": unresolved,
+                "reset_task_ids": sorted(reset_task_ids),
+                "plan_id": plan.id,
+            },
+        )
+        return run
+
     def get_case(self, case_id: str) -> ResearchCase:
         payload = self.store.get_case(case_id)
         if payload is None:
@@ -196,7 +252,23 @@ class ResearchEngine:
                         f"evidence provider failed for task {task.id}: {type(error).__name__}: {error}",
                     )
                 qualified = [self._qualify(record, task) for record in records]
-                run.evidence.extend(qualified)
+                existing_evidence = {
+                    (record.id, record.content_hash): index for index, record in enumerate(run.evidence)
+                }
+                pending_evidence: dict[tuple[str, str | None], int] = {}
+                new_evidence: list[EvidenceRecord] = []
+                for record in qualified:
+                    key = (record.id, record.content_hash)
+                    if key in pending_evidence:
+                        pending_index = pending_evidence[key]
+                        if new_evidence[pending_index].qualification != record.qualification:
+                            new_evidence[pending_index] = record
+                    elif key not in existing_evidence:
+                        pending_evidence[key] = len(new_evidence)
+                        new_evidence.append(record)
+                    elif run.evidence[existing_evidence[key]].qualification != record.qualification:
+                        run.evidence[existing_evidence[key]] = record
+                run.evidence.extend(new_evidence)
                 result_hash = evidence_hash(qualified) if qualified else sha256(b"empty").hexdigest()
                 run.tool_executions.append(
                     ToolExecution(task_id=task.id, tool_name=task.tool_name, status="SUCCEEDED", result_hash=result_hash)
@@ -204,7 +276,7 @@ class ResearchEngine:
                 task.state = "COMPLETED"
                 completed.add(task.id)
                 executed_this_call += 1
-                self._persist(run, "TASK_COMPLETED", {"task_id": task.id, "evidence_count": len(qualified)})
+                self._persist(run, "TASK_COMPLETED", {"task_id": task.id, "evidence_count": len(new_evidence)})
                 self._checkpoint(run, completed)
                 if stop_after_tasks is not None and executed_this_call >= stop_after_tasks:
                     return run
@@ -282,10 +354,13 @@ class ResearchEngine:
 
     def _task_is_qualified(self, run: ResearchRun, task: ResearchTask) -> bool:
         for requirement in task.evidence_requirements:
-            matching = [
-                record for record in run.evidence
-                if record.task_id == task.id and record.requirement_id == requirement.id and record.qualification == "QUALIFIED"
-            ]
+            matching = {
+                record.id
+                for record in run.evidence
+                if record.task_id == task.id
+                and record.requirement_id == requirement.id
+                and record.qualification == "QUALIFIED"
+            }
             if len(matching) < requirement.minimum_records:
                 return False
         return True
@@ -307,7 +382,7 @@ class ResearchEngine:
                 Claim(
                     task_id=task.id,
                     statement=statement,
-                    evidence_ids=[item.id for item in qualified],
+                    evidence_ids=list(dict.fromkeys(item.id for item in qualified)),
                     status="QUALIFIED" if self._task_is_qualified(run, task) else "NEEDS_REVIEW",
                     confidence=round(len(qualified) / len(observed), 4) if observed else 0.0,
                 )
@@ -348,12 +423,13 @@ class ResearchEngine:
 
     def _requirement_is_qualified(self, run: ResearchRun, task: ResearchTask, requirement_id: str) -> bool:
         requirement = next(item for item in task.evidence_requirements if item.id == requirement_id)
-        return sum(
-            record.task_id == task.id
+        return len({
+            record.id
+            for record in run.evidence
+            if record.task_id == task.id
             and record.requirement_id == requirement_id
             and record.qualification == "QUALIFIED"
-            for record in run.evidence
-        ) >= requirement.minimum_records
+        }) >= requirement.minimum_records
 
     def _build_memo(self, run: ResearchRun, target: str) -> None:
         if run.thesis is None:

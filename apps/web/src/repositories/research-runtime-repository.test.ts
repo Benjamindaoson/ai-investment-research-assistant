@@ -56,6 +56,21 @@ describe("ResearchRuntimeRepository", () => {
     await expect(repository.executeRun("run-1")).resolves.toMatchObject({ state: "COMPLETED" });
   });
 
+  it("replans a partial run through the typed repository boundary", async () => {
+    let requestUrl = "";
+    let requestMethod = "";
+    const fetchImpl = (async (input, init) => {
+      requestUrl = String(input);
+      requestMethod = String(init?.method);
+      return new Response(JSON.stringify({ ...run, state: "CREATED" }), { status: 200 });
+    }) as typeof fetch;
+    const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+
+    await expect(repository.replanRun("run-1")).resolves.toMatchObject({ id: "run-1", state: "CREATED" });
+    expect(requestUrl).toBe("http://runtime.test/api/v1/research-runs/run-1/replan");
+    expect(requestMethod).toBe("POST");
+  });
+
   it("surfaces runtime HTTP errors", async () => {
     const fetchImpl = (async () => new Response("unavailable", { status: 503 })) as typeof fetch;
     const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));

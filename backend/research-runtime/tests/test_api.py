@@ -4,6 +4,7 @@ from fastapi.testclient import TestClient
 
 from deepresearch.api import create_app
 from deepresearch.persistence.store import SQLiteStore
+from deepresearch.runtime.evidence import DeterministicEvidenceProvider
 from deepresearch.runtime.planner import DeterministicResearchPlanner, PlannerProviderError
 
 
@@ -171,6 +172,35 @@ def test_api_cancels_run_and_prevents_execution(tmp_path) -> None:
     assert cancelled.json()["state"] == "CANCELLED"
     assert executed.status_code == 200
     assert executed.json()["state"] == "CANCELLED"
+
+
+def test_api_replans_a_partial_run(tmp_path) -> None:
+    class EventuallyAvailable(DeterministicEvidenceProvider):
+        attempt = 0
+
+        def collect(self, task, case):
+            self.attempt += 1
+            if self.attempt == 1:
+                self.calls.append(task.id)
+                return []
+            return super().collect(task, case)
+
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    client = TestClient(create_app(store, provider=EventuallyAvailable()))
+    created = client.post("/api/v1/research-cases", json={"question": "Assess ACME risk", "target": "ACME"})
+    run_id = created.json()["run_id"]
+
+    partial = client.post(f"/api/v1/research-runs/{run_id}/execute")
+    replanned = client.post(f"/api/v1/research-runs/{run_id}/replan")
+    completed = client.post(f"/api/v1/research-runs/{run_id}/execute")
+
+    assert partial.json()["state"] == "PARTIAL"
+    assert replanned.status_code == 200
+    assert replanned.json()["state"] == "CREATED"
+    assert replanned.json()["id"] == run_id
+    assert completed.json()["state"] == "COMPLETED"
+    assert client.post(f"/api/v1/research-runs/{run_id}/replan").status_code == 422
+    assert client.post("/api/v1/research-runs/missing/replan").status_code == 404
 
 
 def test_api_allows_only_configured_local_cors_origin(tmp_path, monkeypatch) -> None:

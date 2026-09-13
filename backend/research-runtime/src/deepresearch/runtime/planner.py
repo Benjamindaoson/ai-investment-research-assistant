@@ -24,6 +24,8 @@ class ResearchPlanner(Protocol):
 
     def plan(self, case: ResearchCase) -> ResearchPlan: ...
 
+    def replan(self, case: ResearchCase, unresolved_requirement_ids: list[str]) -> ResearchPlan: ...
+
 
 class PlannerProviderError(RuntimeError):
     """An LLM transport or structured-output failure."""
@@ -56,6 +58,12 @@ class LLMResearchPlanner:
         self.name = f"llm:{model}"
 
     def plan(self, case: ResearchCase) -> ResearchPlan:
+        return self._plan(case, [])
+
+    def replan(self, case: ResearchCase, unresolved_requirement_ids: list[str]) -> ResearchPlan:
+        return self._plan(case, unresolved_requirement_ids)
+
+    def _plan(self, case: ResearchCase, unresolved_requirement_ids: list[str]) -> ResearchPlan:
         body = json.dumps(
             {
                 "model": self.model,
@@ -76,10 +84,17 @@ class LLMResearchPlanner:
                             "required_stances; use SUPPORTING, COUNTER, or CONFLICTING for stances. "
                             "Include at least one COUNTER requirement for downside or disconfirming evidence. "
                             "Do not include rationale, search_queries, sources, facts, claims, thesis, or conclusions. "
-                            "Do not invent financial data."
+                            "Do not invent financial data. "
+                            f"Prioritize these unresolved requirements when replanning: {json.dumps(sorted(unresolved_requirement_ids))}."
                         ),
                     },
-                    {"role": "user", "content": json.dumps(case.model_dump(mode="json"), sort_keys=True)},
+                    {
+                        "role": "user",
+                        "content": json.dumps(
+                            {"case": case.model_dump(mode="json"), "unresolved_requirement_ids": sorted(unresolved_requirement_ids)},
+                            sort_keys=True,
+                        ),
+                    },
                 ],
             },
             sort_keys=True,
@@ -122,6 +137,7 @@ class LLMResearchPlanner:
                 "model": self.model,
                 "request_hash": request_hash,
                 "response_hash": response_hash,
+                "replan_unresolved_requirement_ids": sorted(unresolved_requirement_ids),
             },
         )
 
@@ -156,6 +172,12 @@ class DeterministicResearchPlanner:
     version = "v1"
 
     def plan(self, case: ResearchCase) -> ResearchPlan:
+        return self._plan(case, [])
+
+    def replan(self, case: ResearchCase, unresolved_requirement_ids: list[str]) -> ResearchPlan:
+        return self._plan(case, unresolved_requirement_ids)
+
+    def _plan(self, case: ResearchCase, unresolved_requirement_ids: list[str]) -> ResearchPlan:
         tasks = [
             ResearchTask(
                 id="market",
@@ -187,4 +209,5 @@ class DeterministicResearchPlanner:
             planner_version=self.version,
             input_hash=research_input_hash(case),
             tasks=tasks,
+            provenance={"replan_unresolved_requirement_ids": sorted(unresolved_requirement_ids)} if unresolved_requirement_ids else {},
         )

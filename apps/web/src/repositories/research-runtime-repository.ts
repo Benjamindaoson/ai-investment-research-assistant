@@ -6,6 +6,7 @@ export class ResearchRuntimeRepository {
   createCase(input: RuntimeCaseInput): Promise<RuntimeCaseResult> { return this.service.createCase(input); }
   getRun(runId: string): Promise<RuntimeRun> { return this.service.getRun(runId); }
   executeRun(runId: string): Promise<RuntimeRun> { return this.service.executeRun(runId); }
+  replanRun(runId: string): Promise<RuntimeRun> { return this.service.replanRun(runId); }
   getTrace(runId: string): Promise<RuntimeTrace> {
     return this.service.getTrace(runId);
   }

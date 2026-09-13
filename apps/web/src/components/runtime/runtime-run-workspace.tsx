@@ -2,12 +2,13 @@
 
 import { useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
-import { useCancelRuntimeRunMutation, useExecuteRuntimeRunMutation, useRuntimeMemoryQuery, useRuntimeRunQuery } from "@/queries/use-runtime-run";
+import { useCancelRuntimeRunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeMemoryQuery, useRuntimeRunQuery } from "@/queries/use-runtime-run";
 
 export function RuntimeRunWorkspace({ runId }: { runId: string }) {
   const query = useRuntimeRunQuery(runId);
   const memoryQuery = useRuntimeMemoryQuery(runId, Boolean(query.data?.memo));
   const execute = useExecuteRuntimeRunMutation(runId);
+  const replan = useReplanRuntimeRunMutation(runId);
   const cancel = useCancelRuntimeRunMutation(runId);
   const [reason, setReason] = useState("Analyst stopped the run.");
 
@@ -24,9 +25,9 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
     <AppShell context={<><div className="context-heading"><b>Runtime run</b><span>{run.state}</span></div><div className="context-summary"><small>TASKS</small><b>{run.tasks.length}</b><small>EVIDENCE</small><b>{run.evidence.length}</b><small>MEMO</small><b>{run.memo?.status ?? "pending"}</b></div></>}>
       <div className="page-title"><div><p>LIVE RUNTIME · {run.id}</p><h1>Research execution</h1><span>Backend-driven state, evidence coverage, and review-gated output.</span></div><span className={`thesis-state ${run.state.toLowerCase()}`}>{run.state}</span></div>
       <section className="decision-panel">
-        <header><div><small>RUN CONTROL</small><h2>Execution state</h2></div><div className="form-actions compact"><button type="button" className="outline" onClick={() => query.refetch()}>Refresh</button>{run.state === "CREATED" && <button type="button" className="blue-button" disabled={execute.isPending} onClick={() => execute.mutate()}>{execute.isPending ? "Executing…" : "Start research"}</button>}</div></header>
+        <header><div><small>RUN CONTROL</small><h2>Execution state</h2></div><div className="form-actions compact"><button type="button" className="outline" onClick={() => query.refetch()}>Refresh</button>{run.state === "CREATED" && <button type="button" className="blue-button" disabled={execute.isPending} onClick={() => execute.mutate()}>{execute.isPending ? "Executing…" : "Start research"}</button>}{run.state === "PARTIAL" && <button type="button" className="blue-button" disabled={replan.isPending} onClick={() => replan.mutate()}>{replan.isPending ? "Replanning…" : "Replan missing evidence"}</button>}</div></header>
         {!terminal && <div className="form-actions"><input className="text-control" value={reason} onChange={(event) => setReason(event.target.value)} aria-label="Cancellation reason" /><button type="button" className="outline" disabled={cancel.isPending || reason.trim().length < 3} onClick={() => cancel.mutate(reason)}>{cancel.isPending ? "Cancelling…" : "Cancel run"}</button></div>}
-        {(execute.isError || cancel.isError) && <p className="form-error" role="alert">{(execute.error ?? cancel.error)?.message}</p>}
+        {(execute.isError || cancel.isError || replan.isError) && <p className="form-error" role="alert">{(execute.error ?? cancel.error ?? replan.error)?.message}</p>}
       </section>
       <section className="decision-panel"><header><div><small>TASK CONTRACT</small><h2>Research tasks</h2></div><span>{run.tasks.filter((task) => task.state === "COMPLETED").length} / {run.tasks.length} completed</span></header><div className="runtime-task-list">{run.tasks.map((task) => <article className="runtime-task" key={task.id}><b>{task.title}</b><span>{task.id}</span><em>{task.state}</em></article>)}</div></section>
       <section className="company-section-grid"><article className="company-section"><header><h3>Evidence coverage</h3><span>{run.evidence.length} observed</span></header><p>{qualified} qualified · {needsReview} needs review · {counter} counter/conflicting</p></article><article className="company-section"><header><h3>Memo projection</h3><span>{run.memo?.status ?? "not generated"}</span></header><p>{run.memo?.executive_summary ?? "Memo is generated after synthesis."}</p></article></section>

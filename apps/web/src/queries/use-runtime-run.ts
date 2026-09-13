@@ -30,6 +30,17 @@ export function useExecuteRuntimeRunMutation(runId: string) {
   });
 }
 
+export function useReplanRuntimeRunMutation(runId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => researchRuntimeRepository.replanRun(runId),
+    onSuccess: (data) => {
+      queryClient.setQueryData(runtimeRunQueryKey(runId), data);
+      void queryClient.invalidateQueries({ queryKey: runtimeMemoryQueryKey(runId) });
+    },
+  });
+}
+
 export function useCancelRuntimeRunMutation(runId: string) {
   const queryClient = useQueryClient();
   return useMutation({

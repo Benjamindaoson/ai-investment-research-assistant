@@ -48,6 +48,10 @@ DAG 校验；调用失败不会静默回退为另一份 plan。
   API、case-scoped rerun、durable cancellation、可执行 scorer。`python -m
   deepresearch.evaluation` 会独立输出 planner quality 和 runtime execution
   两组结果，并对 completed/partial run 检查 memo sections 与 artifact links。
+- 已实现 durable replan：POST /api/v1/research-runs/{run_id}/replan 只接受
+  PARTIAL run，记录 unresolved requirements，保留原 run ID、证据和事件，
+  只重置受影响 task 及其下游，并从新 checkpoint 恢复执行。重试不会用重复
+  evidence 制造 coverage。
 - Deterministic provider 是本地演示数据，不是 live market data，也不是 FinEvidence。
 - 已实现 FinEvidence v1 provider transport boundary：`FinEvidenceClient` 只
   通过 `/health`、`/api/v1/evidence/search`、`coverage`、`citation`、
