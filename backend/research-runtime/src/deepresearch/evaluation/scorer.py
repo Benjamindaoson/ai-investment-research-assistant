@@ -156,6 +156,63 @@ def score_run(run: ResearchRun, case: dict[str, Any]) -> EvaluationResult:
                 detail=f"dangling_claims={dangling_claims}, dangling_evidence={dangling_evidence}, dangling_requirements={dangling_requirements}",
             )
         )
+        evidence_by_id = {record.id: record for record in run.evidence}
+        invalid_red_team_reviews = sorted(
+            review.id
+            for review in run.red_team_reviews
+            if review.run_id != run.id
+            or (run.thesis is not None and review.thesis_id != run.thesis.id)
+        )
+        dangling_red_team_evidence = sorted(
+            {
+                evidence_id
+                for review in run.red_team_reviews
+                for evidence_id in review.evidence_ids
+                if evidence_id not in evidence_by_id
+            }
+        )
+        invalid_red_team_stance = sorted(
+            {
+                evidence_id
+                for review in run.red_team_reviews
+                for evidence_id in review.evidence_ids
+                if evidence_id in evidence_by_id
+                and evidence_by_id[evidence_id].stance not in {"COUNTER", "CONFLICTING"}
+            }
+        )
+        checks.append(
+            EvaluationCheck(
+                name="red_team_links",
+                status="PASS"
+                if not invalid_red_team_reviews
+                and not dangling_red_team_evidence
+                and not invalid_red_team_stance
+                else "FAIL",
+                detail=(
+                    f"invalid_reviews={invalid_red_team_reviews}, "
+                    f"dangling_evidence={dangling_red_team_evidence}, "
+                    f"invalid_stance={invalid_red_team_stance}"
+                ),
+            )
+        )
+        if "minimum_red_team_reviews" in case:
+            minimum_red_team_reviews = int(case.get("minimum_red_team_reviews", 0))
+            valid_red_team_reviews = [
+                review
+                for review in run.red_team_reviews
+                if review.id not in invalid_red_team_reviews
+                and not any(
+                    evidence_id in dangling_red_team_evidence or evidence_id in invalid_red_team_stance
+                    for evidence_id in review.evidence_ids
+                )
+            ]
+            checks.append(
+                EvaluationCheck(
+                    name="red_team_coverage",
+                    status="PASS" if len(valid_red_team_reviews) >= minimum_red_team_reviews else "FAIL",
+                    detail=f"observed={len(valid_red_team_reviews)}, minimum={minimum_red_team_reviews}",
+                )
+            )
         review_by_id = {review.id: review for review in run.ic_reviews}
         referenced_review_ids = set(run.memo.ic_review_ids if run.memo is not None else [])
         referenced_review_ids.update(review_id for decision in run.decisions for review_id in decision.review_ids)

@@ -2,6 +2,7 @@ from deepresearch.domain.models import (
     DecisionRecord,
     EvidenceRequirement,
     InvestmentCommitteeReview,
+    RedTeamReview,
     ResearchCase,
     ResearchRun,
     ResearchTask,
@@ -73,6 +74,20 @@ def _ic_review(run: ResearchRun, evidence_id: str, *, thesis_id: str | None = No
         recommendation="HOLD",
         rationale="Validate margin durability before sizing the position.",
         evidence_ids=[evidence_id],
+    )
+
+
+def _red_team_review(run: ResearchRun, evidence_id: str, *, thesis_id: str | None = None) -> RedTeamReview:
+    assert run.thesis is not None
+    return RedTeamReview(
+        id="red-team-review",
+        run_id=run.id,
+        thesis_id=thesis_id or run.thesis.id,
+        reviewer="Independent analyst",
+        challenge="The growth signal may not persist through the next cycle.",
+        evidence_ids=[evidence_id],
+        outcome="SUPPORTED",
+        rationale="The counter-evidence is material to the downside case.",
     )
 
 
@@ -155,3 +170,50 @@ def test_evaluation_rejects_missing_required_ic_review_role(tmp_path) -> None:
     check = next(check for check in result.checks if check.name == "ic_review_coverage")
     assert check.status == "FAIL"
     assert "BEAR" in check.detail
+
+
+def test_evaluation_accepts_evidence_linked_red_team_review(tmp_path) -> None:
+    engine, run = _completed_run(tmp_path)
+    counter_id = next(item.id for item in run.evidence if item.stance == "COUNTER")
+    run = engine.record_red_team_review(run.id, _red_team_review(run, counter_id))
+
+    result = score_run(
+        run,
+        {"case_id": "DR-RED-PASS", "expected_state": "COMPLETED", "minimum_red_team_reviews": 1},
+    )
+
+    assert result.passed is True
+    assert next(check for check in result.checks if check.name == "red_team_links").status == "PASS"
+    assert next(check for check in result.checks if check.name == "red_team_coverage").status == "PASS"
+
+
+def test_evaluation_rejects_invalid_red_team_evidence_links(tmp_path) -> None:
+    _, run = _completed_run(tmp_path)
+    counter_id = next(item.id for item in run.evidence if item.stance == "COUNTER")
+    supporting_id = next(item.id for item in run.evidence if item.stance == "SUPPORTING")
+    review = _red_team_review(run, counter_id, thesis_id="thesis-other")
+    review.evidence_ids = [supporting_id, "missing-evidence"]
+    run.red_team_reviews.append(review)
+
+    result = score_run(run, {"case_id": "DR-RED-INVALID", "expected_state": "COMPLETED"})
+
+    assert result.passed is False
+    check = next(check for check in result.checks if check.name == "red_team_links")
+    assert check.status == "FAIL"
+    assert "red-team-review" in check.detail
+    assert "missing-evidence" in check.detail
+    assert supporting_id in check.detail
+
+
+def test_evaluation_rejects_insufficient_red_team_reviews(tmp_path) -> None:
+    _, run = _completed_run(tmp_path)
+
+    result = score_run(
+        run,
+        {"case_id": "DR-RED-COVERAGE", "expected_state": "COMPLETED", "minimum_red_team_reviews": 1},
+    )
+
+    assert result.passed is False
+    check = next(check for check in result.checks if check.name == "red_team_coverage")
+    assert check.status == "FAIL"
+    assert "observed=0, minimum=1" in check.detail
