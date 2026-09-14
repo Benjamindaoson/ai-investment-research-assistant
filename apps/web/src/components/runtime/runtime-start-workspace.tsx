@@ -3,7 +3,8 @@
 import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
-import { useCreateRuntimeCaseMutation } from "@/queries/use-runtime-run";
+import { RuntimeCaseInbox } from "@/components/runtime/runtime-case-inbox";
+import { useCreateRuntimeCaseMutation, useRuntimeCasesQuery } from "@/queries/use-runtime-run";
 import type { ResearchMandate } from "@/services/research-runtime-service";
 
 const decisionTypes: Array<[ResearchMandate["decision_type"], string]> = [
@@ -29,6 +30,7 @@ export function RuntimeStartWorkspace() {
   const [requiredOutputs, setRequiredOutputs] = useState("investment memo");
   const [constraints, setConstraints] = useState("");
   const configured = Boolean(process.env.NEXT_PUBLIC_RESEARCH_RUNTIME_URL);
+  const casesQuery = useRuntimeCasesQuery(configured);
 
   async function submit() {
     const result = await createCase.mutateAsync({
@@ -49,6 +51,7 @@ export function RuntimeStartWorkspace() {
     <AppShell context={<><div className="context-heading"><b>Live Research Runtime</b><span>{configured ? "Connected" : "Not configured"}</span></div><p className="context-note">The backend remains the source of truth for plan, evidence, and memo state.</p></>}>
       <div className="page-title"><div><p>LIVE RUNTIME · NEW CASE</p><h1>Start a canonical research run</h1><span>Use the durable backend workflow when a Research Runtime URL is configured.</span></div></div>
       {!configured && <div className="error-state" role="alert"><b>Research Runtime URL is not configured</b><span>Set NEXT_PUBLIC_RESEARCH_RUNTIME_URL before using this live workspace. The existing workspace remains explicitly synthetic.</span></div>}
+      {configured && <RuntimeCaseInbox cases={casesQuery.data} isPending={casesQuery.isPending} error={casesQuery.error} />}
       <section className="setup-section">
         <header><h2>Target</h2><p>Use the backend target identity for Investment Memory grouping.</p></header>
         <div><input className="text-control" value={target} onChange={(event) => setTarget(event.target.value)} aria-label="Runtime target" /></div>

@@ -2,16 +2,29 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { researchRuntimeRepository } from "@/repositories";
-import type { DecisionRecordInput, EvidenceLinkedFinancialAnalysisInput, RedTeamReviewInput, RuntimeCaseInput, RuntimeRun, RuntimeTrace, ValuationScenarioInput } from "@/services/research-runtime-service";
+import type { DecisionRecordInput, EvidenceLinkedFinancialAnalysisInput, RedTeamReviewInput, RuntimeCaseInput, RuntimeResearchCase, RuntimeRun, RuntimeTrace, ValuationScenarioInput } from "@/services/research-runtime-service";
 
 export const runtimeRunQueryKey = (runId: string) => ["runtime", "run", runId] as const;
 export const runtimeCaseRunsQueryKey = (caseId: string) => ["runtime", "case-runs", caseId] as const;
 export const runtimeEvaluationQueryKey = (runId: string) => ["runtime", "evaluation", runId] as const;
+export const runtimeCasesQueryKey = ["runtime", "cases"] as const;
 export const runtimeMemoryQueryKey = (runId: string) => ["runtime", "memory", runId] as const;
 export const runtimeTraceQueryKey = (runId: string) => ["runtime", "trace", runId] as const;
 
 export function useCreateRuntimeCaseMutation() {
   return useMutation({ mutationFn: (input: RuntimeCaseInput) => researchRuntimeRepository.createCase(input) });
+}
+
+export function useRuntimeCasesQuery(enabled: boolean) {
+  return useQuery({
+    queryKey: runtimeCasesQueryKey,
+    queryFn: async (): Promise<Array<RuntimeResearchCase & { latest_run_id: string | null }>> => {
+      const cases = await researchRuntimeRepository.getCases();
+      const runs = await Promise.all(cases.map((researchCase) => researchRuntimeRepository.getCaseRuns(researchCase.id)));
+      return cases.map((researchCase, index) => ({ ...researchCase, latest_run_id: runs[index]?.at(-1)?.id ?? null }));
+    },
+    enabled,
+  });
 }
 
 export function useCreateRuntimeRerunMutation(caseId: string) {

@@ -54,6 +54,8 @@ def test_api_creates_and_executes_case(tmp_path) -> None:
     executed = client.post(f"/api/v1/research-runs/{run_id}/execute")
     assert executed.status_code == 200
     assert executed.json()["state"] == "COMPLETED"
+
+
     thesis_id = executed.json()["thesis"]["id"]
 
     memo = client.get(f"/api/v1/research-runs/{run_id}/memo")
@@ -89,6 +91,17 @@ def test_api_creates_and_executes_case(tmp_path) -> None:
     assert client.get("/api/v1/research-runs/missing/trace").status_code == 404
     assert client.get("/api/v1/research-runs/missing/memo").status_code == 404
     assert client.get("/api/v1/research-cases/missing").status_code == 404
+
+
+def test_api_lists_durable_cases_in_creation_order(tmp_path) -> None:
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+    first = client.post("/api/v1/research-cases", json={"question": "Assess ACME revenue", "target": "ACME"})
+    second = client.post("/api/v1/research-cases", json={"question": "Assess Beta margins", "target": "BETA"})
+
+    response = client.get("/api/v1/research-cases")
+    assert response.status_code == 200
+    assert [case["id"] for case in response.json()] == [first.json()["case_id"], second.json()["case_id"]]
+    assert response.json()[0]["mandate"]["decision_type"] == "INVESTMENT_COMMITTEE"
 
 
 def test_api_persists_explicit_mandate_in_case_and_plan(tmp_path) -> None:

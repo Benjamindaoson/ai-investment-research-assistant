@@ -50,6 +50,9 @@ const researchMandateSchema = z.object({
 });
 export type ResearchMandate = z.infer<typeof researchMandateSchema>;
 
+const runtimeResearchCaseSchema = z.object({ id: z.string(), question: z.string(), target: z.string(), mandate: researchMandateSchema, created_at: z.string().datetime().optional() });
+export type RuntimeResearchCase = z.infer<typeof runtimeResearchCaseSchema>;
+
 const runtimeCaseInputSchema = z.object({
   question: z.string().min(3),
   target: z.string().min(1),
@@ -343,6 +346,7 @@ export type InvestmentMemory = z.infer<typeof investmentMemorySchema>;
 
 export interface ResearchRuntimeService {
   createCase(input: RuntimeCaseInput): Promise<RuntimeCaseResult>;
+  getCases(): Promise<RuntimeResearchCase[]>;
   createCaseRun(caseId: string): Promise<RuntimeCaseResult>;
   getRun(runId: string): Promise<RuntimeRun>;
   getCaseRuns(caseId: string): Promise<RuntimeRun[]>;
@@ -382,6 +386,10 @@ export class HttpResearchRuntimeService implements ResearchRuntimeService {
       headers: { accept: "application/json", "content-type": "application/json" },
       body: JSON.stringify(body),
     }));
+  }
+
+  async getCases(): Promise<RuntimeResearchCase[]> {
+    return z.array(runtimeResearchCaseSchema).parse(await this.requestJson("/api/v1/research-cases", { headers: { accept: "application/json" } }));
   }
 
   async createCaseRun(caseId: string): Promise<RuntimeCaseResult> {
@@ -518,6 +526,7 @@ class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
   }
 
   async createCase(): Promise<RuntimeCaseResult> { return this.unavailable(); }
+  async getCases(): Promise<RuntimeResearchCase[]> { return this.unavailable(); }
   async createCaseRun(): Promise<RuntimeCaseResult> { return this.unavailable(); }
   async getEvaluation(): Promise<EvaluationResult | null> { return this.unavailable(); }
   async getRun(): Promise<RuntimeRun> { return this.unavailable(); }

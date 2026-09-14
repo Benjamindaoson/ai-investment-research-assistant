@@ -120,6 +120,11 @@ class SQLiteStore:
             row = connection.execute("SELECT payload FROM cases WHERE id = ?", (case_id,)).fetchone()
         return json.loads(row["payload"]) if row else None
 
+    def list_cases(self) -> list[dict[str, Any]]:
+        with self._transaction() as connection:
+            rows = connection.execute("SELECT payload FROM cases ORDER BY rowid").fetchall()
+        return [json.loads(row["payload"]) for row in rows]
+
     def save_run(self, payload: dict[str, Any]) -> None:
         with self._transaction() as connection:
             connection.execute(

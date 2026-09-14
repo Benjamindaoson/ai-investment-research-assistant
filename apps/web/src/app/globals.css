@@ -214,6 +214,12 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .evaluation-status.pass { color: var(--color-success); }
 .evaluation-status.fail, .evaluation-status.blocked { color: var(--color-danger); }
 .evaluation-status.n-a, .evaluation-status.not-determined { color: var(--color-warning); }
+.runtime-case-inbox-list { display: grid; gap: var(--space-2); }
+.runtime-case-inbox-list article { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; gap: var(--space-2) var(--space-3); align-items: center; border-top: var(--border-width) solid var(--border-color); padding: var(--space-3) 0; }
+.runtime-case-inbox-list article:first-child { border-top: 0; }
+.runtime-case-inbox-list article > div { display: grid; gap: var(--space-1); }
+.runtime-case-inbox-list article small { color: var(--color-muted); }
+.runtime-case-inbox-list article p { grid-column: 1 / -1; margin: 0; color: var(--color-ink-soft); }
 .red-team-grid label small { color: var(--color-muted); font-weight: var(--weight-regular); }
 .context-summary { display: grid; gap: var(--space-1); border-top: var(--border-width) solid var(--border-color); padding-top: var(--space-4); }
 .context-summary small { color: var(--color-muted-subtle); font-size: var(--font-size-2xs); letter-spacing: .08em; margin-top: var(--space-3); }
@@ -346,3 +352,4 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 800px) { .red-team-grid { grid-template-columns: 1fr; } .red-team-grid label:nth-child(3), .red-team-grid label:nth-child(4), .red-team-grid label:nth-child(5) { grid-column: auto; } }
 @media (max-width: 800px) { .valuation-base-input, .valuation-scenario-input-grid { grid-template-columns: 1fr; } }
 @media (max-width: 800px) { .runtime-case-history-row { grid-template-columns: minmax(0, 1fr) auto; } .runtime-case-history-row .link-button { grid-column: 1 / -1; justify-self: start; } }
+@media (max-width: 800px) { .runtime-case-inbox-list article { grid-template-columns: minmax(0, 1fr) auto; } .runtime-case-inbox-list article .link-button { grid-column: 1 / -1; justify-self: start; } }

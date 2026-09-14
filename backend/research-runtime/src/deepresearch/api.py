@@ -197,6 +197,10 @@ def create_app(
             raise HTTPException(status_code=422, detail=str(error)) from error
         return {"case_id": case.id, "run_id": run.id}
 
+    @app.get("/api/v1/research-cases")
+    def list_cases() -> list[dict[str, Any]]:
+        return [case.model_dump(mode="json") for case in engine.list_cases()]
+
     @app.post("/api/v1/research-cases/{case_id}/runs", status_code=status.HTTP_201_CREATED)
     def create_case_run(case_id: str) -> dict[str, str]:
         try:

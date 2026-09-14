@@ -231,6 +231,9 @@ class ResearchEngine:
             raise KeyError(case_id)
         return ResearchCase.model_validate(payload)
 
+    def list_cases(self) -> list[ResearchCase]:
+        return [ResearchCase.model_validate(payload) for payload in self.store.list_cases()]
+
     def trace(self, run_id: str) -> dict[str, object]:
         run = self.get_run(run_id)
         evidence_by_id = {record.id: record for record in run.evidence}
