@@ -25,7 +25,8 @@ case 可通过 `requires_financial_analysis` 或
 `requires_valuation_scenarios` 显式要求相应 artifact。
 
 长任务可先调用 `POST /api/v1/research-runs/{run_id}/enqueue` 写入 durable
-queue intent，再由独立进程执行：
+queue intent，再由独立进程执行。没有 Redis 时使用数据库 scan；配置 Redis
+时 worker 优先消费 Redis dispatch，再用数据库事件做恢复：
 
 ```powershell
 .\.venv\Scripts\python.exe -m deepresearch.worker --database .data/deepresearch.sqlite3 --once
@@ -33,8 +34,38 @@ queue intent，再由独立进程执行：
 ```
 
 worker 复用同一 ResearchEngine、lease、checkpoint 和 failure semantics；
-`RUNNING`、`PARTIAL` run 可在进程中断后恢复。当前 worker 是本地 SQLite
-进程，不等同于 Redis/PostgreSQL 级别的分布式调度。
+`RUNNING`、`PARTIAL` run 可在进程中断后恢复。PostgreSQL/Redis 版本仍然是
+单机进程拓扑，不承诺分布式 exactly-once。
+
+## PostgreSQL + Redis 单机栈
+
+如果要按产品 MVP 的真实后端拓扑运行，而不是使用 SQLite fallback：
+
+```powershell
+cd "D:\01_work\ai-investment-research-assistant\ai-investment-research-assistant"
+Copy-Item .env.example .env
+docker compose up --build
+```
+
+Compose 会启动 PostgreSQL、Redis、FastAPI Runtime 和独立 worker：
+
+```text
+http://127.0.0.1:8011/api/v1/health
+```
+
+健康响应会包含：
+
+```json
+{"persistence":"postgresql","queue":"redis"}
+```
+
+默认 Compose 使用 deterministic evidence，因此不需要 API key。要连接单独
+运行的 FinEvidence，在 `.env` 设置
+`FIN_EVIDENCE_BASE_URL=http://host.docker.internal:8000`；Runtime 仍然只通过
+FinEvidence v1 HTTP API 通信。PostgreSQL 是本地 named volume，Redis 只负责
+dispatch，`RUN_ENQUEUED` 事件和全部研究状态仍保存在 PostgreSQL；Redis 丢失
+时 worker 会扫描数据库事件恢复 runnable runs。该配置是单机 MVP，不是 HA 或
+生产集群。
 
 ## 单机 MVP 完整闭环
 

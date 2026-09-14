@@ -9,7 +9,9 @@ description = "Durable, evidence-first runtime for financial deep research."
 requires-python = ">=3.12"
 dependencies = [
   "fastapi>=0.115,<1",
+  "pg8000>=1.31,<2",
   "pydantic>=2.10,<3",
+  "redis>=5,<8",
   "uvicorn[standard]>=0.34,<1",
 ]
 

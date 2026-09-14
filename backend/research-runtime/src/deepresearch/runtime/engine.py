@@ -36,6 +36,7 @@ from deepresearch.runtime.planner import (
     ResearchPlanner,
     research_input_hash,
 )
+from deepresearch.runtime.queue import RunQueue
 from deepresearch.runtime.synthesis import (
     DeterministicResearchSynthesizer,
     ResearchSynthesizer,
@@ -84,6 +85,7 @@ class ResearchEngine:
         synthesizer: ResearchSynthesizer | None = None,
         lease_seconds: float = 300.0,
         tool_registry: ResearchToolRegistry | None = None,
+        run_queue: RunQueue | None = None,
     ) -> None:
         if lease_seconds <= 0:
             raise ValueError("lease_seconds must be positive")
@@ -93,6 +95,7 @@ class ResearchEngine:
         self.planner = planner or DeterministicResearchPlanner()
         self.synthesizer = synthesizer or DeterministicResearchSynthesizer()
         self.lease_seconds = lease_seconds
+        self.run_queue = run_queue
 
     def create_run(self, case: ResearchCase, tasks: list[ResearchTask] | None = None) -> ResearchRun:
         plan = self.planner.plan(case) if tasks is None else ResearchPlan(
@@ -183,6 +186,8 @@ class ResearchEngine:
         events = self.store.events(run_id)
         if not events or events[-1]["event_type"] != "RUN_ENQUEUED":
             self.store.append_event(run_id, "RUN_ENQUEUED", {"state": run.state})
+        if self.run_queue is not None:
+            self.run_queue.enqueue(run_id)
         return run
 
     def replan(self, run_id: str) -> ResearchRun:

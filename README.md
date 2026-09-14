@@ -33,7 +33,8 @@ Next.js Research Workspace
   → Partial Coverage / Durable Replanning
   → Claims / Evidence-grounded Thesis / IC Review Panel / Memo / Human Decision
   → Investment Memory / Financial Analysis
-  → SQLite events + checkpoints / Evaluation
+  → PostgreSQL events + checkpoints / Evaluation
+  → Redis dispatch
 ```
 
 ## Product wedge
@@ -144,7 +145,7 @@ explicit, evidence-linked illustrative terminal-value artifact; they do not
 fetch prices or create investment advice.
 
 Incomplete by design: live filing and market providers, LLM plan quality
-promotion, PostgreSQL, authentication, document parsing, monitoring triggers,
+promotion, authentication, document parsing, monitoring triggers,
 rich memo export, and trading execution. FinEvidence remains an independent
 service; its deployment, retrieval, provenance, and evidence qualification are
 outside this repository. No output should be interpreted as investment advice.

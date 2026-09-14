@@ -43,6 +43,7 @@ from deepresearch.runtime.planner import (
     ResearchPlanner,
     create_configured_research_planner,
 )
+from deepresearch.runtime.queue import RedisRunQueue, RunQueue
 from deepresearch.runtime.synthesis import (
     ResearchSynthesizer,
     create_configured_research_synthesizer,
@@ -128,8 +129,21 @@ def create_app(
     planner: ResearchPlanner | None = None,
     synthesizer: ResearchSynthesizer | None = None,
     tool_registry: ResearchToolRegistry | None = None,
+    run_queue: RunQueue | None = None,
 ) -> FastAPI:
-    runtime_store = store or SQLiteStore(Path(".data/deepresearch.sqlite3"))
+    configured_database_url = os.environ.get("RESEARCH_RUNTIME_DATABASE_URL") or os.environ.get("DATABASE_URL")
+    persistence_mode = "sqlite"
+    if store is not None:
+        runtime_store = store
+    elif configured_database_url:
+        from deepresearch.persistence.postgres_store import PostgresStore
+
+        runtime_store = PostgresStore(configured_database_url)
+        persistence_mode = "postgresql"
+    else:
+        runtime_store = SQLiteStore(Path(".data/deepresearch.sqlite3"))
+    configured_redis_url = os.environ.get("RESEARCH_RUNTIME_REDIS_URL") or os.environ.get("REDIS_URL")
+    configured_queue = run_queue or (RedisRunQueue(configured_redis_url) if configured_redis_url else None)
     configured_provider = provider
     if configured_provider is None:
         base_url = os.environ.get("FIN_EVIDENCE_BASE_URL") or os.environ.get("FINEVIDENCE_BASE_URL")
@@ -156,6 +170,7 @@ def create_app(
         synthesizer=configured_synthesizer,
         tool_registry=configured_registry,
         lease_seconds=lease_seconds,
+        run_queue=configured_queue,
     )
     financial_analysis = FinancialAnalysisTool()
     valuation_scenarios = ScenarioValuationTool()
@@ -188,6 +203,8 @@ def create_app(
             "planner": f"{configured_planner.name} · {configured_planner.version}",
             "synthesizer": f"{configured_synthesizer.name} · {configured_synthesizer.version}",
             "tools": list((configured_registry or ResearchToolRegistry.from_provider(configured_provider)).names),
+            "persistence": persistence_mode,
+            "queue": "redis" if configured_queue is not None else "database-scan",
         }
 
     @app.post("/api/v1/financial-analysis")
