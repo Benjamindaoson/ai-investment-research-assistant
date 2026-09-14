@@ -13,7 +13,7 @@ const run = {
   id: "run-1", case_id: "case-1", state: "COMPLETED", tasks: [],
   evidence: [{ id: "evidence-1", source_title: "FY2025 filing", stance: "SUPPORTING", qualification: "QUALIFIED" }],
   claims: [], thesis: null, memo: null, financial_analysis: null, valuation_scenarios: null,
-  red_team_reviews: [], decisions: [], tool_executions: [],
+  red_team_reviews: [], ic_reviews: [], decisions: [], tool_executions: [],
 } as RuntimeRun;
 
 describe("ValuationScenarioForm", () => {

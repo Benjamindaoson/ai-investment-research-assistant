@@ -31,6 +31,9 @@ RequirementEvidenceRole = Literal[
 ]
 DecisionType = Literal["INVESTMENT_COMMITTEE", "DUE_DILIGENCE", "SCREENING", "MONITORING", "STRATEGIC_REVIEW"]
 Materiality = Literal["LOW", "MEDIUM", "HIGH"]
+InvestmentReviewRole = Literal["BULL", "BEAR", "FINANCIAL", "INDUSTRY", "PARTNER"]
+InvestmentReviewPosition = Literal["SUPPORTIVE", "CHALLENGING", "MIXED", "INSUFFICIENT"]
+InvestmentReviewRecommendation = Literal["APPROVE", "HOLD", "REJECT", "REQUEST_RESEARCH"]
 
 
 def default_required_stances() -> list[EvidenceStance]:
@@ -353,6 +356,7 @@ class DecisionRecord(DomainModel):
     action: Literal["APPROVE_THESIS", "REJECT_THESIS", "REQUEST_RESEARCH"]
     target_id: str = Field(min_length=1, max_length=120)
     rationale: str = Field(min_length=3, max_length=4000)
+    review_ids: list[str] = Field(default_factory=list, max_length=100)
     created_at: datetime = Field(default_factory=utc_now)
 
 
@@ -365,6 +369,19 @@ class RedTeamReview(DomainModel):
     evidence_ids: list[str] = Field(default_factory=list, max_length=100)
     outcome: Literal["OPEN", "SUPPORTED", "REJECTED", "REQUIRES_RESEARCH"] = "OPEN"
     rationale: str = Field(min_length=3, max_length=4000)
+    created_at: datetime = Field(default_factory=utc_now)
+
+
+class InvestmentCommitteeReview(DomainModel):
+    id: str = Field(default_factory=lambda: f"ic-review-{uuid4().hex}")
+    run_id: str
+    thesis_id: str
+    role: InvestmentReviewRole
+    reviewer: str = Field(min_length=1, max_length=200)
+    position: InvestmentReviewPosition
+    recommendation: InvestmentReviewRecommendation
+    rationale: str = Field(min_length=3, max_length=4000)
+    evidence_ids: list[str] = Field(default_factory=list, max_length=100)
     created_at: datetime = Field(default_factory=utc_now)
 
 
@@ -391,6 +408,7 @@ class ResearchRun(DomainModel):
     financial_analysis: FinancialAnalysisResult | None = None
     valuation_scenarios: ValuationScenariosResult | None = None
     red_team_reviews: list[RedTeamReview] = Field(default_factory=list)
+    ic_reviews: list[InvestmentCommitteeReview] = Field(default_factory=list)
     decisions: list[DecisionRecord] = Field(default_factory=list)
     checkpoint: Checkpoint | None = None
     state_version: int = Field(default=1, ge=1)

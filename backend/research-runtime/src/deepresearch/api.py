@@ -12,6 +12,7 @@ from pydantic import BaseModel, Field, model_validator
 from deepresearch.domain.models import (
     DecisionRecord,
     FinancialSnapshot,
+    InvestmentCommitteeReview,
     RedTeamReview,
     ResearchCase,
     ResearchMandate,
@@ -65,6 +66,7 @@ class DecisionRequest(BaseModel):
     action: str
     target_id: str
     rationale: str = Field(min_length=3, max_length=4000)
+    review_ids: list[str] = Field(default_factory=list, max_length=100)
 
 
 class RedTeamReviewRequest(BaseModel):
@@ -73,6 +75,15 @@ class RedTeamReviewRequest(BaseModel):
     evidence_ids: list[str] = Field(default_factory=list, max_length=100)
     outcome: Literal["OPEN", "SUPPORTED", "REJECTED", "REQUIRES_RESEARCH"] = "OPEN"
     rationale: str = Field(min_length=3, max_length=4000)
+
+
+class InvestmentCommitteeReviewRequest(BaseModel):
+    role: Literal["BULL", "BEAR", "FINANCIAL", "INDUSTRY", "PARTNER"]
+    reviewer: str = Field(min_length=1, max_length=200)
+    position: Literal["SUPPORTIVE", "CHALLENGING", "MIXED", "INSUFFICIENT"]
+    recommendation: Literal["APPROVE", "HOLD", "REJECT", "REQUEST_RESEARCH"]
+    rationale: str = Field(min_length=3, max_length=4000)
+    evidence_ids: list[str] = Field(default_factory=list, max_length=100)
 
 
 class EvidenceLinkedFinancialAnalysisRequest(BaseModel):
@@ -383,6 +394,35 @@ def create_app(
     def get_red_team_reviews(run_id: str) -> list[dict[str, Any]]:
         try:
             return [review.model_dump(mode="json") for review in engine.get_red_team_reviews(run_id)]
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research run not found") from error
+
+    @app.post("/api/v1/research-runs/{run_id}/ic-reviews")
+    def ic_review(run_id: str, request: InvestmentCommitteeReviewRequest) -> dict[str, Any]:
+        try:
+            run = engine.get_run(run_id)
+            if run.thesis is None:
+                raise ValueError("IC review requires a synthesized thesis")
+            review = InvestmentCommitteeReview(
+                run_id=run_id,
+                thesis_id=run.thesis.id,
+                role=request.role,
+                reviewer=request.reviewer,
+                position=request.position,
+                recommendation=request.recommendation,
+                rationale=request.rationale,
+                evidence_ids=request.evidence_ids,
+            )
+            return engine.record_ic_review(run_id, review).model_dump(mode="json")
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research run not found") from error
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.get("/api/v1/research-runs/{run_id}/ic-reviews")
+    def get_ic_reviews(run_id: str) -> list[dict[str, Any]]:
+        try:
+            return [review.model_dump(mode="json") for review in engine.get_ic_reviews(run_id)]
         except KeyError as error:
             raise HTTPException(status_code=404, detail="research run not found") from error
 

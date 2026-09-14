@@ -4,7 +4,7 @@ An evidence-first research operating system for investment analysts. The
 canonical product line is a Next.js research workspace backed by a small,
 durable Python Research Runtime. It plans research, executes typed tasks,
 qualifies evidence, synthesizes claims and theses, preserves counter-evidence,
-and records human decisions.
+and records structured IC reviews plus human decisions.
 
 This repository does not reimplement FinEvidence. FinEvidence is the future
 external evidence infrastructure; this project consumes it through an explicit
@@ -31,7 +31,7 @@ Next.js Research Workspace
   → ResearchCase / ResearchPlan / ResearchRun / Task DAG
 → Evidence Requirements / FinEvidence v1 HTTP Client
   → Partial Coverage / Durable Replanning
-  → Claims / Evidence-grounded Thesis / Memo / Human Decision
+  → Claims / Evidence-grounded Thesis / IC Review Panel / Memo / Human Decision
   → Investment Memory / Financial Analysis
   → SQLite events + checkpoints / Evaluation
 ```

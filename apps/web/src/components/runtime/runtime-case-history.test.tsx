@@ -6,7 +6,7 @@ import type { RuntimeRun } from "@/services/research-runtime-service";
 
 afterEach(cleanup);
 
-const run = { id: "run-1", case_id: "case-1", state: "COMPLETED", tasks: [], tool_executions: [], evidence: [], claims: [], thesis: null, memo: null, financial_analysis: null, red_team_reviews: [], decisions: [], created_at: "2026-09-14T00:00:00.000Z" } as RuntimeRun;
+const run = { id: "run-1", case_id: "case-1", state: "COMPLETED", tasks: [], tool_executions: [], evidence: [], claims: [], thesis: null, memo: null, financial_analysis: null, red_team_reviews: [], ic_reviews: [], decisions: [], created_at: "2026-09-14T00:00:00.000Z" } as RuntimeRun;
 
 describe("RuntimeCaseHistory", () => {
   it("marks the active run and links historical runs", () => {

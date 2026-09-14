@@ -15,6 +15,7 @@ export function RuntimeDecisionForm({ run }: { run: RuntimeRun }) {
   const [actor, setActor] = useState("Analyst");
   const [action, setAction] = useState<DecisionRecordInput["action"]>("APPROVE_THESIS");
   const [rationale, setRationale] = useState("");
+  const [reviewIds, setReviewIds] = useState<string[]>([]);
   const thesis = run.thesis;
   if (!thesis) return null;
   const thesisId = thesis.id;
@@ -25,7 +26,7 @@ export function RuntimeDecisionForm({ run }: { run: RuntimeRun }) {
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!canSubmit) return;
-    mutation.mutate({ actor: actor.trim(), action, target_id: thesisId, rationale: rationale.trim() });
+    mutation.mutate({ actor: actor.trim(), action, target_id: thesisId, rationale: rationale.trim(), review_ids: reviewIds });
   }
 
   return (
@@ -36,6 +37,7 @@ export function RuntimeDecisionForm({ run }: { run: RuntimeRun }) {
         <div className="runtime-decision-grid">
           <label htmlFor="runtime-decision-actor">Analyst<input id="runtime-decision-actor" className="text-control" value={actor} onChange={(event) => setActor(event.target.value)} required /></label>
           <label htmlFor="runtime-decision-action">Action<select id="runtime-decision-action" className="text-control" value={action} onChange={(event) => setAction(event.target.value as DecisionRecordInput["action"])}>{actions.map(([value, label]) => <option value={value} key={value} disabled={value === "APPROVE_THESIS" && run.state !== "COMPLETED"}>{label}</option>)}</select></label>
+          {run.ic_reviews.length > 0 && <label htmlFor="runtime-decision-reviews">IC reviews considered<select id="runtime-decision-reviews" className="text-control red-team-evidence-select" multiple size={Math.min(4, run.ic_reviews.length)} value={reviewIds} onChange={(event) => setReviewIds(Array.from(event.target.selectedOptions, (option) => option.value))}><option value="" disabled>Select reviews</option>{run.ic_reviews.map((review) => <option key={review.id} value={review.id}>{review.role} · {review.recommendation} · {review.reviewer}</option>)}</select><small>Optional for compatibility; selecting records makes the decision basis explicit.</small></label>}
           <label htmlFor="runtime-decision-rationale">Rationale<textarea id="runtime-decision-rationale" className="text-control" rows={4} value={rationale} onChange={(event) => setRationale(event.target.value)} placeholder="Record the reasoning that should remain in the audit trail." required /></label>
         </div>
         {run.state !== "COMPLETED" && <p className="form-note">Approval becomes available after the run reaches COMPLETED. Rejection or a research request can still be recorded when eligible.</p>}

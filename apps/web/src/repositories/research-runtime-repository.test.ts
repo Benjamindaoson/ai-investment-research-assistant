@@ -45,7 +45,7 @@ const valuation: ValuationScenarios = {
 
 const run: RuntimeRun = {
   id: "run-1", case_id: "case-1", state: "CREATED", tasks: [{ id: "market", title: "Market", state: "PENDING" }],
-  evidence: [], tool_executions: [], claims: [], thesis: null, memo: null, financial_analysis: null, red_team_reviews: [], decisions: [],
+  evidence: [], tool_executions: [], claims: [], thesis: null, memo: null, financial_analysis: null, red_team_reviews: [], ic_reviews: [], decisions: [],
 };
 
 const repositoryFor = (fetchImpl: typeof fetch) => new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
@@ -338,12 +338,38 @@ describe("ResearchRuntimeRepository", () => {
     const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
 
     await expect(repository.recordDecision("run-1", {
-      actor: "Analyst", action: "APPROVE_THESIS", target_id: "thesis-1", rationale: "Evidence reviewed.",
+      actor: "Analyst", action: "APPROVE_THESIS", target_id: "thesis-1", rationale: "Evidence reviewed.", review_ids: [],
     })).resolves.toMatchObject({ decisions: [{ id: "decision-1", action: "APPROVE_THESIS" }] });
-    expect(JSON.parse(requestBody)).toEqual({ actor: "Analyst", action: "APPROVE_THESIS", target_id: "thesis-1", rationale: "Evidence reviewed." });
+    expect(JSON.parse(requestBody)).toEqual({ actor: "Analyst", action: "APPROVE_THESIS", target_id: "thesis-1", rationale: "Evidence reviewed.", review_ids: [] });
 
     const oldRunFetch = (async () => new Response(JSON.stringify({ ...run, decisions: undefined }), { status: 200 })) as typeof fetch;
     await expect(new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", oldRunFetch)).getRun("run-1")).resolves.toMatchObject({ decisions: [] });
+  });
+
+  it("creates and lists structured IC reviews through the typed service boundary", async () => {
+    const review = {
+      id: "ic-review-1", run_id: "run-1", thesis_id: "thesis-1", role: "FINANCIAL", reviewer: "CFO",
+      position: "MIXED", recommendation: "HOLD", rationale: "Margins need another quarter of evidence.",
+      evidence_ids: ["evidence-1"], created_at: "2026-09-14T00:00:00.000Z",
+    };
+    let postBody = "";
+    const fetchImpl = (async (input, init) => {
+      const url = String(input);
+      if (init?.method === "POST") postBody = String(init.body ?? "");
+      if (url.endsWith("/ic-reviews") && init?.method !== "POST") return new Response(JSON.stringify([review]), { status: 200 });
+      return new Response(JSON.stringify({ ...run, ic_reviews: [review] }), { status: 200 });
+    }) as typeof fetch;
+    const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+
+    await expect(repository.createInvestmentCommitteeReview("run-1", {
+      role: "FINANCIAL", reviewer: "CFO", position: "MIXED", recommendation: "HOLD",
+      rationale: "Margins need another quarter of evidence.", evidence_ids: ["evidence-1"],
+    })).resolves.toMatchObject({ ic_reviews: [{ id: "ic-review-1" }] });
+    await expect(repository.getInvestmentCommitteeReviews("run-1")).resolves.toEqual([review]);
+    expect(JSON.parse(postBody)).toEqual({
+      role: "FINANCIAL", reviewer: "CFO", position: "MIXED", recommendation: "HOLD",
+      rationale: "Margins need another quarter of evidence.", evidence_ids: ["evidence-1"],
+    });
   });
 
   it("parses the validated plan mandate from a runtime run", async () => {

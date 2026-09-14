@@ -2,20 +2,21 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { runtimeCaseRunsQueryKey, runtimeEvaluationQueryKey, runtimeRefreshInterval, runtimeRunQueryKey, useAnalyzeRuntimeFinancialsMutation, useAnalyzeRuntimeValuationMutation, useCreateRedTeamReviewMutation, useCreateRuntimeRerunMutation, useRuntimeCaseRunsQuery, useRuntimeEvaluationQuery } from "./use-runtime-run";
+import { runtimeCaseRunsQueryKey, runtimeEvaluationQueryKey, runtimeIcReviewsQueryKey, runtimeRefreshInterval, runtimeRunQueryKey, useAnalyzeRuntimeFinancialsMutation, useAnalyzeRuntimeValuationMutation, useCreateInvestmentCommitteeReviewMutation, useCreateRedTeamReviewMutation, useCreateRuntimeRerunMutation, useRuntimeCaseRunsQuery, useRuntimeEvaluationQuery } from "./use-runtime-run";
 import type { FinancialAnalysisResult, RuntimeRun, ValuationScenarioInput, ValuationScenarios } from "@/services/research-runtime-service";
 
 const analyze = vi.hoisted(() => vi.fn());
 const createReview = vi.hoisted(() => vi.fn());
+const createIcReview = vi.hoisted(() => vi.fn());
 const analyzeValuation = vi.hoisted(() => vi.fn());
 const getCaseRuns = vi.hoisted(() => vi.fn());
 const createCaseRun = vi.hoisted(() => vi.fn());
 const getEvaluation = vi.hoisted(() => vi.fn());
-vi.mock("@/repositories", () => ({ researchRuntimeRepository: { analyzeFinancialsForRun: analyze, analyzeValuationScenarios: analyzeValuation, createRedTeamReview: createReview, getCaseRuns, createCaseRun, getEvaluation } }));
+vi.mock("@/repositories", () => ({ researchRuntimeRepository: { analyzeFinancialsForRun: analyze, analyzeValuationScenarios: analyzeValuation, createRedTeamReview: createReview, createInvestmentCommitteeReview: createIcReview, getCaseRuns, createCaseRun, getEvaluation } }));
 
 const run: RuntimeRun = {
   id: "run-1", case_id: "case-1", state: "COMPLETED", tasks: [], evidence: [], tool_executions: [], claims: [], thesis: null, memo: null,
-  financial_analysis: null, red_team_reviews: [], decisions: [],
+  financial_analysis: null, red_team_reviews: [], ic_reviews: [], decisions: [],
 };
 const analysis: FinancialAnalysisResult = {
   period: "FY2025", snapshot: { period: "FY2025", revenue: "120.00" }, input_hash: "a".repeat(64),
@@ -88,6 +89,22 @@ describe("useRuntimeCaseRunsQuery", () => {
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(result.current.data).toEqual([run]);
     expect(client.getQueryData(runtimeCaseRunsQueryKey("case-1"))).toEqual([run]);
+  });
+});
+
+describe("useCreateInvestmentCommitteeReviewMutation", () => {
+  it("projects the server review and invalidates the review query", async () => {
+    const reviewedRun = { ...run, ic_reviews: [{ id: "ic-review-1" }] } as RuntimeRun;
+    createIcReview.mockResolvedValueOnce(reviewedRun);
+    const client = new QueryClient({ defaultOptions: { mutations: { retry: false } } });
+    client.setQueryData(runtimeRunQueryKey("run-1"), run);
+    client.setQueryData(runtimeIcReviewsQueryKey("run-1"), []);
+    const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const { result } = renderHook(() => useCreateInvestmentCommitteeReviewMutation("run-1"), { wrapper });
+
+    await act(async () => { await result.current.mutateAsync({ role: "FINANCIAL", reviewer: "CFO", position: "MIXED", recommendation: "HOLD", rationale: "Margins need review.", evidence_ids: ["evidence-1"] }); });
+    expect(client.getQueryData<RuntimeRun>(runtimeRunQueryKey("run-1"))).toEqual(reviewedRun);
+    expect(client.getQueryState(runtimeIcReviewsQueryKey("run-1"))).toBeDefined();
   });
 });
 

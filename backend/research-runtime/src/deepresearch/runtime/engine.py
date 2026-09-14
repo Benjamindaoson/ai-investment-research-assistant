@@ -15,6 +15,7 @@ from deepresearch.domain.models import (
     EvaluationResult,
     EvidenceRecord,
     FinancialAnalysisResult,
+    InvestmentCommitteeReview,
     InvestmentMemo,
     InvestmentMemory,
     MemoSection,
@@ -552,6 +553,17 @@ class ResearchEngine:
         run = self.get_run(run_id)
         if decision.target_id != (run.thesis.id if run.thesis else decision.target_id):
             raise ValueError("decision target does not belong to this run")
+        if decision.review_ids:
+            reviews = {review.id: review for review in run.ic_reviews}
+            missing_reviews = sorted(set(decision.review_ids) - reviews.keys())
+            if missing_reviews:
+                raise ValueError(f"decision review not found in run: {missing_reviews}")
+            if run.thesis is not None:
+                invalid_reviews = sorted(
+                    review_id for review_id in set(decision.review_ids) if reviews[review_id].thesis_id != run.thesis.id
+                )
+                if invalid_reviews:
+                    raise ValueError(f"decision review does not belong to current thesis: {invalid_reviews}")
         if decision.action == "APPROVE_THESIS":
             if run.thesis is None or run.state != "COMPLETED":
                 raise ValueError("only a completed run can approve a thesis")
@@ -612,6 +624,36 @@ class ResearchEngine:
 
     def get_red_team_reviews(self, run_id: str) -> list[RedTeamReview]:
         return self.get_run(run_id).red_team_reviews
+
+    def record_ic_review(self, run_id: str, review: InvestmentCommitteeReview) -> ResearchRun:
+        run = self.get_run(run_id)
+        if run.thesis is None:
+            raise ValueError("IC review requires a synthesized thesis")
+        if review.run_id != run.id or review.thesis_id != run.thesis.id:
+            raise ValueError("IC review target does not belong to this run")
+        records = {record.id: record for record in run.evidence}
+        missing = sorted(set(review.evidence_ids) - records.keys())
+        if missing:
+            raise ValueError(f"IC review evidence not found in run: {missing}")
+        if any(item.id == review.id for item in run.ic_reviews):
+            raise ValueError(f"IC review already exists: {review.id}")
+        run.ic_reviews.append(review)
+        self._persist(
+            run,
+            "IC_REVIEW_RECORDED",
+            {
+                "review_id": review.id,
+                "thesis_id": review.thesis_id,
+                "role": review.role,
+                "position": review.position,
+                "recommendation": review.recommendation,
+                "evidence_ids": review.evidence_ids,
+            },
+        )
+        return run
+
+    def get_ic_reviews(self, run_id: str) -> list[InvestmentCommitteeReview]:
+        return self.get_run(run_id).ic_reviews
 
     def get_memo(self, run_id: str) -> InvestmentMemo:
         run = self.get_run(run_id)

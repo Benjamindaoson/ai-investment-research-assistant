@@ -372,6 +372,69 @@ def test_api_rejects_supporting_red_team_evidence_without_mutation(tmp_path) -> 
     assert client.get("/api/v1/research-runs/missing/red-team-reviews").status_code == 404
 
 
+def test_api_records_structured_ic_review_and_links_it_to_decision(tmp_path) -> None:
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+    created = client.post("/api/v1/research-cases", json={"question": "Assess ACME thesis", "target": "ACME"})
+    run_id = created.json()["run_id"]
+    run = client.post(f"/api/v1/research-runs/{run_id}/execute").json()
+    evidence_id = run["evidence"][0]["id"]
+    thesis_id = run["thesis"]["id"]
+
+    response = client.post(
+        f"/api/v1/research-runs/{run_id}/ic-reviews",
+        json={
+            "role": "FINANCIAL",
+            "reviewer": "CFO reviewer",
+            "position": "SUPPORTIVE",
+            "recommendation": "HOLD",
+            "rationale": "The financial evidence supports the thesis but the horizon needs monitoring.",
+            "evidence_ids": [evidence_id],
+        },
+    )
+    assert response.status_code == 200
+    review = response.json()["ic_reviews"][0]
+    assert review["role"] == "FINANCIAL"
+    assert review["evidence_ids"] == [evidence_id]
+    assert client.get(f"/api/v1/research-runs/{run_id}/ic-reviews").json() == [review]
+
+    approved = client.post(
+        f"/api/v1/research-runs/{run_id}/decisions",
+        json={
+            "actor": "IC chair",
+            "action": "APPROVE_THESIS",
+            "target_id": thesis_id,
+            "rationale": "The financial review is recorded and the thesis is approved.",
+            "review_ids": [review["id"]],
+        },
+    )
+    events = client.get(f"/api/v1/research-runs/{run_id}/events").json()
+    assert approved.status_code == 200
+    assert approved.json()["decisions"][0]["review_ids"] == [review["id"]]
+    assert any(event["event_type"] == "IC_REVIEW_RECORDED" for event in events)
+
+
+def test_api_rejects_ic_review_evidence_without_mutation(tmp_path) -> None:
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+    created = client.post("/api/v1/research-cases", json={"question": "Assess ACME thesis", "target": "ACME"})
+    run_id = created.json()["run_id"]
+    client.post(f"/api/v1/research-runs/{run_id}/execute")
+    before = client.get(f"/api/v1/research-runs/{run_id}").json()
+    response = client.post(
+        f"/api/v1/research-runs/{run_id}/ic-reviews",
+        json={
+            "role": "BEAR",
+            "reviewer": "Downside reviewer",
+            "position": "INSUFFICIENT",
+            "recommendation": "REQUEST_RESEARCH",
+            "rationale": "The cited record does not exist in this run.",
+            "evidence_ids": ["missing-evidence"],
+        },
+    )
+    assert response.status_code == 422
+    assert "IC review evidence not found" in response.json()["detail"]
+    assert client.get(f"/api/v1/research-runs/{run_id}").json() == before
+
+
 def test_api_reads_target_investment_memory(tmp_path) -> None:
     client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
     created_ids = []

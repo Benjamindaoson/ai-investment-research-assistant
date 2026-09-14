@@ -205,12 +205,29 @@ const redTeamReviewInputSchema = z.object({
 export type RedTeamReview = z.infer<typeof redTeamReviewSchema>;
 export type RedTeamReviewInput = z.infer<typeof redTeamReviewInputSchema>;
 
+const investmentCommitteeReviewSchema = z.object({
+  id: z.string(),
+  run_id: z.string(),
+  thesis_id: z.string(),
+  role: z.enum(["BULL", "BEAR", "FINANCIAL", "INDUSTRY", "PARTNER"]),
+  reviewer: z.string(),
+  position: z.enum(["SUPPORTIVE", "CHALLENGING", "MIXED", "INSUFFICIENT"]),
+  recommendation: z.enum(["APPROVE", "HOLD", "REJECT", "REQUEST_RESEARCH"]),
+  rationale: z.string(),
+  evidence_ids: z.array(z.string()),
+  created_at: z.string().datetime(),
+});
+const investmentCommitteeReviewInputSchema = investmentCommitteeReviewSchema.omit({ id: true, run_id: true, thesis_id: true, created_at: true });
+export type InvestmentCommitteeReview = z.infer<typeof investmentCommitteeReviewSchema>;
+export type InvestmentCommitteeReviewInput = z.infer<typeof investmentCommitteeReviewInputSchema>;
+
 const decisionRecordSchema = z.object({
   id: z.string(),
   actor: z.string(),
   action: z.enum(["APPROVE_THESIS", "REJECT_THESIS", "REQUEST_RESEARCH"]),
   target_id: z.string(),
   rationale: z.string(),
+  review_ids: z.array(z.string()).default([]),
   created_at: z.string().datetime(),
 });
 const decisionRecordInputSchema = z.object({
@@ -218,6 +235,7 @@ const decisionRecordInputSchema = z.object({
   action: z.enum(["APPROVE_THESIS", "REJECT_THESIS", "REQUEST_RESEARCH"]),
   target_id: z.string().min(1),
   rationale: z.string().trim().min(3).max(4000),
+  review_ids: z.array(z.string().min(1)).max(100).default([]),
 });
 export type DecisionRecord = z.infer<typeof decisionRecordSchema>;
 export type DecisionRecordInput = z.infer<typeof decisionRecordInputSchema>;
@@ -327,6 +345,7 @@ const runtimeRunSchema = z.object({
   financial_analysis: financialAnalysisResultSchema.nullable().default(null),
   valuation_scenarios: valuationScenariosSchema.nullable().optional(),
   red_team_reviews: z.array(redTeamReviewSchema).default([]),
+  ic_reviews: z.array(investmentCommitteeReviewSchema).default([]),
   decisions: z.array(decisionRecordSchema).default([]),
   created_at: z.string().datetime().optional(),
   updated_at: z.string().datetime().optional(),
@@ -380,6 +399,8 @@ export interface ResearchRuntimeService {
   analyzeValuationScenarios(runId: string, input: ValuationScenarioInput): Promise<ValuationScenarios>;
   createRedTeamReview(runId: string, input: RedTeamReviewInput): Promise<RuntimeRun>;
   getRedTeamReviews(runId: string): Promise<RedTeamReview[]>;
+  createInvestmentCommitteeReview(runId: string, input: InvestmentCommitteeReviewInput): Promise<RuntimeRun>;
+  getInvestmentCommitteeReviews(runId: string): Promise<InvestmentCommitteeReview[]>;
   recordDecision(runId: string, input: DecisionRecordInput): Promise<RuntimeRun>;
 }
 
@@ -525,6 +546,19 @@ export class HttpResearchRuntimeService implements ResearchRuntimeService {
     return z.array(redTeamReviewSchema).parse(await this.requestJson("/api/v1/research-runs/" + encodeURIComponent(runId) + "/red-team-reviews", { headers: { accept: "application/json" } }));
   }
 
+  async createInvestmentCommitteeReview(runId: string, input: InvestmentCommitteeReviewInput): Promise<RuntimeRun> {
+    const body = investmentCommitteeReviewInputSchema.parse(input);
+    return runtimeRunSchema.parse(await this.requestJson(`/api/v1/research-runs/${encodeURIComponent(runId)}/ic-reviews`, {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/json" },
+      body: JSON.stringify(body),
+    }));
+  }
+
+  async getInvestmentCommitteeReviews(runId: string): Promise<InvestmentCommitteeReview[]> {
+    return z.array(investmentCommitteeReviewSchema).parse(await this.requestJson(`/api/v1/research-runs/${encodeURIComponent(runId)}/ic-reviews`, { headers: { accept: "application/json" } }));
+  }
+
   async recordDecision(runId: string, input: DecisionRecordInput): Promise<RuntimeRun> {
     const body = decisionRecordInputSchema.parse(input);
     return runtimeRunSchema.parse(await this.requestJson("/api/v1/research-runs/" + encodeURIComponent(runId) + "/decisions", {
@@ -560,6 +594,8 @@ class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
   async analyzeValuationScenarios(): Promise<ValuationScenarios> { return this.unavailable(); }
   async createRedTeamReview(): Promise<RuntimeRun> { return this.unavailable(); }
   async getRedTeamReviews(): Promise<RedTeamReview[]> { return this.unavailable(); }
+  async createInvestmentCommitteeReview(): Promise<RuntimeRun> { return this.unavailable(); }
+  async getInvestmentCommitteeReviews(): Promise<InvestmentCommitteeReview[]> { return this.unavailable(); }
   async recordDecision(): Promise<RuntimeRun> { return this.unavailable(); }
 }
 

@@ -1,6 +1,6 @@
 # Financial DeepResearch Runtime
 
-这是仓库唯一的后端与 Research Runtime 主线。它负责研究问题、任务 DAG、工具执行、证据资格、Claim、Thesis、人工决策、checkpoint、事件和评测；FinEvidence 作为外部证据基础设施通过 `EvidenceProvider` 接入。
+这是仓库唯一的后端与 Research Runtime 主线。它负责研究问题、任务 DAG、工具执行、证据资格、Claim、Thesis、结构化 IC review、人工决策、checkpoint、事件和评测；FinEvidence 作为外部证据基础设施通过 `EvidenceProvider` 接入。
 
 ## 本地运行
 
@@ -96,7 +96,7 @@ memo/memory 投影和人工 review。synthesis 请求/响应 hash 会保存在 t
 - 已真实实现：Pydantic domain contracts、deterministic planner boundary、unique durable run identity、带
   planner provenance 的 ResearchPlan、依赖 DAG 校验、SQLite durable state、
   append-only events、checkpoint read-back、resume 去重、带完整 provenance gate 的
-  evidence qualification、evidence-grounded claims/thesis、human decision API、
+  evidence qualification、evidence-grounded claims/thesis、structured IC review API、human decision API、
   durable investment memo projection（含 evidence-linked structured sections）、Decimal financial analysis、
   target-level Investment Memory with observed ThesisDelta、run-scoped memory read、case-scoped run history、plan/trace/memo/memory/financial-analysis
   API、case-scoped rerun、durable cancellation、可执行 scorer。`python -m
@@ -129,6 +129,11 @@ memo/memory 投影和人工 review。synthesis 请求/响应 hash 会保存在 t
   call, and the receipt records supported/unsupported as a successful outcome
   or the bounded provider diagnostic as FAILED. Deterministic demo runs stay
   offline.
+- Structured IC review records are append-only and role-scoped (`BULL`, `BEAR`,
+  `FINANCIAL`, `INDUSTRY`, `PARTNER`). They retain reviewer rationale and
+  evidence IDs, and a human decision can reference the review IDs it
+  considered; the runtime does not compute panel consensus or generate an
+  approval.
 - 已实现 FinEvidence v1 provider transport boundary：`FinEvidenceClient` 只
   通过 `/health`、`/api/v1/evidence/search`、`coverage`、`citation`、
   `/api/v1/table/query` 和 `/api/v1/evidence/verify` 消费外部 API，不实现

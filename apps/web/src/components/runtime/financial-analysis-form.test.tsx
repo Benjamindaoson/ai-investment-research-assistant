@@ -36,7 +36,7 @@ const run = {
   thesis: null,
   memo: null,
   financial_analysis: null,
-  red_team_reviews: [], decisions: [], tool_executions: [],
+  red_team_reviews: [], ic_reviews: [], decisions: [], tool_executions: [],
 } as RuntimeRun;
 
 describe("FinancialAnalysisForm", () => {

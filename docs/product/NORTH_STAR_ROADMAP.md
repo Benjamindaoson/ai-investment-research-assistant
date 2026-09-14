@@ -45,8 +45,9 @@ not define the architecture.
   chat transcript.
 - Compare new evidence against previous thesis assumptions and create a
   reviewable change record.
-- Add structured Bull/Bear/Industry/Financial/Partner review inputs behind one
-  auditable IC decision boundary.
+- Structured Bull/Bear/Industry/Financial/Partner review inputs are now
+  available as append-only evidence-linked artifacts; richer consensus scoring
+  remains out of scope.
 
 ### P3 — Monitoring and enterprise hardening
 

@@ -91,8 +91,10 @@ Research Question
 - `Claim` links to evidence and has an explicit qualification state.
 - `Thesis` records assumptions, disconfirming conditions, and bull/base/bear
   scenarios.
+- `InvestmentCommitteeReview` records distinct Bull, Bear, Financial, Industry,
+  and Partner lenses with explicit evidence links before a human decision.
 - `DecisionRecord` records analyst review and is the write authority for
-  approval or rejection.
+  approval or rejection; it may reference the review records considered.
 - `ToolExecution`, `Checkpoint`, and append-only events make execution
   auditable and recoverable.
 - Planner quality is evaluated separately from execution quality; a plan must

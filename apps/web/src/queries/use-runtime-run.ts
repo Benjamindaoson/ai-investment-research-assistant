@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { researchRuntimeRepository } from "@/repositories";
-import type { DecisionRecordInput, EvidenceLinkedFinancialAnalysisInput, RedTeamReviewInput, RuntimeCaseInput, RuntimeResearchCase, RuntimeRun, RuntimeTrace, ValuationScenarioInput } from "@/services/research-runtime-service";
+import type { DecisionRecordInput, EvidenceLinkedFinancialAnalysisInput, InvestmentCommitteeReviewInput, RedTeamReviewInput, RuntimeCaseInput, RuntimeResearchCase, RuntimeRun, RuntimeTrace, ValuationScenarioInput } from "@/services/research-runtime-service";
 
 export const runtimeRunQueryKey = (runId: string) => ["runtime", "run", runId] as const;
 export const runtimeCaseRunsQueryKey = (caseId: string) => ["runtime", "case-runs", caseId] as const;
@@ -10,6 +10,7 @@ export const runtimeEvaluationQueryKey = (runId: string) => ["runtime", "evaluat
 export const runtimeCasesQueryKey = ["runtime", "cases"] as const;
 export const runtimeMemoryQueryKey = (runId: string) => ["runtime", "memory", runId] as const;
 export const runtimeTraceQueryKey = (runId: string) => ["runtime", "trace", runId] as const;
+export const runtimeIcReviewsQueryKey = (runId: string) => ["runtime", "ic-reviews", runId] as const;
 export const RUNTIME_REFRESH_INTERVAL_MS = 2000;
 
 const terminalRunStates = new Set<RuntimeRun["state"]>(["COMPLETED", "PARTIAL", "FAILED", "CANCELLED", "BLOCKED"]);
@@ -131,6 +132,17 @@ export function useCreateRedTeamReviewMutation(runId: string) {
   return useMutation({
     mutationFn: (input: RedTeamReviewInput) => researchRuntimeRepository.createRedTeamReview(runId, input),
     onSuccess: (data) => queryClient.setQueryData<RuntimeRun>(runtimeRunQueryKey(runId), data),
+  });
+}
+
+export function useCreateInvestmentCommitteeReviewMutation(runId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: InvestmentCommitteeReviewInput) => researchRuntimeRepository.createInvestmentCommitteeReview(runId, input),
+    onSuccess: (data) => {
+      queryClient.setQueryData(runtimeRunQueryKey(runId), data);
+      void queryClient.invalidateQueries({ queryKey: runtimeIcReviewsQueryKey(runId) });
+    },
   });
 }
 

@@ -26,7 +26,7 @@ beforeEach(() => {
 const run = {
   id: "run-1", case_id: "case-1", state: "COMPLETED", tasks: [], evidence: [], claims: [],
   thesis: { id: "thesis-1", statement: "Thesis", bull: "Bull", base: "Base", bear: "Bear", claim_ids: [], review_status: "PENDING_REVIEW" },
-  memo: null, financial_analysis: null, red_team_reviews: [], decisions: [], tool_executions: [],
+  memo: null, financial_analysis: null, red_team_reviews: [], ic_reviews: [], decisions: [], tool_executions: [],
 } as RuntimeRun;
 
 describe("RuntimeDecisionForm", () => {
@@ -43,6 +43,7 @@ describe("RuntimeDecisionForm", () => {
       action: "REQUEST_RESEARCH",
       target_id: "thesis-1",
       rationale: "Validate churn assumptions before approval.",
+      review_ids: [],
     });
   });
 
