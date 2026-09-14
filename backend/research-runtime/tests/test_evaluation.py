@@ -1,6 +1,7 @@
 from deepresearch.domain.models import (
     DecisionRecord,
     EvidenceRequirement,
+    FinancialSnapshot,
     InvestmentCommitteeReview,
     RedTeamReview,
     ResearchCase,
@@ -11,6 +12,7 @@ from deepresearch.evaluation.scorer import score_run
 from deepresearch.persistence.store import SQLiteStore
 from deepresearch.runtime.engine import ResearchEngine
 from deepresearch.runtime.evidence import DeterministicEvidenceProvider
+from deepresearch.runtime.financial import FinancialAnalysisTool
 
 
 def test_evaluation_scores_only_observed_runtime_facts(tmp_path) -> None:
@@ -217,3 +219,55 @@ def test_evaluation_rejects_insufficient_red_team_reviews(tmp_path) -> None:
     check = next(check for check in result.checks if check.name == "red_team_coverage")
     assert check.status == "FAIL"
     assert "observed=0, minimum=1" in check.detail
+
+
+def test_evaluation_accepts_evidence_linked_financial_artifact(tmp_path) -> None:
+    engine, run = _completed_run(tmp_path)
+    evidence_id = next(item.id for item in run.evidence if item.qualification == "QUALIFIED")
+    analysis = FinancialAnalysisTool().analyze(
+        FinancialSnapshot(period="FY2025", revenue="100"),
+        {"revenue": [evidence_id]},
+    )
+    run = engine.record_financial_analysis(run.id, analysis)
+
+    result = score_run(
+        run,
+        {"case_id": "DR-FIN-PASS", "expected_state": "COMPLETED", "requires_financial_analysis": True},
+    )
+
+    assert result.passed is True
+    assert next(check for check in result.checks if check.name == "financial_artifact_links").status == "PASS"
+    assert next(check for check in result.checks if check.name == "financial_artifact_presence").status == "PASS"
+
+
+def test_evaluation_rejects_invalid_financial_artifact_evidence(tmp_path) -> None:
+    engine, run = _completed_run(tmp_path)
+    evidence_id = next(item.id for item in run.evidence if item.qualification == "QUALIFIED")
+    analysis = FinancialAnalysisTool().analyze(
+        FinancialSnapshot(period="FY2025", revenue="100"),
+        {"revenue": [evidence_id]},
+    )
+    run = engine.record_financial_analysis(run.id, analysis)
+    assert run.financial_analysis is not None
+    run.financial_analysis.evidence_ids = {"revenue": ["missing-financial-evidence"]}
+
+    result = score_run(run, {"case_id": "DR-FIN-INVALID", "expected_state": "COMPLETED"})
+
+    assert result.passed is False
+    check = next(check for check in result.checks if check.name == "financial_artifact_links")
+    assert check.status == "FAIL"
+    assert "missing-financial-evidence" in check.detail
+
+
+def test_evaluation_rejects_missing_required_valuation_artifact(tmp_path) -> None:
+    _, run = _completed_run(tmp_path)
+
+    result = score_run(
+        run,
+        {"case_id": "DR-VAL-COVERAGE", "expected_state": "COMPLETED", "requires_valuation_scenarios": True},
+    )
+
+    assert result.passed is False
+    check = next(check for check in result.checks if check.name == "valuation_artifact_presence")
+    assert check.status == "FAIL"
+    assert "present=False" in check.detail

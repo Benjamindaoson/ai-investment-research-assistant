@@ -157,6 +157,73 @@ def score_run(run: ResearchRun, case: dict[str, Any]) -> EvaluationResult:
             )
         )
         evidence_by_id = {record.id: record for record in run.evidence}
+        financial_evidence_ids: set[str] = set()
+        if run.financial_analysis is not None:
+            financial_evidence_ids.update(
+                evidence_id for ids in run.financial_analysis.evidence_ids.values() for evidence_id in ids
+            )
+            financial_evidence_ids.update(
+                evidence_id
+                for entry in run.financial_analysis.calculation_ledger
+                for evidence_id in entry.evidence_ids
+            )
+        missing_financial_evidence = sorted(financial_evidence_ids - evidence_by_id.keys())
+        unqualified_financial_evidence = sorted(
+            evidence_id
+            for evidence_id in financial_evidence_ids & evidence_by_id.keys()
+            if evidence_by_id[evidence_id].qualification != "QUALIFIED"
+        )
+        checks.append(
+            EvaluationCheck(
+                name="financial_artifact_links",
+                status="PASS" if not missing_financial_evidence and not unqualified_financial_evidence else "FAIL",
+                detail=(
+                    f"missing={missing_financial_evidence}, "
+                    f"unqualified={unqualified_financial_evidence}"
+                ),
+            )
+        )
+        if case.get("requires_financial_analysis", False):
+            checks.append(
+                EvaluationCheck(
+                    name="financial_artifact_presence",
+                    status="PASS" if run.financial_analysis is not None else "FAIL",
+                    detail=f"present={run.financial_analysis is not None}",
+                )
+            )
+        valuation_evidence_ids: set[str] = set()
+        if run.valuation_scenarios is not None:
+            valuation_evidence_ids.update(run.valuation_scenarios.base_revenue_evidence_ids)
+            valuation_evidence_ids.update(
+                evidence_id
+                for scenario in run.valuation_scenarios.scenarios
+                for ids in scenario.assumptions.evidence_ids.values()
+                for evidence_id in ids
+            )
+        missing_valuation_evidence = sorted(valuation_evidence_ids - evidence_by_id.keys())
+        unqualified_valuation_evidence = sorted(
+            evidence_id
+            for evidence_id in valuation_evidence_ids & evidence_by_id.keys()
+            if evidence_by_id[evidence_id].qualification != "QUALIFIED"
+        )
+        checks.append(
+            EvaluationCheck(
+                name="valuation_artifact_links",
+                status="PASS" if not missing_valuation_evidence and not unqualified_valuation_evidence else "FAIL",
+                detail=(
+                    f"missing={missing_valuation_evidence}, "
+                    f"unqualified={unqualified_valuation_evidence}"
+                ),
+            )
+        )
+        if case.get("requires_valuation_scenarios", False):
+            checks.append(
+                EvaluationCheck(
+                    name="valuation_artifact_presence",
+                    status="PASS" if run.valuation_scenarios is not None else "FAIL",
+                    detail=f"present={run.valuation_scenarios is not None}",
+                )
+            )
         invalid_red_team_reviews = sorted(
             review.id
             for review in run.red_team_reviews
