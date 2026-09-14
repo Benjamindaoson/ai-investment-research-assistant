@@ -192,6 +192,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .runtime-valuation-header { color: var(--color-muted); text-transform: uppercase; letter-spacing: .04em; }
 .runtime-valuation-row span, .runtime-valuation-row strong { overflow-wrap: anywhere; }
 .runtime-valuation-row strong { color: var(--color-accent); }
+.valuation-scenario-form { margin-top: var(--space-3); }
+.valuation-scenario-form form { padding: var(--space-4); }
+.valuation-base-input, .valuation-scenario-input-grid { display: grid; gap: var(--space-3); }
+.valuation-base-input { grid-template-columns: repeat(2, minmax(0, 1fr)); }
+.valuation-base-input label, .valuation-scenario-input-grid label { display: grid; gap: var(--space-1); color: var(--color-ink-soft); font-size: var(--font-size-xs); font-weight: var(--weight-semibold); }
+.valuation-base-input .text-control, .valuation-scenario-input-grid .text-control { margin-top: 0; }
+.valuation-scenario-input-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: var(--space-4); }
+.valuation-scenario-input-grid fieldset { display: grid; gap: var(--space-2); min-width: 0; border: var(--border-width) solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-3); }
+.valuation-scenario-input-grid legend { padding: 0 var(--space-1); color: var(--color-accent); font-weight: var(--weight-bold); }
 .red-team-grid label small { color: var(--color-muted); font-weight: var(--weight-regular); }
 .context-summary { display: grid; gap: var(--space-1); border-top: var(--border-width) solid var(--border-color); padding-top: var(--space-4); }
 .context-summary small { color: var(--color-muted-subtle); font-size: var(--font-size-2xs); letter-spacing: .08em; margin-top: var(--space-3); }
@@ -322,3 +331,4 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 800px) { .runtime-decision-grid { grid-template-columns: 1fr; } .runtime-decision-grid label:last-child { grid-column: auto; } }
 @media (max-width: 800px) { .runtime-plan-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 800px) { .red-team-grid { grid-template-columns: 1fr; } .red-team-grid label:nth-child(3), .red-team-grid label:nth-child(4), .red-team-grid label:nth-child(5) { grid-column: auto; } }
+@media (max-width: 800px) { .valuation-base-input, .valuation-scenario-input-grid { grid-template-columns: 1fr; } }

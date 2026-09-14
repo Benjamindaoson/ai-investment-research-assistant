@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ResearchRuntimeRepository } from "./research-runtime-repository";
-import { createResearchRuntimeService, type InvestmentMemory, type RuntimeMemo, type RuntimeRun, type RuntimeTrace, type ValuationScenarios } from "@/services/research-runtime-service";
+import { createResearchRuntimeService, type InvestmentMemory, type RuntimeMemo, type RuntimeRun, type RuntimeTrace, type ValuationScenarioInput, type ValuationScenarios } from "@/services/research-runtime-service";
 
 const trace: RuntimeTrace = {
   run_id: "run-1",
@@ -47,6 +47,8 @@ const run: RuntimeRun = {
   id: "run-1", case_id: "case-1", state: "CREATED", tasks: [{ id: "market", title: "Market", state: "PENDING" }],
   evidence: [], tool_executions: [], claims: [], thesis: null, memo: null, financial_analysis: null, red_team_reviews: [], decisions: [],
 };
+
+const repositoryFor = (fetchImpl: typeof fetch) => new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
 
 describe("ResearchRuntimeRepository", () => {
   it("parses the runtime trace through the HTTP service boundary", async () => {
@@ -236,6 +238,33 @@ describe("ResearchRuntimeRepository", () => {
 
     await expect(repository.getValuationScenarios("run/1")).resolves.toEqual(valuation);
     expect(requestUrl).toBe("http://runtime.test/api/v1/research-runs/run%2F1/valuation-scenarios");
+  });
+
+  it("posts a typed valuation scenario input through the runtime boundary", async () => {
+    let requestUrl = "";
+    let requestBody = "";
+    const fetchImpl = (async (input, init) => {
+      requestUrl = String(input);
+      requestBody = String(init?.body);
+      return new Response(JSON.stringify(valuation), { status: 201 });
+    }) as typeof fetch;
+    const input: ValuationScenarioInput = {
+      base_revenue: "100",
+      base_revenue_evidence_ids: ["evidence-1"],
+      scenarios: ["BULL", "BASE", "BEAR"].map((name) => ({
+        name: name as "BULL" | "BASE" | "BEAR",
+        revenue_growth_pct: "10", operating_margin_pct: "20", fcf_margin_pct: "15",
+        discount_rate_pct: "10", terminal_growth_pct: "2", net_cash: "10", shares_outstanding: "10",
+        evidence_ids: {
+          revenue_growth_pct: ["evidence-1"], operating_margin_pct: ["evidence-1"], fcf_margin_pct: ["evidence-1"],
+          discount_rate_pct: ["evidence-1"], terminal_growth_pct: ["evidence-1"], net_cash: ["evidence-1"], shares_outstanding: ["evidence-1"],
+        },
+      })),
+    };
+
+    await expect(repositoryFor(fetchImpl).analyzeValuationScenarios("run/1", input)).resolves.toEqual(valuation);
+    expect(requestUrl).toBe("http://runtime.test/api/v1/research-runs/run%2F1/valuation-scenarios");
+    expect(JSON.parse(requestBody)).toEqual(input);
   });
 
   it("creates and lists red-team reviews through the typed service boundary", async () => {

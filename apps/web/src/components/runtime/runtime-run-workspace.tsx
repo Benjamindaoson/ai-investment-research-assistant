@@ -12,6 +12,7 @@ import { RuntimePlanContext } from "@/components/runtime/runtime-plan-context";
 import { RuntimeTaskContract } from "@/components/runtime/runtime-task-contract";
 import { RuntimeToolTrace } from "@/components/runtime/runtime-tool-trace";
 import { RuntimeValuationScenarios } from "@/components/runtime/runtime-valuation-scenarios";
+import { ValuationScenarioForm } from "@/components/runtime/valuation-scenario-form";
 import { useCancelRuntimeRunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeMemoryQuery, useRuntimeRunQuery, useRuntimeTraceQuery } from "@/queries/use-runtime-run";
 
 export function RuntimeRunWorkspace({ runId }: { runId: string }) {
@@ -47,6 +48,7 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
       <RuntimeClaimTrace claims={run.claims} evidence={run.evidence} />
       <section className="company-section-grid"><article className="company-section"><header><h3>Evidence coverage</h3><span>{run.evidence.length} observed</span></header><p>{qualified} qualified · {needsReview} needs review · {counter} counter/conflicting</p></article><article className="company-section"><header><h3>Memo projection</h3><span>{run.memo?.status ?? "not generated"}</span></header><p>{run.memo?.executive_summary ?? "Memo is generated after synthesis."}</p></article></section>
       {run.valuation_scenarios && <RuntimeValuationScenarios artifact={run.valuation_scenarios} />}
+      {qualified > 0 && !["FAILED", "CANCELLED", "BLOCKED"].includes(run.state) && <ValuationScenarioForm run={run} />}
       {qualified > 0 && !["FAILED", "CANCELLED", "BLOCKED"].includes(run.state) && <FinancialAnalysisForm run={run} />}
       {run.financial_analysis && <><section className="decision-panel"><header><div><small>CALCULATION ARTIFACT · EXPLICIT INPUTS</small><h2>Financial analysis · {run.financial_analysis.period}</h2></div><span>{Object.values(run.financial_analysis.evidence_ids).flat().length} linked evidence</span></header><div className="company-section-grid"><article className="company-section"><header><h3>Revenue growth</h3></header><p>{run.financial_analysis.revenue_growth_pct ?? "Unavailable"}</p></article><article className="company-section"><header><h3>Free cash flow</h3></header><p>{run.financial_analysis.free_cash_flow ?? "Unavailable"}</p></article><article className="company-section"><header><h3>Net cash</h3></header><p>{run.financial_analysis.net_cash ?? "Unavailable"}</p></article></div><small>Values were supplied explicitly and linked to qualified evidence; unavailable metrics are not inferred.</small></section><RuntimeCalculationLedger entries={run.financial_analysis.calculation_ledger} /></>}
       {!terminal && <RedTeamReviewForm run={run} />}

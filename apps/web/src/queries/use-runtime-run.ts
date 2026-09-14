@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { researchRuntimeRepository } from "@/repositories";
-import type { DecisionRecordInput, EvidenceLinkedFinancialAnalysisInput, RedTeamReviewInput, RuntimeCaseInput, RuntimeRun, RuntimeTrace } from "@/services/research-runtime-service";
+import type { DecisionRecordInput, EvidenceLinkedFinancialAnalysisInput, RedTeamReviewInput, RuntimeCaseInput, RuntimeRun, RuntimeTrace, ValuationScenarioInput } from "@/services/research-runtime-service";
 
 export const runtimeRunQueryKey = (runId: string) => ["runtime", "run", runId] as const;
 export const runtimeMemoryQueryKey = (runId: string) => ["runtime", "memory", runId] as const;
@@ -61,6 +61,14 @@ export function useAnalyzeRuntimeFinancialsMutation(runId: string) {
     onSuccess: (analysis) => {
       queryClient.setQueryData<RuntimeRun>(runtimeRunQueryKey(runId), (current) => current ? { ...current, financial_analysis: analysis } : current);
     },
+  });
+}
+
+export function useAnalyzeRuntimeValuationMutation(runId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: (input: ValuationScenarioInput) => researchRuntimeRepository.analyzeValuationScenarios(runId, input),
+    onSuccess: (artifact) => queryClient.setQueryData<RuntimeRun>(runtimeRunQueryKey(runId), (current) => current ? { ...current, valuation_scenarios: artifact } : current),
   });
 }
 
