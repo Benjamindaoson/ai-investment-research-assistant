@@ -34,6 +34,7 @@ from deepresearch.runtime.synthesis import (
     ResearchSynthesizer,
     create_configured_research_synthesizer,
 )
+from deepresearch.runtime.tools import ResearchToolRegistry
 
 
 class CreateCaseRequest(BaseModel):
@@ -103,6 +104,7 @@ def create_app(
     provider: EvidenceProvider | None = None,
     planner: ResearchPlanner | None = None,
     synthesizer: ResearchSynthesizer | None = None,
+    tool_registry: ResearchToolRegistry | None = None,
 ) -> FastAPI:
     runtime_store = store or SQLiteStore(Path(".data/deepresearch.sqlite3"))
     configured_provider = provider
@@ -116,6 +118,7 @@ def create_app(
         configured_provider,
         planner=planner or create_configured_research_planner(),
         synthesizer=synthesizer or create_configured_research_synthesizer(),
+        tool_registry=tool_registry,
         lease_seconds=lease_seconds,
     )
     financial_analysis = FinancialAnalysisTool()

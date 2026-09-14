@@ -13,5 +13,6 @@ from deepresearch.runtime.planner import (
     ResearchPlanner,
     create_configured_research_planner,
 )
+from deepresearch.runtime.tools import ResearchToolRegistry
 
-__all__ = ["DeterministicEvidenceProvider", "EvidenceProvider", "EvidenceProviderError", "FinEvidenceClient", "HttpEvidenceProvider", "DeterministicResearchPlanner", "LLMResearchPlanner", "PlannerProviderError", "ResearchPlanner", "ResearchEngine", "create_configured_research_planner", "validate_task_dag"]
+__all__ = ["DeterministicEvidenceProvider", "EvidenceProvider", "EvidenceProviderError", "FinEvidenceClient", "HttpEvidenceProvider", "ResearchToolRegistry", "DeterministicResearchPlanner", "LLMResearchPlanner", "PlannerProviderError", "ResearchPlanner", "ResearchEngine", "create_configured_research_planner", "validate_task_dag"]

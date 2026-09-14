@@ -40,6 +40,7 @@ from deepresearch.runtime.synthesis import (
     ResearchSynthesizer,
     SynthesisProviderError,
 )
+from deepresearch.runtime.tools import ResearchToolRegistry
 
 
 def validate_task_dag(tasks: Iterable[ResearchTask]) -> list[str]:
@@ -81,11 +82,13 @@ class ResearchEngine:
         planner: ResearchPlanner | None = None,
         synthesizer: ResearchSynthesizer | None = None,
         lease_seconds: float = 300.0,
+        tool_registry: ResearchToolRegistry | None = None,
     ) -> None:
         if lease_seconds <= 0:
             raise ValueError("lease_seconds must be positive")
         self.store = store
         self.provider = provider
+        self.tool_registry = tool_registry or ResearchToolRegistry.from_provider(provider)
         self.planner = planner or DeterministicResearchPlanner()
         self.synthesizer = synthesizer or DeterministicResearchSynthesizer()
         self.lease_seconds = lease_seconds
@@ -371,9 +374,9 @@ class ResearchEngine:
         if run.state in {"COMPLETED", "PARTIAL", "FAILED", "CANCELLED", "BLOCKED"}:
             return run
         case = self.get_case(run.case_id)
-        provider_name = str(getattr(self.provider, "name", self.provider.__class__.__name__))
         abandoned = [task for task in run.tasks if task.state == "RUNNING"]
         for task in abandoned:
+            provider_name = self._provider_name(task.tool_name)
             unfinished = next(
                 (
                     execution
@@ -422,6 +425,7 @@ class ResearchEngine:
                 return self._fail(run, "no ready task; DAG is inconsistent", lease_id)
             for task in sorted(ready, key=lambda item: item.id):
                 self._ensure_lease(heartbeat_lost)
+                provider_name = self._provider_name(task.tool_name)
                 task.state = "RUNNING"
                 run.state = "RUNNING"
                 self._persist(run, "TASK_STARTED", {"task_id": task.id}, lease_id)
@@ -450,7 +454,7 @@ class ResearchEngine:
                     lease_id,
                 )
                 try:
-                    records = self.provider.collect(task, case)
+                    records = self.tool_registry.collect(task, case)
                 except Exception as error:
                     self._ensure_lease(heartbeat_lost)
                     diagnostic = f"{type(error).__name__}:{error}"
@@ -696,7 +700,8 @@ class ResearchEngine:
         return self.get_memory(case.target)
 
     def _qualify(self, record: EvidenceRecord, task: ResearchTask) -> EvidenceRecord:
-        if getattr(self.provider, "qualification_authority", "runtime") == "external":
+        provider = self.tool_registry.resolve(task.tool_name)
+        if getattr(provider, "qualification_authority", "runtime") == "external":
             return record
         requirement = next(item for item in task.evidence_requirements if item.id == record.requirement_id)
         record.qualification = (
@@ -751,14 +756,15 @@ class ResearchEngine:
                 status="QUALIFIED" if evidence_ids and self._task_is_qualified(run, tasks_by_id[proposed.task_id]) else "NEEDS_REVIEW",
                 confidence=proposed.confidence,
             )
-            verify_claim = getattr(self.provider, "verify_claim", None)
+            provider = self.tool_registry.resolve(tasks_by_id[claim.task_id].tool_name)
+            verify_claim = getattr(provider, "verify_claim", None)
             if claim.status == "QUALIFIED" and callable(verify_claim):
                 attempt_key = f"{run.id}:claim-verification:{claim.id}:attempt-1"
                 attempt_hash = sha256(attempt_key.encode()).hexdigest()
                 verification = ToolExecution(
                     task_id=claim.task_id,
                     tool_name="claim-verification",
-                    provider=str(getattr(self.provider, "name", self.provider.__class__.__name__)),
+                    provider=str(getattr(provider, "name", provider.__class__.__name__)),
                     input_hash=self._claim_input_hash(claim.statement, claim.evidence_ids),
                     operation="CLAIM_VERIFICATION",
                     status="UNKNOWN_EFFECT",
@@ -1063,6 +1069,10 @@ class ResearchEngine:
         case_input = case.model_dump_json(exclude={"created_at"})
         task_input = task.model_dump_json(exclude={"state"})
         return sha256(f"{case_input}:{task_input}".encode()).hexdigest()
+
+    def _provider_name(self, tool_name: str) -> str:
+        provider = self.tool_registry.get(tool_name)
+        return str(getattr(provider, "name", provider.__class__.__name__)) if provider is not None else "unregistered"
 
     @staticmethod
     def _claim_input_hash(statement: str, evidence_ids: list[str]) -> str:

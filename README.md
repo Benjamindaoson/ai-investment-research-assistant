@@ -10,6 +10,11 @@ This repository does not reimplement FinEvidence. FinEvidence is the future
 external evidence infrastructure; this project consumes it through an explicit
 `EvidenceProvider` boundary.
 
+Research tasks resolve their declared `tool_name` through an explicit
+`ResearchToolRegistry`; unknown tools fail durably instead of falling back to a
+global provider. Qualification and claim verification use the provider selected
+for the task.
+
 ## Canonical architecture
 
 ```text

@@ -28,6 +28,13 @@ provider；旧的 `FINEVIDENCE_BASE_URL` 仅作为兼容别名。未设置时使
 保存原始 HTTP query、response 或 excerpt。旧 SQLite receipt 会以兼容默认值
 加载，FinEvidence 仍然只通过下面的 HTTP v1 boundary 接入。
 
+每个 `ResearchTask.tool_name` 都必须通过显式的 `ResearchToolRegistry` 解析。
+未注册工具不会静默回退到全局 provider，而是在已持久化的 attempt receipt 上
+记录 `FAILED` 和 bounded diagnostic；当不同工具使用不同 evidence provider 时，
+qualification authority 与 claim verification 也跟随任务实际解析到的 provider。
+未注入 registry 时，现有 deterministic/external/research aliases 会映射到构造
+函数传入的单一 provider，保持旧调用方兼容。
+
 ```powershell
 cd "D:\01_work\Enterprise Multimodal RAG\finevidence"
 \.venv\Scripts\python.exe -m uvicorn finevidence.api.app:app --host 127.0.0.1 --port 8000
