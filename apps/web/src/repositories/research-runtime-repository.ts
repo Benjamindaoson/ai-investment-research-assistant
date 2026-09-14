@@ -4,6 +4,7 @@ export class ResearchRuntimeRepository {
   constructor(private readonly service: ResearchRuntimeService) {}
 
   createCase(input: RuntimeCaseInput): Promise<RuntimeCaseResult> { return this.service.createCase(input); }
+  createCaseRun(caseId: string): Promise<RuntimeCaseResult> { return this.service.createCaseRun(caseId); }
   getRun(runId: string): Promise<RuntimeRun> { return this.service.getRun(runId); }
   getCaseRuns(caseId: string): Promise<RuntimeRun[]> { return this.service.getCaseRuns(caseId); }
   executeRun(runId: string): Promise<RuntimeRun> { return this.service.executeRun(runId); }

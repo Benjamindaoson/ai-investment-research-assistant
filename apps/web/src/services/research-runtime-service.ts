@@ -332,6 +332,7 @@ export type InvestmentMemory = z.infer<typeof investmentMemorySchema>;
 
 export interface ResearchRuntimeService {
   createCase(input: RuntimeCaseInput): Promise<RuntimeCaseResult>;
+  createCaseRun(caseId: string): Promise<RuntimeCaseResult>;
   getRun(runId: string): Promise<RuntimeRun>;
   getCaseRuns(caseId: string): Promise<RuntimeRun[]>;
   executeRun(runId: string): Promise<RuntimeRun>;
@@ -368,6 +369,14 @@ export class HttpResearchRuntimeService implements ResearchRuntimeService {
       method: "POST",
       headers: { accept: "application/json", "content-type": "application/json" },
       body: JSON.stringify(body),
+    }));
+  }
+
+  async createCaseRun(caseId: string): Promise<RuntimeCaseResult> {
+    return runtimeCaseResultSchema.parse(await this.requestJson(`/api/v1/research-cases/${encodeURIComponent(caseId)}/runs`, {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/json" },
+      body: JSON.stringify({}),
     }));
   }
 
@@ -488,6 +497,7 @@ class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
   }
 
   async createCase(): Promise<RuntimeCaseResult> { return this.unavailable(); }
+  async createCaseRun(): Promise<RuntimeCaseResult> { return this.unavailable(); }
   async getRun(): Promise<RuntimeRun> { return this.unavailable(); }
   async getCaseRuns(): Promise<RuntimeRun[]> { return this.unavailable(); }
   async executeRun(): Promise<RuntimeRun> { return this.unavailable(); }

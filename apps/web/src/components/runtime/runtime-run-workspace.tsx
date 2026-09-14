@@ -1,5 +1,6 @@
 "use client";
 
+import { useRouter } from "next/navigation";
 import { useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { FinancialAnalysisForm } from "@/components/runtime/financial-analysis-form";
@@ -14,11 +15,13 @@ import { RuntimeToolTrace } from "@/components/runtime/runtime-tool-trace";
 import { RuntimeValuationScenarios } from "@/components/runtime/runtime-valuation-scenarios";
 import { ValuationScenarioForm } from "@/components/runtime/valuation-scenario-form";
 import { RuntimeCaseHistory } from "@/components/runtime/runtime-case-history";
-import { useCancelRuntimeRunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeCaseRunsQuery, useRuntimeMemoryQuery, useRuntimeRunQuery, useRuntimeTraceQuery } from "@/queries/use-runtime-run";
+import { useCancelRuntimeRunMutation, useCreateRuntimeRerunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeCaseRunsQuery, useRuntimeMemoryQuery, useRuntimeRunQuery, useRuntimeTraceQuery } from "@/queries/use-runtime-run";
 
 export function RuntimeRunWorkspace({ runId }: { runId: string }) {
+  const router = useRouter();
   const query = useRuntimeRunQuery(runId);
   const caseRunsQuery = useRuntimeCaseRunsQuery(query.data?.case_id ?? "");
+  const rerun = useCreateRuntimeRerunMutation(query.data?.case_id ?? "");
   const memoryQuery = useRuntimeMemoryQuery(runId, Boolean(query.data?.memo));
   const traceQuery = useRuntimeTraceQuery(runId);
   const execute = useExecuteRuntimeRunMutation(runId);
@@ -34,6 +37,9 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
   const qualified = run.evidence.filter((item) => item.qualification === "QUALIFIED").length;
   const needsReview = run.evidence.filter((item) => item.qualification === "NEEDS_REVIEW").length;
   const counter = run.evidence.filter((item) => item.stance === "COUNTER" || item.stance === "CONFLICTING").length;
+  function createRerun() {
+    void rerun.mutateAsync().then((result) => router.push(`/runtime/${encodeURIComponent(result.run_id)}`), () => undefined);
+  }
 
   return (
     <AppShell context={<><div className="context-heading"><b>Runtime run</b><span>{run.state}</span></div><div className="context-summary"><small>TASKS</small><b>{run.tasks.length}</b><small>EVIDENCE</small><b>{run.evidence.length}</b><small>MEMO</small><b>{run.memo?.status ?? "pending"}</b></div></>}>
@@ -44,7 +50,7 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
         {(execute.isError || cancel.isError || replan.isError) && <p className="form-error" role="alert">{(execute.error ?? cancel.error ?? replan.error)?.message}</p>}
       </section>
       <RuntimePlanContext plan={run.plan} />
-      <RuntimeCaseHistory runs={caseRunsQuery.data} activeRunId={run.id} isPending={caseRunsQuery.isPending} error={caseRunsQuery.error} />
+      <RuntimeCaseHistory runs={caseRunsQuery.data} activeRunId={run.id} isPending={caseRunsQuery.isPending} error={caseRunsQuery.error} onCreateRerun={createRerun} isRerunPending={rerun.isPending} rerunError={rerun.error} />
       <RuntimeTaskContract tasks={run.tasks} traceTasks={traceQuery.data?.tasks} />
       <RuntimeToolTrace executions={run.tool_executions} />
       <RuntimeEvidenceTrace evidence={run.evidence} />

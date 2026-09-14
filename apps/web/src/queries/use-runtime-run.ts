@@ -13,6 +13,14 @@ export function useCreateRuntimeCaseMutation() {
   return useMutation({ mutationFn: (input: RuntimeCaseInput) => researchRuntimeRepository.createCase(input) });
 }
 
+export function useCreateRuntimeRerunMutation(caseId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => researchRuntimeRepository.createCaseRun(caseId),
+    onSuccess: () => queryClient.invalidateQueries({ queryKey: runtimeCaseRunsQueryKey(caseId) }),
+  });
+}
+
 export function useRuntimeRunQuery(runId: string) {
   return useQuery({ queryKey: runtimeRunQueryKey(runId), queryFn: () => researchRuntimeRepository.getRun(runId) });
 }

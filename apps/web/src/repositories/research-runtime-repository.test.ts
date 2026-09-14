@@ -82,6 +82,21 @@ describe("ResearchRuntimeRepository", () => {
     expect(requestUrl).toBe("http://runtime.test/api/v1/research-cases/case%2F1/runs");
   });
 
+  it("creates a new run for an existing case through the typed boundary", async () => {
+    let requestUrl = "";
+    let requestMethod = "";
+    const fetchImpl = (async (input, init) => {
+      requestUrl = String(input);
+      requestMethod = String(init?.method);
+      return new Response(JSON.stringify({ case_id: "case/1", run_id: "run-2" }), { status: 201 });
+    }) as typeof fetch;
+    const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+
+    await expect(repository.createCaseRun("case/1")).resolves.toEqual({ case_id: "case/1", run_id: "run-2" });
+    expect(requestUrl).toBe("http://runtime.test/api/v1/research-cases/case%2F1/runs");
+    expect(requestMethod).toBe("POST");
+  });
+
   it("preserves detailed claims from a completed run", async () => {
     const detailedRun = { ...run, state: "COMPLETED", claims: [{
       id: "claim-1", task_id: "market", statement: "Market evidence qualifies.", status: "QUALIFIED",

@@ -1,5 +1,5 @@
 // @vitest-environment jsdom
-import { cleanup, render, screen } from "@testing-library/react";
+import { cleanup, fireEvent, render, screen } from "@testing-library/react";
 import { afterEach, describe, expect, it } from "vitest";
 import { RuntimeCaseHistory } from "./runtime-case-history";
 import type { RuntimeRun } from "@/services/research-runtime-service";
@@ -23,5 +23,19 @@ describe("RuntimeCaseHistory", () => {
     expect(screen.getByText("No durable runs are recorded for this ResearchCase.")).toBeTruthy();
     rerender(<RuntimeCaseHistory runs={undefined} activeRunId="run-1" isPending={false} error={new Error("runtime unavailable")} />);
     expect(screen.getByRole("alert").textContent).toContain("runtime unavailable");
+  });
+
+  it("keeps rerun creation explicit and disables duplicate clicks while pending", () => {
+    const onCreateRerun = () => undefined;
+    render(<RuntimeCaseHistory runs={[run]} activeRunId="run-1" isPending={false} error={null} onCreateRerun={onCreateRerun} isRerunPending />);
+    const button = screen.getByRole("button", { name: "Creating run…" });
+    expect(button).toHaveProperty("disabled", true);
+    fireEvent.click(button);
+  });
+
+  it("shows a failed rerun without hiding the current history", () => {
+    render(<RuntimeCaseHistory runs={[run]} activeRunId="run-1" isPending={false} error={null} onCreateRerun={() => undefined} rerunError={new Error("planner unavailable")} />);
+    expect(screen.getByRole("alert").textContent).toContain("planner unavailable");
+    expect(screen.getByText("run-1")).toBeTruthy();
   });
 });
