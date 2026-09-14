@@ -22,3 +22,5 @@
   input, and read-back.
 - [x] 3.3 Update documentation and run backend/frontend checks, OpenSpec,
   CodeGraph, diff, API, and browser smoke verification.
+- [x] 3.4 Link recorded IC review IDs into the durable Investment Memo so the
+  exported review artifact preserves its panel basis.

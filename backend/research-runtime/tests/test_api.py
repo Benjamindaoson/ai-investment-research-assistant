@@ -395,6 +395,7 @@ def test_api_records_structured_ic_review_and_links_it_to_decision(tmp_path) -> 
     review = response.json()["ic_reviews"][0]
     assert review["role"] == "FINANCIAL"
     assert review["evidence_ids"] == [evidence_id]
+    assert response.json()["memo"]["ic_review_ids"] == [review["id"]]
     assert client.get(f"/api/v1/research-runs/{run_id}/ic-reviews").json() == [review]
 
     approved = client.post(

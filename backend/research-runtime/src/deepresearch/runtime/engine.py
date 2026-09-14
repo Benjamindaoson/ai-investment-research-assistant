@@ -638,6 +638,8 @@ class ResearchEngine:
         if any(item.id == review.id for item in run.ic_reviews):
             raise ValueError(f"IC review already exists: {review.id}")
         run.ic_reviews.append(review)
+        if run.memo is not None:
+            run.memo.ic_review_ids.append(review.id)
         self._persist(
             run,
             "IC_REVIEW_RECORDED",

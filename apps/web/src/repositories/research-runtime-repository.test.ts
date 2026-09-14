@@ -14,7 +14,7 @@ const trace: RuntimeTrace = {
 const memo: RuntimeMemo = {
   id: "memo-1", run_id: "run-1", case_id: "case-1", title: "ACME research memo", status: "READY_FOR_REVIEW",
   executive_summary: "Observed evidence remains reviewable.", thesis_id: "thesis-1", claim_ids: ["claim-1"],
-  evidence_ids: ["evidence-1"], counter_evidence_ids: ["evidence-2"], unresolved_requirement_ids: [],
+  evidence_ids: ["evidence-1"], counter_evidence_ids: ["evidence-2"], unresolved_requirement_ids: [], ic_review_ids: [],
   sections: [{ section_key: "thesis", title: "Investment thesis", body: "Observed thesis.", claim_ids: ["claim-1"], evidence_ids: ["evidence-1"], unresolved_requirement_ids: [] }],
   provenance: { generator: "test" }, generated_at: "2026-09-14T00:00:00.000Z",
 };

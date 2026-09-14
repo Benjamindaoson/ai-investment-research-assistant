@@ -319,6 +319,7 @@ class InvestmentMemo(DomainModel):
     evidence_ids: list[str] = Field(default_factory=list)
     counter_evidence_ids: list[str] = Field(default_factory=list)
     unresolved_requirement_ids: list[str] = Field(default_factory=list)
+    ic_review_ids: list[str] = Field(default_factory=list, max_length=100)
     sections: list[MemoSection] = Field(default_factory=list)
     provenance: dict[str, Any] = Field(default_factory=dict)
     generated_at: datetime = Field(default_factory=utc_now)
