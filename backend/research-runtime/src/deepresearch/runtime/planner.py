@@ -205,7 +205,6 @@ class DeterministicResearchPlanner:
                         description="market structure and competitive evidence",
                         fact_type="EXPLANATORY_FACT",
                         role="market_structure",
-                        entity=case.target,
                         criticality="SUPPORTING",
                         evidence_role="EXPLANATION_SUPPORT",
                     )
@@ -222,7 +221,6 @@ class DeterministicResearchPlanner:
                         description="financial fundamentals and durability evidence",
                         fact_type="RETRIEVED_FACT",
                         role="financial_fundamentals",
-                        entity=case.target,
                         criticality="CRITICAL",
                         evidence_role="VALUE_SUPPORT",
                     )
@@ -241,7 +239,6 @@ class DeterministicResearchPlanner:
                         required_stances=["COUNTER"],
                         fact_type="RETRIEVED_FACT",
                         role="downside_risk",
-                        entity=case.target,
                         criticality="CRITICAL",
                         evidence_role="VALUE_SUPPORT",
                     )

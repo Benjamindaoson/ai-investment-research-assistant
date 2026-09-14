@@ -8,8 +8,10 @@ contract to consume.
 ## What Changes
 
 - Keep the bounded three-task DAG and stable task IDs.
-- Add explicit entity, role, fact type, criticality, evidence role, and stance
+- Add explicit role, fact type, criticality, evidence role, and stance
   semantics to market, fundamentals, and downside requirements.
+- Keep the optional external entity slot unset unless an exact catalog alias is
+  explicitly supplied.
 - Make fundamentals a critical value-support requirement and risk a critical
   counter-evidence requirement.
 - Preserve deterministic defaults and existing planner/evaluation behavior.

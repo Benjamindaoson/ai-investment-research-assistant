@@ -17,7 +17,7 @@ def test_deterministic_planner_returns_a_validated_financial_plan() -> None:
     assert plan.tasks[-1].depends_on == ["market", "fundamentals"]
     assert len(plan.input_hash) == 64
     requirements = {task.id: task.evidence_requirements[0] for task in plan.tasks}
-    assert requirements["market"].entity == "ACME"
+    assert requirements["market"].entity is None
     assert requirements["market"].evidence_role == "EXPLANATION_SUPPORT"
     assert requirements["market"].criticality == "SUPPORTING"
     assert requirements["fundamentals"].fact_type == "RETRIEVED_FACT"
@@ -25,7 +25,7 @@ def test_deterministic_planner_returns_a_validated_financial_plan() -> None:
     assert requirements["fundamentals"].evidence_role == "VALUE_SUPPORT"
     assert requirements["risk"].required_stances == ["COUNTER"]
     assert requirements["risk"].criticality == "CRITICAL"
-    assert requirements["risk"].entity == "ACME"
+    assert requirements["risk"].entity is None
     assert all(requirement.metric is None and requirement.period is None for requirement in requirements.values())
 
 
