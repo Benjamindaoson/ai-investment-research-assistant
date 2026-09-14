@@ -200,6 +200,8 @@ def test_api_calculates_only_with_qualified_run_evidence(tmp_path) -> None:
     revenue_entry = next(item for item in response.json()["calculation_ledger"] if item["metric"] == "revenue_growth_pct")
     assert revenue_entry["status"] == "AVAILABLE"
     assert revenue_entry["evidence_ids"] == [evidence_id]
+    run_after_analysis = client.get(f"/api/v1/research-runs/{run_id}").json()
+    assert run_after_analysis["memo"]["financial_analysis_input_hash"] == response.json()["input_hash"]
     persisted = client.get(f"/api/v1/research-runs/{run_id}/financial-analysis")
     assert persisted.status_code == 200
     assert persisted.json() == response.json()
@@ -759,6 +761,8 @@ def test_api_persists_and_reads_valuation_scenarios(tmp_path) -> None:
     assert recorded.status_code == 200
     assert read_back.status_code == 200
     assert read_back.json()["input_hash"] == recorded.json()["input_hash"]
+    run_after_valuation = client.get(f"/api/v1/research-runs/{run_id}").json()
+    assert run_after_valuation["memo"]["valuation_scenarios_id"] == recorded.json()["id"]
     assert [item["scenario"] for item in read_back.json()["scenarios"]] == ["BULL", "BASE", "BEAR"]
     assert any(event["event_type"] == "VALUATION_SCENARIOS_RECORDED" for event in client.get(f"/api/v1/research-runs/{run_id}/events").json())
 

@@ -690,6 +690,8 @@ class ResearchEngine:
         if unqualified:
             raise ValueError(f"financial evidence is not qualified: {unqualified}")
         run.financial_analysis = analysis
+        if run.memo is not None:
+            run.memo.financial_analysis_input_hash = analysis.input_hash
         self._persist(
             run,
             "FINANCIAL_ANALYSIS_RECORDED",
@@ -722,6 +724,8 @@ class ResearchEngine:
         if unqualified:
             raise ValueError(f"valuation evidence is not qualified: {unqualified}")
         run.valuation_scenarios = result
+        if run.memo is not None:
+            run.memo.valuation_scenarios_id = result.id
         self._persist(
             run,
             "VALUATION_SCENARIOS_RECORDED",

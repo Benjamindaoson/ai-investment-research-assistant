@@ -126,7 +126,9 @@ memo/memory 投影和人工 review。synthesis 请求/响应 hash 会保存在 t
   must link to QUALIFIED evidence already present in the same run. The
   Decimal-only terminal-value bridge is illustrative, persists through
   `POST/GET /api/v1/research-runs/{run_id}/valuation-scenarios`, and never
-  fetches prices or infers missing inputs.
+  fetches prices or infers missing inputs. When these artifacts are recorded,
+  the memo projection retains the financial input hash and valuation artifact
+  ID for review/export traceability.
 - When the configured FinEvidence provider exposes claim verification, every
   evidence-backed claim is sent to /api/v1/evidence/verify. Unsupported claims
   make the run PARTIAL; provider transport or contract failures make it FAILED

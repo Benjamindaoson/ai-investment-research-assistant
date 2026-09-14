@@ -93,6 +93,8 @@ const runtimeMemoSchema = z.object({
   unresolved_requirement_ids: z.array(z.string()),
   red_team_review_ids: z.array(z.string()).default([]),
   ic_review_ids: z.array(z.string()).default([]),
+  financial_analysis_input_hash: z.string().length(64).nullable().default(null),
+  valuation_scenarios_id: z.string().nullable().default(null),
   sections: z.array(runtimeMemoSectionSchema).default([]),
   provenance: z.record(z.string(), z.unknown()),
   generated_at: z.string().datetime(),

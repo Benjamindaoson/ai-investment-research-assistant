@@ -12,7 +12,7 @@ export function serializeRuntimeMemo(run: Pick<RuntimeRun, "id" | "state"> & { m
   ].join("\n\n")).join("\n\n");
   return [
     "# Investment Memo", `- Run: ${run.id}`, `- Run state: ${run.state}`, `- Memo status: ${memo.status}`, `- Memo ID: ${memo.id}`, "",
-    "## Executive summary", memo.executive_summary, "", "## Thesis reference", `Thesis ID: ${memo.thesis_id}`, `Claim IDs: ${list(memo.claim_ids)}`, "",
+    "## Executive summary", memo.executive_summary, "", "## Thesis reference", `Thesis ID: ${memo.thesis_id}`, `Claim IDs: ${list(memo.claim_ids)}`, `Financial analysis input hash: ${memo.financial_analysis_input_hash ?? "None recorded"}`, `Valuation scenarios ID: ${memo.valuation_scenarios_id ?? "None recorded"}`, "",
     "## Structured sections", sections || "No structured sections recorded.", "", "## Evidence references",
     `Supporting evidence IDs:\n${list(memo.evidence_ids)}`, `Counter/conflicting evidence IDs:\n${list(memo.counter_evidence_ids)}`, `Unresolved requirement IDs:\n${list(memo.unresolved_requirement_ids)}`, `Red-team review IDs:\n${list(memo.red_team_review_ids)}`, `IC review IDs:\n${list(memo.ic_review_ids)}`, "",
     "## Provenance", "```json", JSON.stringify(memo.provenance, null, 2), "```", "",

@@ -7,7 +7,7 @@ import type { RuntimeMemo } from "@/services/research-runtime-service";
 afterEach(cleanup);
 
 const memo: RuntimeMemo = {
-  id: "memo-1", run_id: "run-1", case_id: "case-1", title: "ACME memo", status: "DRAFT", executive_summary: "Observed.", thesis_id: "thesis-1", claim_ids: [], evidence_ids: ["evidence-1"], counter_evidence_ids: [], unresolved_requirement_ids: [], red_team_review_ids: [], ic_review_ids: [], sections: [], provenance: {}, generated_at: "2026-09-14T00:00:00.000Z",
+  id: "memo-1", run_id: "run-1", case_id: "case-1", title: "ACME memo", status: "DRAFT", executive_summary: "Observed.", thesis_id: "thesis-1", claim_ids: [], evidence_ids: ["evidence-1"], counter_evidence_ids: [], unresolved_requirement_ids: [], red_team_review_ids: [], ic_review_ids: [], financial_analysis_input_hash: null, valuation_scenarios_id: null, sections: [], provenance: {}, generated_at: "2026-09-14T00:00:00.000Z",
 };
 
 describe("RuntimeMemoExport", () => {

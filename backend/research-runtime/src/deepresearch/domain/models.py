@@ -321,6 +321,8 @@ class InvestmentMemo(DomainModel):
     unresolved_requirement_ids: list[str] = Field(default_factory=list)
     red_team_review_ids: list[str] = Field(default_factory=list, max_length=100)
     ic_review_ids: list[str] = Field(default_factory=list, max_length=100)
+    financial_analysis_input_hash: str | None = Field(default=None, max_length=64)
+    valuation_scenarios_id: str | None = Field(default=None, max_length=120)
     sections: list[MemoSection] = Field(default_factory=list)
     provenance: dict[str, Any] = Field(default_factory=dict)
     generated_at: datetime = Field(default_factory=utc_now)

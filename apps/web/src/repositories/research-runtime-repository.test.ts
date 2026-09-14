@@ -14,7 +14,7 @@ const trace: RuntimeTrace = {
 const memo: RuntimeMemo = {
   id: "memo-1", run_id: "run-1", case_id: "case-1", title: "ACME research memo", status: "READY_FOR_REVIEW",
   executive_summary: "Observed evidence remains reviewable.", thesis_id: "thesis-1", claim_ids: ["claim-1"],
-  evidence_ids: ["evidence-1"], counter_evidence_ids: ["evidence-2"], unresolved_requirement_ids: [], red_team_review_ids: [], ic_review_ids: [],
+  evidence_ids: ["evidence-1"], counter_evidence_ids: ["evidence-2"], unresolved_requirement_ids: [], red_team_review_ids: [], ic_review_ids: [], financial_analysis_input_hash: null, valuation_scenarios_id: null,
   sections: [{ section_key: "thesis", title: "Investment thesis", body: "Observed thesis.", claim_ids: ["claim-1"], evidence_ids: ["evidence-1"], unresolved_requirement_ids: [] }],
   provenance: { generator: "test" }, generated_at: "2026-09-14T00:00:00.000Z",
 };
@@ -218,11 +218,18 @@ describe("ResearchRuntimeRepository", () => {
   });
 
   it("keeps historical memos readable when red-team links are absent", async () => {
-    const { red_team_review_ids: _redTeamReviewIds, ...legacyMemo } = memo;
+    const legacyMemo = JSON.parse(JSON.stringify(memo)) as Record<string, unknown>;
+    delete legacyMemo.red_team_review_ids;
+    delete legacyMemo.financial_analysis_input_hash;
+    delete legacyMemo.valuation_scenarios_id;
     const fetchImpl = (async () => new Response(JSON.stringify(legacyMemo), { status: 200 })) as typeof fetch;
     const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
 
-    await expect(repository.getMemo("run-1")).resolves.toMatchObject({ red_team_review_ids: [] });
+    await expect(repository.getMemo("run-1")).resolves.toMatchObject({
+      red_team_review_ids: [],
+      financial_analysis_input_hash: null,
+      valuation_scenarios_id: null,
+    });
   });
 
   it("posts run-scoped financial analysis with field-level evidence links", async () => {
