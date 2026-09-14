@@ -235,15 +235,21 @@ class HttpEvidenceProvider:
 
     @staticmethod
     def _requirement_payload(requirement: EvidenceRequirement, target: str) -> dict[str, Any]:
-        return {
+        payload: dict[str, Any] = {
             "requirement_id": requirement.id,
             "description": requirement.description,
-            "fact_type": "RETRIEVED_FACT",
-            "role": "research_evidence",
-            "entity": target,
-            "criticality": "CRITICAL",
-            "evidence_role": "VALUE_SUPPORT",
+            "fact_type": requirement.fact_type,
+            "role": requirement.role,
+            "entity": requirement.entity or target,
+            "criticality": requirement.criticality,
         }
+        if requirement.evidence_role is not None:
+            payload["evidence_role"] = requirement.evidence_role
+        for field in ("metric", "period", "segment", "basis", "geography", "currency", "unit", "operation"):
+            value = getattr(requirement, field)
+            if value is not None:
+                payload[field] = value
+        return payload
 
     @staticmethod
     def _stance(requirement: EvidenceRequirement) -> Literal["SUPPORTING", "COUNTER", "CONFLICTING"]:

@@ -20,6 +20,15 @@ RunState = Literal["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "F
 TaskState = Literal["PENDING", "RUNNING", "COMPLETED", "FAILED", "UNKNOWN_EFFECT"]
 EvidenceStance = Literal["SUPPORTING", "COUNTER", "CONFLICTING"]
 EvidenceQualification = Literal["QUALIFIED", "NEEDS_REVIEW", "UNQUALIFIED"]
+RequirementFactType = Literal["RETRIEVED_FACT", "DERIVED_FACT", "EXPLANATORY_FACT", "CONTEXT_FACT"]
+RequirementCriticality = Literal["CRITICAL", "SUPPORTING", "OPTIONAL"]
+RequirementEvidenceRole = Literal[
+    "VALUE_SUPPORT",
+    "COMPARISON_SUPPORT",
+    "DERIVATION_INPUT",
+    "EXPLANATION_SUPPORT",
+    "CONTEXT_SUPPORT",
+]
 DecisionType = Literal["INVESTMENT_COMMITTEE", "DUE_DILIGENCE", "SCREENING", "MONITORING", "STRATEGIC_REVIEW"]
 Materiality = Literal["LOW", "MEDIUM", "HIGH"]
 
@@ -175,6 +184,26 @@ class EvidenceRequirement(DomainModel):
     description: str = Field(min_length=1, max_length=1000)
     minimum_records: int = Field(default=1, ge=1, le=100)
     required_stances: list[EvidenceStance] = Field(default_factory=default_required_stances)
+    fact_type: RequirementFactType = "RETRIEVED_FACT"
+    role: str = Field(default="value", min_length=1, max_length=200)
+    entity: str | None = Field(default=None, min_length=1, max_length=300)
+    metric: str | None = Field(default=None, min_length=1, max_length=300)
+    period: str | None = Field(default=None, min_length=1, max_length=100)
+    segment: str | None = Field(default=None, min_length=1, max_length=300)
+    basis: str | None = Field(default=None, min_length=1, max_length=200)
+    geography: str | None = Field(default=None, min_length=1, max_length=200)
+    currency: str | None = Field(default=None, min_length=1, max_length=50)
+    unit: str | None = Field(default=None, min_length=1, max_length=100)
+    operation: str | None = Field(default=None, min_length=1, max_length=200)
+    criticality: RequirementCriticality = "CRITICAL"
+    evidence_role: RequirementEvidenceRole | None = None
+
+    @model_validator(mode="after")
+    def reject_blank_semantics(self) -> "EvidenceRequirement":
+        fields = ("role", "entity", "metric", "period", "segment", "basis", "geography", "currency", "unit", "operation")
+        if any((value := getattr(self, field)) is not None and not value.strip() for field in fields):
+            raise ValueError("evidence requirement semantic fields must not be blank")
+        return self
 
 
 class ResearchTask(DomainModel):

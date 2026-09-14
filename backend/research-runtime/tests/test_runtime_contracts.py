@@ -33,6 +33,20 @@ def test_case_rejects_blank_question() -> None:
         ResearchCase(id="case-1", question=" ", target="ACME")
 
 
+def test_evidence_requirement_defaults_and_validates_semantics() -> None:
+    requirement = EvidenceRequirement(id="revenue", description="Revenue trend")
+
+    assert requirement.fact_type == "RETRIEVED_FACT"
+    assert requirement.role == "value"
+    assert requirement.criticality == "CRITICAL"
+    assert requirement.evidence_role is None
+
+    with pytest.raises(ValidationError):
+        EvidenceRequirement(id="revenue", description="Revenue trend", fact_type="UNKNOWN")
+    with pytest.raises(ValidationError):
+        EvidenceRequirement(id="revenue", description="Revenue trend", metric=" ")
+
+
 def test_datetime_is_timezone_aware() -> None:
     run = ResearchRun(id="run-1", case_id="case-1", state="CREATED", tasks=[task("task")])
     assert run.created_at.tzinfo is not None

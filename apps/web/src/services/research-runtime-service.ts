@@ -258,6 +258,13 @@ const runtimeEvidenceRequirementSchema = z.object({
   description: z.string(),
   minimum_records: z.number().int().positive(),
   required_stances: z.array(z.enum(["SUPPORTING", "COUNTER", "CONFLICTING"])),
+  fact_type: z.enum(["RETRIEVED_FACT", "DERIVED_FACT", "EXPLANATORY_FACT", "CONTEXT_FACT"]).optional(),
+  role: z.string().optional(),
+  entity: z.string().optional(),
+  metric: z.string().optional(),
+  period: z.string().optional(),
+  criticality: z.enum(["CRITICAL", "SUPPORTING", "OPTIONAL"]).optional(),
+  evidence_role: z.enum(["VALUE_SUPPORT", "COMPARISON_SUPPORT", "DERIVATION_INPUT", "EXPLANATION_SUPPORT", "CONTEXT_SUPPORT"]).nullable().optional(),
 });
 export type RuntimeEvidenceRequirement = z.infer<typeof runtimeEvidenceRequirementSchema>;
 

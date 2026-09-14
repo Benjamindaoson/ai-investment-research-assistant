@@ -85,11 +85,15 @@ class LLMResearchPlanner:
                             '{"tasks":[{"id":"task-id","title":"...","purpose":"...",'
                             '"depends_on":[],"tool_name":"...","evidence_requirements":['
                             '{"id":"requirement-id","description":"...","minimum_records":1,'
-                            '"required_stances":["SUPPORTING"]}]}]} . '
+                            '"required_stances":["SUPPORTING"],"fact_type":"RETRIEVED_FACT",'
+                            '"role":"value","criticality":"CRITICAL",'
+                            '"evidence_role":"VALUE_SUPPORT"}]}]} . '
                             "Use 3 to 5 tasks so the plan remains bounded. "
                             "Every task must include purpose, tool_name, and at least one evidence requirement. "
                             "Every evidence requirement must include id, description, minimum_records, and "
-                            "required_stances; use SUPPORTING, COUNTER, or CONFLICTING for stances. "
+                            "required_stances; use SUPPORTING, COUNTER, or CONFLICTING for stances. Optional "
+                            "semantic fields are fact_type (RETRIEVED_FACT, DERIVED_FACT, EXPLANATORY_FACT, "
+                            "CONTEXT_FACT), role, entity, metric, period, criticality, and evidence_role. "
                             "Include at least one COUNTER requirement for downside or disconfirming evidence. "
                             "Do not include rationale, search_queries, sources, facts, claims, thesis, or conclusions. "
                             "Do not invent financial data. "

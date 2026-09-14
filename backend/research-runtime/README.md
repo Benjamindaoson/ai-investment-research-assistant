@@ -35,6 +35,10 @@ qualification authority 与 claim verification 也跟随任务实际解析到的
 未注入 registry 时，现有 deterministic/external/research aliases 会映射到构造
 函数传入的单一 provider，保持旧调用方兼容。
 
+`EvidenceRequirement` 还会携带 FinEvidence coverage 所需的 fact type、role、
+entity/metric/period 等 slots、criticality 和 evidence role。HTTP provider
+原样传递这些字段；缺少的可选 slots 不会被伪造，entity 才会回退到 case target。
+
 ```powershell
 cd "D:\01_work\Enterprise Multimodal RAG\finevidence"
 \.venv\Scripts\python.exe -m uvicorn finevidence.api.app:app --host 127.0.0.1 --port 8000
@@ -116,6 +120,9 @@ memo/memory 投影和人工 review。synthesis 请求/响应 hash 会保存在 t
   外部 coverage 为 `ELIGIBLE` 且 evidence 为 `SUPPORTED` 时才会进入
   runtime 的 `QUALIFIED` 集合；runtime 不会重新提升外部 `PARTIAL` 或
   `UNSUPPORTED` 证据。
+- Evidence requirement semantics are now typed at the runtime boundary and
+  propagated to FinEvidence coverage; the runtime still does not infer missing
+  financial values or implement requirement decomposition.
 - LLM planner adapter 已实现并通过一次真实配置预检；它不是默认路径，也没有
   静默 fallback。尚未实现：live filing/market providers、PostgreSQL adapter、
   生产级 auth/tenant policy、文档解析和交易执行。FinEvidence 的 evidence

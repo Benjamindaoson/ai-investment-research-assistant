@@ -15,6 +15,10 @@ Research tasks resolve their declared `tool_name` through an explicit
 global provider. Qualification and claim verification use the provider selected
 for the task.
 
+Evidence requirements preserve FinEvidence-aligned fact type, role, criticality,
+evidence role, and financial/source slots from the research plan through the
+coverage request; missing values remain missing rather than being inferred.
+
 ## Canonical architecture
 
 ```text
