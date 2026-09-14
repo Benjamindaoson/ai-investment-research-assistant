@@ -64,6 +64,57 @@ class ResearchCase(DomainModel):
     created_at: datetime = Field(default_factory=utc_now)
 
 
+FinancialSnapshotField = Literal[
+    "revenue",
+    "prior_revenue",
+    "gross_profit",
+    "operating_income",
+    "operating_cash_flow",
+    "capex",
+    "cash",
+    "debt",
+]
+FinancialFactBasis = Literal["REPORTED", "DERIVED", "ESTIMATE", "GUIDANCE"]
+
+
+class FinancialFact(DomainModel):
+    field: FinancialSnapshotField
+    value: Decimal
+    period: str = Field(min_length=1, max_length=100)
+    unit: str = Field(min_length=1, max_length=100)
+    currency: str = Field(min_length=1, max_length=50)
+    basis: FinancialFactBasis
+    evidence_ids: list[str] = Field(min_length=1, max_length=100)
+
+    @model_validator(mode="after")
+    def validate_explicit_value(self) -> "FinancialFact":
+        if not self.period.strip() or not self.unit.strip() or not self.currency.strip():
+            raise ValueError("financial fact metadata must not be blank")
+        if any(not evidence_id.strip() for evidence_id in self.evidence_ids):
+            raise ValueError("financial fact evidence IDs must not be blank")
+        if self.field in {"revenue", "prior_revenue", "capex", "cash", "debt"} and self.value < 0:
+            raise ValueError(f"financial fact {self.field} must be non-negative")
+        return self
+
+
+class FinancialFactSet(DomainModel):
+    period: str = Field(min_length=1, max_length=100)
+    facts: list[FinancialFact] = Field(min_length=1, max_length=8)
+
+    @model_validator(mode="after")
+    def validate_snapshot_shape(self) -> "FinancialFactSet":
+        if not self.period.strip():
+            raise ValueError("financial fact set period must not be blank")
+        fields = [fact.field for fact in self.facts]
+        if len(set(fields)) != len(fields):
+            raise ValueError("financial fact fields must be unique")
+        if "revenue" not in fields:
+            raise ValueError("financial fact set requires a revenue fact")
+        if any(fact.period != self.period for fact in self.facts):
+            raise ValueError("financial facts must use the fact set period")
+        return self
+
+
 class FinancialSnapshot(DomainModel):
     period: str = Field(min_length=1, max_length=100)
     revenue: Decimal = Field(ge=0)
@@ -107,6 +158,7 @@ class FinancialAnalysisResult(DomainModel):
     net_cash: Decimal | None = None
     unavailable_metrics: list[str] = Field(default_factory=list)
     evidence_ids: dict[str, list[str]] = Field(default_factory=dict)
+    financial_facts: list[FinancialFact] = Field(default_factory=list, max_length=8)
     calculation_ledger: list[CalculationLedgerEntry] = Field(default_factory=list)
 
 

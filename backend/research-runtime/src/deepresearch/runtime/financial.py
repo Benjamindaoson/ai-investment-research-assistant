@@ -8,12 +8,22 @@ from hashlib import sha256
 from deepresearch.domain.models import (
     CalculationLedgerEntry,
     FinancialAnalysisResult,
+    FinancialFactSet,
     FinancialSnapshot,
     ScenarioAssumption,
     ScenarioValuationInput,
     ScenarioValuationResult,
     ValuationScenariosResult,
 )
+
+
+def financial_snapshot_from_facts(fact_set: FinancialFactSet) -> tuple[FinancialSnapshot, dict[str, list[str]]]:
+    """Map an explicit fact handoff; never parse evidence excerpts or infer values."""
+    values = {fact.field: fact.value for fact in fact_set.facts}
+    evidence_ids: dict[str, list[str]] = {
+        fact.field: list(dict.fromkeys(fact.evidence_ids)) for fact in fact_set.facts
+    }
+    return FinancialSnapshot(period=fact_set.period, **values), evidence_ids
 
 
 class FinancialAnalysisTool:

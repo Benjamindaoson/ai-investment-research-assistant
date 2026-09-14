@@ -210,6 +210,111 @@ def test_api_calculates_only_with_qualified_run_evidence(tmp_path) -> None:
     assert analysis_event["payload"]["evidence_ids"] == {"revenue": [evidence_id], "prior_revenue": [evidence_id]}
 
 
+def test_api_builds_financial_analysis_from_typed_facts_and_restores_it(tmp_path) -> None:
+    store_path = tmp_path / "runtime.sqlite3"
+    client = TestClient(create_app(SQLiteStore(store_path)))
+    created = client.post("/api/v1/research-cases", json={"question": "Assess ACME revenue", "target": "ACME"})
+    run_id = created.json()["run_id"]
+    evidence_id = client.post(f"/api/v1/research-runs/{run_id}/execute").json()["evidence"][0]["id"]
+
+    request = {
+        "period": "FY2025",
+        "facts": [
+            {
+                "field": "revenue",
+                "value": "120",
+                "period": "FY2025",
+                "unit": "USD millions",
+                "currency": "USD",
+                "basis": "REPORTED",
+                "evidence_ids": [evidence_id],
+            },
+            {
+                "field": "prior_revenue",
+                "value": "100",
+                "period": "FY2025",
+                "unit": "USD millions",
+                "currency": "USD",
+                "basis": "REPORTED",
+                "evidence_ids": [evidence_id],
+            },
+            {
+                "field": "operating_cash_flow",
+                "value": "35",
+                "period": "FY2025",
+                "unit": "USD millions",
+                "currency": "USD",
+                "basis": "REPORTED",
+                "evidence_ids": [evidence_id],
+            },
+            {
+                "field": "capex",
+                "value": "10",
+                "period": "FY2025",
+                "unit": "USD millions",
+                "currency": "USD",
+                "basis": "REPORTED",
+                "evidence_ids": [evidence_id],
+            },
+        ],
+    }
+
+    response = client.post(f"/api/v1/research-runs/{run_id}/financial-facts", json=request)
+
+    assert response.status_code == 200
+    assert response.json()["revenue_growth_pct"] == "20.0"
+    assert response.json()["free_cash_flow"] == "25"
+    assert {fact["field"] for fact in response.json()["financial_facts"]} == {
+        "revenue",
+        "prior_revenue",
+        "operating_cash_flow",
+        "capex",
+    }
+    restored = TestClient(create_app(SQLiteStore(store_path))).get(
+        f"/api/v1/research-runs/{run_id}/financial-analysis"
+    )
+    assert restored.status_code == 200
+    assert restored.json() == response.json()
+
+
+def test_api_rejects_typed_facts_from_unqualified_evidence(tmp_path) -> None:
+    class UnqualifiedEvidenceProvider(DeterministicEvidenceProvider):
+        def collect(self, task, case):
+            return [
+                record.model_copy(update={"source_url": None, "locator": None, "content_hash": None})
+                for record in super().collect(task, case)
+            ]
+
+    client = TestClient(
+        create_app(SQLiteStore(tmp_path / "runtime.sqlite3"), provider=UnqualifiedEvidenceProvider())
+    )
+    created = client.post("/api/v1/research-cases", json={"question": "Assess ACME revenue", "target": "ACME"})
+    run_id = created.json()["run_id"]
+    evidence_id = client.post(f"/api/v1/research-runs/{run_id}/execute").json()["evidence"][0]["id"]
+
+    response = client.post(
+        f"/api/v1/research-runs/{run_id}/financial-facts",
+        json={
+            "period": "FY2025",
+            "facts": [
+                {
+                    "field": "revenue",
+                    "value": "120",
+                    "period": "FY2025",
+                    "unit": "USD millions",
+                    "currency": "USD",
+                    "basis": "REPORTED",
+                    "evidence_ids": [evidence_id],
+                }
+            ],
+        },
+    )
+
+    assert response.status_code == 422
+    assert "not qualified" in response.json()["detail"]
+    assert client.get(f"/api/v1/research-runs/{run_id}/financial-analysis").status_code == 404
+
+
 def test_api_rejects_financial_evidence_not_in_run(tmp_path) -> None:
     client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
     created = client.post("/api/v1/research-cases", json={"question": "Assess ACME revenue", "target": "ACME"})

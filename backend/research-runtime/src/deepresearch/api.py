@@ -11,6 +11,7 @@ from pydantic import BaseModel, Field, model_validator
 
 from deepresearch.domain.models import (
     DecisionRecord,
+    FinancialFactSet,
     FinancialSnapshot,
     InvestmentCommitteeReview,
     RedTeamReview,
@@ -26,7 +27,11 @@ from deepresearch.runtime.evidence import (
     HttpEvidenceProvider,
     HttpTableEvidenceProvider,
 )
-from deepresearch.runtime.financial import FinancialAnalysisTool, ScenarioValuationTool
+from deepresearch.runtime.financial import (
+    FinancialAnalysisTool,
+    ScenarioValuationTool,
+    financial_snapshot_from_facts,
+)
 from deepresearch.runtime.planner import (
     PlannerProviderError,
     ResearchPlanner,
@@ -181,6 +186,20 @@ def create_app(
     @app.post("/api/v1/financial-analysis")
     def analyze_financials(snapshot: FinancialSnapshot) -> dict[str, Any]:
         return financial_analysis.analyze(snapshot).model_dump(mode="json")
+
+    @app.post("/api/v1/research-runs/{run_id}/financial-facts")
+    def analyze_run_financial_facts(run_id: str, request: FinancialFactSet) -> dict[str, Any]:
+        try:
+            snapshot, evidence_ids = financial_snapshot_from_facts(request)
+            analysis = financial_analysis.analyze(snapshot, evidence_ids).model_copy(
+                update={"financial_facts": request.facts}
+            )
+            engine.record_financial_analysis(run_id, analysis)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research run not found") from error
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        return analysis.model_dump(mode="json")
 
     @app.post("/api/v1/research-runs/{run_id}/financial-analysis")
     def analyze_run_financials(run_id: str, request: EvidenceLinkedFinancialAnalysisRequest) -> dict[str, Any]:

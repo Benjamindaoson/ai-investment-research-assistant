@@ -24,6 +24,14 @@ FinancialAnalysis/ValuationScenarios 的 evidence links 也会被复核；golden
 case 可通过 `requires_financial_analysis` 或
 `requires_valuation_scenarios` 显式要求相应 artifact。
 
+需要把已验证的财务数值送入 calculation ledger 时，可调用
+`POST /api/v1/research-runs/{run_id}/financial-facts`。每个 fact 必须明确
+声明 snapshot field、decimal value、period、unit、currency、basis 和
+evidence IDs；Runtime 只做结构化映射，不从 FinEvidence 的原始文本猜数值，
+并且所有 evidence 都必须已经在该 run 中被标记为 `QUALIFIED`。结果会保存
+typed facts、field-level evidence links 和 calculation ledger，重启 Runtime
+后仍可读取。
+
 设置 canonical 变量 `FIN_EVIDENCE_BASE_URL` 后，API 会使用真实的 FinEvidence v1 HTTP
 provider；旧的 `FINEVIDENCE_BASE_URL` 仅作为兼容别名。未设置时使用明确标记的 deterministic provider，保证本地测试不
 需要网络或凭证。FinEvidence 的启动方式（另一个冻结仓库）是：

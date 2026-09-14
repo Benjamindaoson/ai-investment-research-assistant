@@ -1,7 +1,98 @@
 from decimal import Decimal
 
-from deepresearch.domain.models import FinancialSnapshot
-from deepresearch.runtime.financial import FinancialAnalysisTool
+import pytest
+
+from deepresearch.domain.models import FinancialFact, FinancialFactSet, FinancialSnapshot
+from deepresearch.runtime.financial import FinancialAnalysisTool, financial_snapshot_from_facts
+
+
+def test_financial_snapshot_is_mapped_only_from_explicit_typed_facts() -> None:
+    fact_set = FinancialFactSet(
+        period="FY2025",
+        facts=[
+            FinancialFact(
+                field="revenue",
+                value=Decimal("120"),
+                period="FY2025",
+                unit="GBP millions",
+                currency="GBP",
+                basis="REPORTED",
+                evidence_ids=["evidence-revenue"],
+            ),
+            FinancialFact(
+                field="prior_revenue",
+                value=Decimal("100"),
+                period="FY2025",
+                unit="GBP millions",
+                currency="GBP",
+                basis="REPORTED",
+                evidence_ids=["evidence-prior-revenue"],
+            ),
+        ],
+    )
+
+    snapshot, evidence_ids = financial_snapshot_from_facts(fact_set)
+
+    assert snapshot == FinancialSnapshot(period="FY2025", revenue=Decimal("120"), prior_revenue=Decimal("100"))
+    assert evidence_ids == {
+        "revenue": ["evidence-revenue"],
+        "prior_revenue": ["evidence-prior-revenue"],
+    }
+
+
+@pytest.mark.parametrize(
+    ("facts", "message"),
+    [
+        (
+            [
+                FinancialFact(
+                    field="gross_profit",
+                    value=Decimal("1"),
+                    period="FY2025",
+                    unit="GBP millions",
+                    currency="GBP",
+                    basis="REPORTED",
+                    evidence_ids=["evidence-1"],
+                )
+            ],
+            "requires a revenue fact",
+        ),
+    ],
+)
+def test_financial_fact_set_rejects_incomplete_snapshot(facts: list[FinancialFact], message: str) -> None:
+    with pytest.raises(ValueError, match=message):
+        FinancialFactSet(period="FY2025", facts=facts)
+
+
+def test_financial_fact_set_rejects_duplicate_or_mixed_periods() -> None:
+    revenue = FinancialFact(
+        field="revenue",
+        value=Decimal("120"),
+        period="FY2025",
+        unit="USD millions",
+        currency="USD",
+        basis="REPORTED",
+        evidence_ids=["evidence-1"],
+    )
+
+    with pytest.raises(ValueError, match="fields must be unique"):
+        FinancialFactSet(period="FY2025", facts=[revenue, revenue])
+    with pytest.raises(ValueError, match="use the fact set period"):
+        FinancialFactSet(
+            period="FY2025",
+            facts=[
+                revenue,
+                FinancialFact(
+                    field="prior_revenue",
+                    value=Decimal("100"),
+                    period="FY2024",
+                    unit="USD millions",
+                    currency="USD",
+                    basis="REPORTED",
+                    evidence_ids=["evidence-2"],
+                ),
+            ],
+        )
 
 
 def test_financial_analysis_uses_decimal_math_and_hashes_inputs() -> None:
