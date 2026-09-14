@@ -199,14 +199,34 @@ class DeterministicResearchPlanner:
                 title="Market structure",
                 purpose="Assess market growth and competitive structure",
                 tool_name="deterministic-research",
-                evidence_requirements=[EvidenceRequirement(id="market-signal", description="market evidence")],
+                evidence_requirements=[
+                    EvidenceRequirement(
+                        id="market-signal",
+                        description="market structure and competitive evidence",
+                        fact_type="EXPLANATORY_FACT",
+                        role="market_structure",
+                        entity=case.target,
+                        criticality="SUPPORTING",
+                        evidence_role="EXPLANATION_SUPPORT",
+                    )
+                ],
             ),
             ResearchTask(
                 id="fundamentals",
                 title="Financial fundamentals",
                 purpose="Assess revenue, margin, cash flow and balance-sheet durability",
                 tool_name="deterministic-research",
-                evidence_requirements=[EvidenceRequirement(id="fundamental-signal", description="financial evidence")],
+                evidence_requirements=[
+                    EvidenceRequirement(
+                        id="fundamental-signal",
+                        description="financial fundamentals and durability evidence",
+                        fact_type="RETRIEVED_FACT",
+                        role="financial_fundamentals",
+                        entity=case.target,
+                        criticality="CRITICAL",
+                        evidence_role="VALUE_SUPPORT",
+                    )
+                ],
             ),
             ResearchTask(
                 id="risk",
@@ -214,7 +234,18 @@ class DeterministicResearchPlanner:
                 purpose="Test risks and conditions that would invalidate the thesis",
                 depends_on=["market", "fundamentals"],
                 tool_name="deterministic-research",
-                evidence_requirements=[EvidenceRequirement(id="risk-signal", description="risk evidence", required_stances=["COUNTER"])],
+                evidence_requirements=[
+                    EvidenceRequirement(
+                        id="risk-signal",
+                        description="downside and disconfirming evidence",
+                        required_stances=["COUNTER"],
+                        fact_type="RETRIEVED_FACT",
+                        role="downside_risk",
+                        entity=case.target,
+                        criticality="CRITICAL",
+                        evidence_role="VALUE_SUPPORT",
+                    )
+                ],
             ),
         ]
         return ResearchPlan(

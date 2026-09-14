@@ -16,6 +16,17 @@ def test_deterministic_planner_returns_a_validated_financial_plan() -> None:
     assert len(plan.tasks) == 3
     assert plan.tasks[-1].depends_on == ["market", "fundamentals"]
     assert len(plan.input_hash) == 64
+    requirements = {task.id: task.evidence_requirements[0] for task in plan.tasks}
+    assert requirements["market"].entity == "ACME"
+    assert requirements["market"].evidence_role == "EXPLANATION_SUPPORT"
+    assert requirements["market"].criticality == "SUPPORTING"
+    assert requirements["fundamentals"].fact_type == "RETRIEVED_FACT"
+    assert requirements["fundamentals"].criticality == "CRITICAL"
+    assert requirements["fundamentals"].evidence_role == "VALUE_SUPPORT"
+    assert requirements["risk"].required_stances == ["COUNTER"]
+    assert requirements["risk"].criticality == "CRITICAL"
+    assert requirements["risk"].entity == "ACME"
+    assert all(requirement.metric is None and requirement.period is None for requirement in requirements.values())
 
 
 def test_research_input_hash_includes_mandate() -> None:
