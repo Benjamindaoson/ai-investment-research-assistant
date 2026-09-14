@@ -17,7 +17,7 @@ def test_enqueue_and_worker_complete_a_persisted_run(tmp_path) -> None:
     attempted = run_once(app.state.research_engine)
 
     assert queued.status_code == 202
-    assert queued.json() == {"run_id": run_id, "state": "CREATED", "queued": True}
+    assert queued.json() == {"id": run_id, "case_id": created.json()["case_id"], "run_id": run_id, "state": "CREATED", "queued": True}
     assert attempted == 1
     assert client.get(f"/api/v1/research-runs/{run_id}").json()["state"] == "COMPLETED"
     assert any(event["event_type"] == "RUN_ENQUEUED" for event in client.get(f"/api/v1/research-runs/{run_id}/events").json())

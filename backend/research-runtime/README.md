@@ -239,7 +239,7 @@ memo/memory 投影和人工 review。synthesis 请求/响应 hash 会保存在 t
 - Evidence requirement semantics are now typed at the runtime boundary and
   propagated to FinEvidence coverage; the runtime still does not infer missing
   financial values or implement requirement decomposition.
-- LLM planner adapter 已实现并通过一次真实配置预检；它不是默认路径，也没有
-  静默 fallback。尚未实现：live filing/market providers、PostgreSQL adapter、
-  生产级 auth/tenant policy、文档解析和交易执行。FinEvidence 的 evidence
+- LLM planner adapter 已实现并通过配置预检；它不是默认路径，也没有静默
+  fallback。PostgreSQL/Redis 单机 adapter 已实现。尚未实现：live filing/market
+  providers、生产级 auth/tenant policy、文档解析和交易执行。FinEvidence 的 evidence
   retrieval、parser、table IR、evaluation 和 CLIP implementation 不属于本仓库。

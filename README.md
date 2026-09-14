@@ -95,8 +95,11 @@ $env:NEXT_PUBLIC_RESEARCH_RUNTIME_URL = "http://127.0.0.1:8010"
 pnpm dev
 ```
 
-Open `http://localhost:3000/runtime` for the live case/run workflow. Without
-the runtime URL, the existing design workspace stays explicitly synthetic.
+Open `http://localhost:3000/new-research` (or `/runtime`) for the canonical live
+case/run workflow. The old `/research` entry point now redirects there, and
+`/research/{caseId}` resolves the latest durable run. Without the runtime URL,
+the page shows an explicit configuration error instead of presenting fixture
+output as live research.
 
 Run the backend from `backend/research-runtime`:
 

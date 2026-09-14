@@ -345,7 +345,7 @@ def create_app(
         queued = run.state in {"CREATED", "PARTIAL"}
         return JSONResponse(
             status_code=status.HTTP_202_ACCEPTED if queued else status.HTTP_200_OK,
-            content={"run_id": run.id, "state": run.state, "queued": queued},
+            content={"id": run.id, "case_id": run.case_id, "run_id": run.id, "state": run.state, "queued": queued},
         )
 
     @app.post("/api/v1/research-runs/{run_id}/mvp-complete")

@@ -6,7 +6,10 @@ import pytest
 from fastapi.testclient import TestClient
 
 from deepresearch.api import create_app
+from deepresearch.domain.models import ResearchCase
 from deepresearch.persistence.store import SQLiteStore
+from deepresearch.runtime.engine import ResearchEngine
+from deepresearch.runtime.evidence import DeterministicEvidenceProvider
 from deepresearch.runtime.queue import RedisRunQueue
 from deepresearch.worker import run_once
 
@@ -52,10 +55,10 @@ def test_postgres_store_round_trip_when_configured() -> None:
     store = PostgresStore(dsn)
     suffix = uuid4().hex
     case_id = f"case-postgres-{suffix}"
-    run_id = f"run-postgres-{suffix}"
     target = f"target-{suffix}"
-    store.save_case({"id": case_id, "question": "Assess", "target": target})
-    store.save_run({"id": run_id, "case_id": case_id, "state": "CREATED"})
+    case = ResearchCase(id=case_id, question="Assess", target=target)
+    run = ResearchEngine(store, DeterministicEvidenceProvider()).create_run(case)
+    run_id = run.id
     store.append_event(run_id, "RUN_CREATED", {"case_id": case_id})
     checkpoint_id = store.save_checkpoint(run_id, {"state_version": 1})
     store.save_evaluation({"id": f"evaluation-{suffix}", "run_id": run_id, "passed": True})
@@ -63,7 +66,7 @@ def test_postgres_store_round_trip_when_configured() -> None:
 
     assert store.get_case(case_id)["target"] == target
     assert store.get_run(run_id)["state"] == "CREATED"
-    assert store.events(run_id)[0]["event_type"] == "RUN_CREATED"
+    assert any(event["event_type"] == "RUN_CREATED" for event in store.events(run_id))
     assert store.latest_checkpoint(run_id)["id"] == checkpoint_id
     assert store.latest_evaluation(run_id)["passed"] is True
     assert store.get_memory(target)["latest_run_id"] == run_id
