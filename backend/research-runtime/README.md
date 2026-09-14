@@ -55,12 +55,14 @@ entity/metric/period 等 slots、criticality 和 evidence role。HTTP provider
 ```powershell
 $env:FIN_EVIDENCE_INTEGRATION = "1"
 $env:FIN_EVIDENCE_BASE_URL = "http://127.0.0.1:8000"
-\.venv\Scripts\python.exe -m pytest -q -m integration
+.\.venv\Scripts\python.exe -m pytest -q -m integration
 ```
 
-该 smoke 只验证 health、search、coverage、citation 与 `EvidenceRecord` 的
-identity/provenance read-back；空结果或 `PARTIAL` coverage 是真实观察结果，
-不会被改写为 eligible 或投资结论。
+该 smoke 验证 health、search、coverage、citation、table 路由以及
+`EvidenceRecord` 的 identity/provenance read-back，并通过 runtime API
+完成一次 create-case → plan → execute → memo/events 链。search 必须观察到
+真实 evidence；宽泛 table query 可以合法返回空结果，空结果或 `PARTIAL`
+coverage 是真实观察结果，不会被改写为 eligible 或投资结论。
 
 ```powershell
 cd "D:\01_work\Enterprise Multimodal RAG\finevidence"
