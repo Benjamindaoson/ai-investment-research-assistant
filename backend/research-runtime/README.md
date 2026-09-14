@@ -39,6 +39,18 @@ qualification authority 与 claim verification 也跟随任务实际解析到的
 entity/metric/period 等 slots、criticality 和 evidence role。HTTP provider
 原样传递这些字段；缺少的可选 slots 不会被伪造，entity 才会回退到 case target。
 
+默认测试不访问网络。FinEvidence 本地部署可显式运行真实 v1 chain smoke：
+
+```powershell
+$env:FIN_EVIDENCE_INTEGRATION = "1"
+$env:FIN_EVIDENCE_BASE_URL = "http://127.0.0.1:8000"
+\.venv\Scripts\python.exe -m pytest -q -m integration
+```
+
+该 smoke 只验证 health、search、coverage、citation 与 `EvidenceRecord` 的
+identity/provenance read-back；空结果或 `PARTIAL` coverage 是真实观察结果，
+不会被改写为 eligible 或投资结论。
+
 ```powershell
 cd "D:\01_work\Enterprise Multimodal RAG\finevidence"
 \.venv\Scripts\python.exe -m uvicorn finevidence.api.app:app --host 127.0.0.1 --port 8000
