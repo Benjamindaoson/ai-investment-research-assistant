@@ -7,6 +7,7 @@ from uuid import uuid4
 
 from fastapi import FastAPI, HTTPException, status
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from pydantic import BaseModel, Field, model_validator
 
 from deepresearch.domain.models import (
@@ -154,6 +155,7 @@ def create_app(
     financial_analysis = FinancialAnalysisTool()
     valuation_scenarios = ScenarioValuationTool()
     app = FastAPI(title="Financial DeepResearch Runtime", version="0.1.0")
+    app.state.research_engine = engine
     cors_origins = [
         origin.strip()
         for origin in os.environ.get(
@@ -311,6 +313,18 @@ def create_app(
             raise HTTPException(status_code=409, detail=str(error)) from error
         except RunLeaseLostError as error:
             raise HTTPException(status_code=409, detail=str(error)) from error
+
+    @app.post("/api/v1/research-runs/{run_id}/enqueue")
+    def enqueue(run_id: str) -> JSONResponse:
+        try:
+            run = engine.enqueue(run_id)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research run not found") from error
+        queued = run.state in {"CREATED", "PARTIAL"}
+        return JSONResponse(
+            status_code=status.HTTP_202_ACCEPTED if queued else status.HTTP_200_OK,
+            content={"run_id": run.id, "state": run.state, "queued": queued},
+        )
 
     @app.post("/api/v1/research-runs/{run_id}/replan")
     def replan(run_id: str) -> dict[str, Any]:

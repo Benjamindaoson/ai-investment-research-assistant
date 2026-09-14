@@ -24,6 +24,18 @@ FinancialAnalysis/ValuationScenarios 的 evidence links 也会被复核；golden
 case 可通过 `requires_financial_analysis` 或
 `requires_valuation_scenarios` 显式要求相应 artifact。
 
+长任务可先调用 `POST /api/v1/research-runs/{run_id}/enqueue` 写入 durable
+queue intent，再由独立进程执行：
+
+```powershell
+.\.venv\Scripts\python.exe -m deepresearch.worker --database .data/deepresearch.sqlite3 --once
+.\.venv\Scripts\python.exe -m deepresearch.worker --database .data/deepresearch.sqlite3 --poll-seconds 2
+```
+
+worker 复用同一 ResearchEngine、lease、checkpoint 和 failure semantics；
+`RUNNING`、`PARTIAL` run 可在进程中断后恢复。当前 worker 是本地 SQLite
+进程，不等同于 Redis/PostgreSQL 级别的分布式调度。
+
 需要把已验证的财务数值送入 calculation ledger 时，可调用
 `POST /api/v1/research-runs/{run_id}/financial-facts`。每个 fact 必须明确
 声明 snapshot field、decimal value、period、unit、currency、basis 和

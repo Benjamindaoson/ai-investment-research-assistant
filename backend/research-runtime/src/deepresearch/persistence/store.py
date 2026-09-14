@@ -171,12 +171,15 @@ class SQLiteStore:
             row = connection.execute("SELECT COUNT(*) AS count FROM evaluations WHERE run_id = ?", (run_id,)).fetchone()
         return int(row["count"])
 
-    def list_runs(self, case_id: str) -> list[dict[str, Any]]:
+    def list_runs(self, case_id: str | None = None) -> list[dict[str, Any]]:
         with self._transaction() as connection:
-            rows = connection.execute(
-                "SELECT payload FROM runs WHERE case_id = ? ORDER BY rowid",
-                (case_id,),
-            ).fetchall()
+            if case_id is None:
+                rows = connection.execute("SELECT payload FROM runs ORDER BY rowid").fetchall()
+            else:
+                rows = connection.execute(
+                    "SELECT payload FROM runs WHERE case_id = ? ORDER BY rowid",
+                    (case_id,),
+                ).fetchall()
         return [json.loads(row["payload"]) for row in rows]
 
     def append_event(self, run_id: str, event_type: str, payload: dict[str, Any]) -> dict[str, Any]:

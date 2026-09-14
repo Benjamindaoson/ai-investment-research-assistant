@@ -164,6 +164,27 @@ class ResearchEngine:
     def list_runs(self, case_id: str) -> list[ResearchRun]:
         return [ResearchRun.model_validate(payload) for payload in self.store.list_runs(case_id)]
 
+    def list_runnable_runs(self) -> list[ResearchRun]:
+        runnable: list[ResearchRun] = []
+        for payload in self.store.list_runs():
+            state = payload.get("state")
+            if state == "RUNNING":
+                runnable.append(ResearchRun.model_validate(payload))
+            elif state in {"CREATED", "PARTIAL"}:
+                events = self.store.events(payload["id"])
+                if events and events[-1]["event_type"] == "RUN_ENQUEUED":
+                    runnable.append(ResearchRun.model_validate(payload))
+        return runnable
+
+    def enqueue(self, run_id: str) -> ResearchRun:
+        run = self.get_run(run_id)
+        if run.state not in {"CREATED", "PARTIAL"}:
+            return run
+        events = self.store.events(run_id)
+        if not events or events[-1]["event_type"] != "RUN_ENQUEUED":
+            self.store.append_event(run_id, "RUN_ENQUEUED", {"state": run.state})
+        return run
+
     def replan(self, run_id: str) -> ResearchRun:
         run = self.get_run(run_id)
         if run.state != "PARTIAL":
