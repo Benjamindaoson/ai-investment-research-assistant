@@ -156,6 +156,50 @@ def score_run(run: ResearchRun, case: dict[str, Any]) -> EvaluationResult:
                 detail=f"dangling_claims={dangling_claims}, dangling_evidence={dangling_evidence}, dangling_requirements={dangling_requirements}",
             )
         )
+        review_by_id = {review.id: review for review in run.ic_reviews}
+        referenced_review_ids = set(run.memo.ic_review_ids if run.memo is not None else [])
+        referenced_review_ids.update(review_id for decision in run.decisions for review_id in decision.review_ids)
+        dangling_memo_reviews = sorted(
+            set(run.memo.ic_review_ids if run.memo is not None else []) - review_by_id.keys()
+        )
+        dangling_decision_reviews = sorted(
+            {review_id for decision in run.decisions for review_id in decision.review_ids} - review_by_id.keys()
+        )
+        invalid_reviews = sorted(
+            review_id
+            for review_id in referenced_review_ids & review_by_id.keys()
+            if review_by_id[review_id].run_id != run.id
+            or (run.thesis is not None and review_by_id[review_id].thesis_id != run.thesis.id)
+        )
+        checks.append(
+            EvaluationCheck(
+                name="ic_review_links",
+                status="PASS"
+                if not dangling_memo_reviews and not dangling_decision_reviews and not invalid_reviews
+                else "FAIL",
+                detail=(
+                    f"dangling_memo={dangling_memo_reviews}, "
+                    f"dangling_decisions={dangling_decision_reviews}, invalid_reviews={invalid_reviews}"
+                ),
+            )
+        )
+        if "required_ic_review_roles" in case:
+            required_roles = {str(role) for role in (case.get("required_ic_review_roles") or [])}
+            valid_reviews = [
+                review
+                for review in run.ic_reviews
+                if review.run_id == run.id
+                and (run.thesis is None or review.thesis_id == run.thesis.id)
+            ]
+            observed_roles = {review.role for review in valid_reviews}
+            missing_roles = sorted(required_roles - observed_roles)
+            checks.append(
+                EvaluationCheck(
+                    name="ic_review_coverage",
+                    status="PASS" if not missing_roles else "FAIL",
+                    detail=f"missing_roles={missing_roles}, observed_roles={sorted(observed_roles)}",
+                )
+            )
     statuses = {check.status for check in checks}
     passed = "FAIL" not in statuses
     return EvaluationResult(

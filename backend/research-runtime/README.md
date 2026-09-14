@@ -16,7 +16,9 @@ python -m venv .venv
 claim-to-evidence 链接。运行后可通过
 `POST /api/v1/research-runs/{run_id}/evaluate` 写入 golden-case evaluation，
 再用 `GET /api/v1/research-runs/{run_id}/evaluation` 读取最新结果；所有历史
-artifact 保留在 SQLite 中。
+artifact 保留在 SQLite 中。Completed/partial run 的 deterministic scorer 还会
+检查 memo/decision 中的 IC review 链接；golden case 可通过
+`required_ic_review_roles` 显式要求角色覆盖。
 
 设置 canonical 变量 `FIN_EVIDENCE_BASE_URL` 后，API 会使用真实的 FinEvidence v1 HTTP
 provider；旧的 `FINEVIDENCE_BASE_URL` 仅作为兼容别名。未设置时使用明确标记的 deterministic provider，保证本地测试不
