@@ -37,3 +37,19 @@ def test_plan_evaluation_names_missing_coverage_and_counter_evidence() -> None:
     assert checks["task_coverage"].status == "FAIL"
     assert "risk" in checks["task_coverage"].detail
     assert checks["counter_evidence"].status == "FAIL"
+
+
+def test_model_agnostic_plan_contract_checks_evidence_counter_and_tools() -> None:
+    case = ResearchCase(id="LLM-PLANNER-REGRESSION-001", question="Assess ACME durability", target="ACME")
+    evaluation_case = json.loads(
+        (Path(__file__).parents[1] / "evaluation" / "cases" / "llm_planner.json").read_text(encoding="utf-8")
+    )
+
+    result = score_plan(DeterministicResearchPlanner().plan(case), evaluation_case)
+
+    assert result.passed is True
+    assert {check.name for check in result.checks} >= {
+        "all_tasks_have_evidence_requirements",
+        "counter_evidence_anywhere",
+        "tool_contract",
+    }

@@ -88,6 +88,8 @@ def test_llm_planner_prompt_requires_evidence_contract(monkeypatch: pytest.Monke
     assert '"evidence_requirements"' in system_prompt
     assert "Do not include rationale" in system_prompt
     assert "3 to 5 tasks" in system_prompt
+    assert "do not invent enum values such as HIGH or RISK_SIGNAL" in system_prompt
+    assert "tool_name must be one of research, evidence.search" in system_prompt
 
 
 def test_llm_planner_rejects_overlarge_draft(monkeypatch: pytest.MonkeyPatch) -> None:

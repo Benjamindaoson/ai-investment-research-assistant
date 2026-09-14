@@ -75,6 +75,39 @@ def score_plan(plan: ResearchPlan, case: dict[str, Any]) -> EvaluationResult:
         )
     )
 
+    if case.get("require_evidence_on_all_tasks"):
+        missing_evidence = sorted(task.id for task in plan.tasks if not task.evidence_requirements)
+        checks.append(
+            EvaluationCheck(
+                name="all_tasks_have_evidence_requirements",
+                status="PASS" if not missing_evidence else "FAIL",
+                detail=f"missing_task_ids={missing_evidence}",
+            )
+        )
+    if case.get("require_counter_evidence"):
+        counter_task_ids = sorted(
+            task.id
+            for task in plan.tasks
+            if any("COUNTER" in requirement.required_stances for requirement in task.evidence_requirements)
+        )
+        checks.append(
+            EvaluationCheck(
+                name="counter_evidence_anywhere",
+                status="PASS" if counter_task_ids else "FAIL",
+                detail=f"observed_task_ids={counter_task_ids}",
+            )
+        )
+    if "allowed_tool_names" in case:
+        allowed_tools = {str(item) for item in case.get("allowed_tool_names", [])}
+        invalid_tools = sorted({task.tool_name for task in plan.tasks if task.tool_name not in allowed_tools})
+        checks.append(
+            EvaluationCheck(
+                name="tool_contract",
+                status="PASS" if not invalid_tools else "FAIL",
+                detail=f"invalid_tools={invalid_tools}, allowed={sorted(allowed_tools)}",
+            )
+        )
+
     maximum = int(case.get("maximum_task_count", len(plan.tasks)))
     checks.append(
         EvaluationCheck(

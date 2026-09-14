@@ -170,6 +170,22 @@ Planner 默认也是 deterministic。只有显式设置
 才会调用 OpenAI-compatible planner。LLM 输出必须先通过结构化 schema 和
 DAG 校验；调用失败不会静默回退为另一份 plan。
 
+要对真实 LLM Planner 做一次可比较回归，使用独立 runner；它只保存结构化
+plan、hash、计数和 gate，不保存 API key、authorization header、prompt 或原始
+model response：
+
+```powershell
+$env:DEEPRESEARCH_PLANNER = "llm"
+$env:FIN_EVIDENCE_BASE_URL = "http://127.0.0.1:8000"
+.\.venv\Scripts\python.exe -m deepresearch.evaluation.llm_planner_regression `
+  --output evaluation/reports/llm-planner-regression.json
+```
+
+runner 会同时输出 deterministic baseline 与 LLM plan score，并用 LLM 生成的
+task contract 执行一次隔离 SQLite runtime，报告 evidence qualification、claim
+linkage、thesis、memo sections 和 run evaluation。缺少显式 live 配置会生成
+`BLOCKED` 报告并返回非零退出码，不会静默改用 deterministic planner。
+
 Synthesis 默认也是 deterministic。只有显式设置
 `DEEPRESEARCH_SYNTHESIZER=llm` 并提供同一组 LLM 配置时，API 才会调用
 structured claim/thesis synthesizer。模型只能提交 claim、qualified evidence

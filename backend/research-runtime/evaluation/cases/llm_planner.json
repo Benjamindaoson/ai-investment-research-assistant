@@ -1,0 +1,15 @@
+{
+  "case_id": "LLM-PLANNER-REGRESSION-001",
+  "title": "LLM financial research task contract",
+  "minimum_task_count": 3,
+  "maximum_task_count": 5,
+  "require_evidence_on_all_tasks": true,
+  "require_counter_evidence": true,
+  "allowed_tool_names": [
+    "research",
+    "evidence.search",
+    "external-evidence",
+    "deterministic-research",
+    "financial-table"
+  ]
+}
