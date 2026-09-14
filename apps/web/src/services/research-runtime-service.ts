@@ -2,7 +2,7 @@ import { z } from "zod";
 
 const runtimeTaskTraceSchema = z.object({
   id: z.string(),
-  state: z.enum(["PENDING", "RUNNING", "COMPLETED", "FAILED"]),
+  state: z.enum(["PENDING", "RUNNING", "COMPLETED", "FAILED", "UNKNOWN_EFFECT"]),
   depends_on: z.array(z.string()),
   missing_requirement_ids: z.array(z.string()),
 });
@@ -10,7 +10,7 @@ const runtimeTaskTraceSchema = z.object({
 const runtimeTraceSchema = z.object({
   run_id: z.string(),
   case_id: z.string(),
-  state: z.enum(["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED"]),
+  state: z.enum(["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED", "BLOCKED"]),
   tasks: z.array(runtimeTaskTraceSchema),
   evidence: z.object({
     total: z.number().int().nonnegative(),
@@ -52,7 +52,7 @@ export type RuntimeCaseResult = z.infer<typeof runtimeCaseResultSchema>;
 const runtimeRunControlSchema = z.object({
   id: z.string(),
   case_id: z.string(),
-  state: z.enum(["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED"]),
+  state: z.enum(["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED", "BLOCKED"]),
 });
 export type RuntimeRunControl = z.infer<typeof runtimeRunControlSchema>;
 
@@ -210,7 +210,7 @@ export type RuntimeEvidenceRequirement = z.infer<typeof runtimeEvidenceRequireme
 const runtimeTaskSchema = z.object({
   id: z.string(),
   title: z.string(),
-  state: z.enum(["PENDING", "RUNNING", "COMPLETED", "FAILED"]),
+  state: z.enum(["PENDING", "RUNNING", "COMPLETED", "FAILED", "UNKNOWN_EFFECT"]),
   purpose: z.string().optional(),
   depends_on: z.array(z.string()).optional(),
   tool_name: z.string().optional(),
@@ -222,13 +222,15 @@ const runtimeToolExecutionSchema = z.object({
   id: z.string(),
   task_id: z.string(),
   tool_name: z.string(),
-  status: z.enum(["SUCCEEDED", "FAILED"]),
+  status: z.enum(["SUCCEEDED", "FAILED", "UNKNOWN_EFFECT"]),
+  attempt_key: z.string().optional(),
   result_hash: z.string(),
   started_at: z.string().datetime(),
-  completed_at: z.string().datetime(),
+  completed_at: z.string().datetime().nullable().optional(),
   error_type: z.string().max(200).nullable().optional(),
   error_message: z.string().max(1000).nullable().optional(),
   error_hash: z.string().length(64).nullable().optional(),
+  resolution: z.enum(["RETRY_AUTHORIZED", "MARKED_FAILED"]).nullable().optional(),
 });
 export type RuntimeToolExecution = z.infer<typeof runtimeToolExecutionSchema>;
 
@@ -246,7 +248,7 @@ const runtimeRunSchema = z.object({
   id: z.string(),
   case_id: z.string(),
   plan: runtimePlanSchema.optional(),
-  state: z.enum(["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED"]),
+  state: z.enum(["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED", "BLOCKED"]),
   tasks: z.array(runtimeTaskSchema),
   tool_executions: z.array(runtimeToolExecutionSchema).default([]),
   evidence: z.array(runtimeEvidenceSchema),

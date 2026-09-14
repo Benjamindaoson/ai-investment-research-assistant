@@ -25,4 +25,25 @@ describe("RuntimeToolTrace", () => {
     render(<RuntimeToolTrace executions={[]} />);
     expect(screen.getByText("No tool execution receipts returned for this run.")).toBeTruthy();
   });
+
+  it("renders unresolved attempts as requiring explicit resolution", () => {
+    render(<RuntimeToolTrace executions={[{
+      id: "tool-unknown",
+      task_id: "market",
+      tool_name: "research",
+      status: "UNKNOWN_EFFECT",
+      attempt_key: "run-1:market:attempt-1",
+      result_hash: "d".repeat(64),
+      started_at: "2026-09-14T00:00:04.000Z",
+      completed_at: null,
+      error_type: "InFlight",
+      error_message: "Provider result has not been acknowledged.",
+      error_hash: "d".repeat(64),
+    }]} />);
+
+    expect(screen.getByText("UNKNOWN_EFFECT")).toBeTruthy();
+    expect(screen.getByText("Attempt: run-1:market:attempt-1")).toBeTruthy();
+    expect(screen.getByText("Outcome unknown: explicit operator resolution is required before retry.")).toBeTruthy();
+    expect(screen.getByText("Completed: not recorded")).toBeTruthy();
+  });
 });

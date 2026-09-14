@@ -49,6 +49,10 @@ class EvaluateRequest(BaseModel):
     case: dict[str, Any]
 
 
+class ResolveToolAttemptRequest(BaseModel):
+    action: Literal["RETRY", "MARK_FAILED"]
+
+
 class CancelRequest(BaseModel):
     reason: str = Field(default="Analyst requested cancellation.", min_length=3, max_length=500)
 
@@ -249,6 +253,15 @@ def create_app(
     def evaluate(run_id: str, request: EvaluateRequest) -> dict[str, Any]:
         try:
             return engine.evaluate_run(run_id, request.case).model_dump(mode="json")
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research run not found") from error
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+
+    @app.post("/api/v1/research-runs/{run_id}/tool-attempts/{attempt_id}/resolve")
+    def resolve_tool_attempt(run_id: str, attempt_id: str, request: ResolveToolAttemptRequest) -> dict[str, Any]:
+        try:
+            return engine.resolve_tool_attempt(run_id, attempt_id, request.action).model_dump(mode="json")
         except KeyError as error:
             raise HTTPException(status_code=404, detail="research run not found") from error
         except ValueError as error:

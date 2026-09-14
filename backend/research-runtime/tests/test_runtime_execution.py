@@ -6,6 +6,7 @@ from deepresearch.domain.models import (
     EvidenceRequirement,
     ResearchCase,
     ResearchPlan,
+    ResearchRun,
     ResearchTask,
 )
 from deepresearch.persistence.store import SQLiteStore
@@ -98,6 +99,34 @@ def test_engine_marks_missing_evidence_partial(tmp_path) -> None:
     assert result.memo.unresolved_requirement_ids == ["risk:req-risk"]
     assert {"risk:req-risk"} <= set(result.memo.sections[0].unresolved_requirement_ids)
     assert all(section.body for section in result.memo.sections)
+
+
+def test_engine_persists_unknown_attempt_before_provider_call(tmp_path) -> None:
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    observed = []
+
+    class InspectingProvider(DeterministicEvidenceProvider):
+        def collect(self, task, case):
+            persisted = ResearchRun.model_validate(store.get_run(run.id))
+            observed.append(persisted.tool_executions[-1])
+            return super().collect(task, case)
+
+    provider = InspectingProvider()
+    engine = ResearchEngine(store, provider)
+    run = engine.create_run(
+        ResearchCase(id="case-attempt", question="Assess ACME attempt durability", target="ACME"),
+        [make_task("market")],
+    )
+
+    result = engine.execute(run.id)
+
+    assert result.state == "COMPLETED"
+    assert observed[0].status == "UNKNOWN_EFFECT"
+    assert observed[0].completed_at is None
+    assert observed[0].attempt_key.startswith(f"{run.id}:market:attempt-")
+    assert result.tool_executions[0].status == "SUCCEEDED"
+    assert result.tool_executions[0].attempt_key == observed[0].attempt_key
+    assert result.tool_executions[0].completed_at is not None
 
 
 def test_engine_requires_complete_provenance_before_qualifying_evidence(tmp_path) -> None:
@@ -576,7 +605,7 @@ def test_engine_heartbeat_keeps_ownership_during_slow_provider(tmp_path) -> None
         return result
 
     store.renew_run_lease = track_renewal
-    engine = ResearchEngine(store, SlowProvider(), lease_seconds=0.3)
+    engine = ResearchEngine(store, SlowProvider(), lease_seconds=1.0)
     run = engine.create_run(
         ResearchCase(id="case-heartbeat", question="Assess ACME heartbeat", target="ACME"),
         [make_task("market")],
@@ -613,7 +642,8 @@ def test_engine_discards_result_after_lease_loss_and_allows_takeover(monkeypatch
         return False
 
     monkeypatch.setattr(store, "renew_run_lease", lose_renewal)
-    engine = ResearchEngine(store, BlockingProvider(), lease_seconds=0.3)
+    provider = BlockingProvider()
+    engine = ResearchEngine(store, provider, lease_seconds=0.3)
     run = engine.create_run(
         ResearchCase(id="case-lease-loss", question="Assess ACME lease loss", target="ACME"),
         [make_task("market")],
@@ -633,8 +663,46 @@ def test_engine_discards_result_after_lease_loss_and_allows_takeover(monkeypatch
 
     recovered = engine.execute(run.id)
 
-    assert recovered.state == "COMPLETED"
-    assert any(event["event_type"] == "TASK_RECOVERED" for event in store.events(run.id))
+    assert recovered.state == "BLOCKED"
+    assert recovered.completed_at is None
+    assert recovered.tasks[0].state == "UNKNOWN_EFFECT"
+    assert len(recovered.tool_executions) == 1
+    assert recovered.tool_executions[0].status == "UNKNOWN_EFFECT"
+    assert provider.calls == ["market"]
+    assert any(event["event_type"] == "TOOL_ATTEMPT_UNKNOWN_EFFECT" for event in store.events(run.id))
+
+    retry = engine.resolve_tool_attempt(run.id, recovered.tool_executions[0].id, "RETRY")
+    completed = engine.execute(retry.id)
+
+    assert completed.state == "COMPLETED"
+    assert len(completed.tool_executions) == 2
+    assert completed.tool_executions[0].attempt_key != completed.tool_executions[1].attempt_key
+
+
+def test_engine_blocks_legacy_running_task_without_attempt_and_can_mark_failed(tmp_path) -> None:
+    provider = DeterministicEvidenceProvider()
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    engine = ResearchEngine(store, provider)
+    run = engine.create_run(
+        ResearchCase(id="case-legacy-attempt", question="Assess ACME legacy recovery", target="ACME"),
+        [make_task("market")],
+    )
+    payload = store.get_run(run.id)
+    payload["state"] = "RUNNING"
+    payload["tasks"][0]["state"] = "RUNNING"
+    store.save_run(payload)
+
+    blocked = engine.execute(run.id)
+    attempt = blocked.tool_executions[0]
+    failed = engine.resolve_tool_attempt(run.id, attempt.id, "MARK_FAILED")
+
+    assert blocked.state == "BLOCKED"
+    assert blocked.completed_at is None
+    assert attempt.error_type == "LegacyRecovery"
+    assert provider.calls == []
+    assert failed.state == "FAILED"
+    assert failed.tasks[0].state == "FAILED"
+    assert any(event["event_type"] == "TOOL_ATTEMPT_MARKED_FAILED" for event in store.events(run.id))
 
 
 def _capture_error(errors, operation) -> None:

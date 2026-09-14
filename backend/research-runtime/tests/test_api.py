@@ -608,3 +608,43 @@ def test_api_rejects_mismatched_evaluation_and_preserves_na(tmp_path) -> None:
     assert na.status_code == 200
     assert na.json()["passed"] is None
     assert na.json()["checks"] == [{"name": "external_provider", "status": "N/A", "detail": "FinEvidence provider is not configured in this local run."}]
+
+
+def test_api_exposes_explicit_unknown_attempt_resolution(tmp_path) -> None:
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    client = TestClient(create_app(store))
+    created = client.post(
+        "/api/v1/research-cases",
+        json={"question": "Assess ACME's margin durability", "target": "ACME"},
+    )
+    run_id = created.json()["run_id"]
+    payload = store.get_run(run_id)
+    payload["state"] = "RUNNING"
+    payload["tasks"][0]["state"] = "RUNNING"
+    store.save_run(payload)
+
+    blocked = client.post(f"/api/v1/research-runs/{run_id}/execute")
+    attempt_id = blocked.json()["tool_executions"][0]["id"]
+    resolved = client.post(
+        f"/api/v1/research-runs/{run_id}/tool-attempts/{attempt_id}/resolve",
+        json={"action": "RETRY"},
+    )
+    completed = client.post(f"/api/v1/research-runs/{run_id}/execute")
+
+    assert blocked.status_code == 200
+    assert blocked.json()["state"] == "BLOCKED"
+    assert resolved.status_code == 200
+    assert resolved.json()["state"] == "CREATED"
+    assert completed.status_code == 200
+    assert completed.json()["state"] == "COMPLETED"
+    invalid_action = client.post(
+        f"/api/v1/research-runs/{run_id}/tool-attempts/{attempt_id}/resolve",
+        json={"action": "NOPE"},
+    )
+    missing_run = client.post(
+        "/api/v1/research-runs/missing/tool-attempts/missing/resolve",
+        json={"action": "RETRY"},
+    )
+
+    assert invalid_action.status_code == 422
+    assert missing_run.status_code == 404

@@ -16,8 +16,8 @@ class DomainModel(BaseModel):
     model_config = ConfigDict(extra="forbid", validate_assignment=True)
 
 
-RunState = Literal["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED"]
-TaskState = Literal["PENDING", "RUNNING", "COMPLETED", "FAILED"]
+RunState = Literal["CREATED", "RUNNING", "VERIFYING", "COMPLETED", "PARTIAL", "FAILED", "CANCELLED", "BLOCKED"]
+TaskState = Literal["PENDING", "RUNNING", "COMPLETED", "FAILED", "UNKNOWN_EFFECT"]
 EvidenceStance = Literal["SUPPORTING", "COUNTER", "CONFLICTING"]
 EvidenceQualification = Literal["QUALIFIED", "NEEDS_REVIEW", "UNQUALIFIED"]
 DecisionType = Literal["INVESTMENT_COMMITTEE", "DUE_DILIGENCE", "SCREENING", "MONITORING", "STRATEGIC_REVIEW"]
@@ -133,13 +133,15 @@ class ToolExecution(DomainModel):
     id: str = Field(default_factory=lambda: f"tool-{uuid4().hex}")
     task_id: str
     tool_name: str
-    status: Literal["SUCCEEDED", "FAILED"]
+    status: Literal["SUCCEEDED", "FAILED", "UNKNOWN_EFFECT"]
+    attempt_key: str = Field(default="", max_length=300)
     result_hash: str = Field(min_length=16, max_length=128)
     started_at: datetime = Field(default_factory=utc_now)
-    completed_at: datetime = Field(default_factory=utc_now)
+    completed_at: datetime | None = Field(default_factory=utc_now)
     error_type: str | None = Field(default=None, max_length=200)
     error_message: str | None = Field(default=None, max_length=1000)
     error_hash: str | None = Field(default=None, min_length=64, max_length=64)
+    resolution: Literal["RETRY_AUTHORIZED", "MARKED_FAILED"] | None = None
 
 
 class EvidenceRecord(DomainModel):

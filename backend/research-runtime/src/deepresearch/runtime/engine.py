@@ -288,7 +288,7 @@ class ResearchEngine:
 
     def execute(self, run_id: str, stop_after_tasks: int | None = None) -> ResearchRun:
         current = self.get_run(run_id)
-        if current.state in {"COMPLETED", "PARTIAL", "FAILED", "CANCELLED"}:
+        if current.state in {"COMPLETED", "PARTIAL", "FAILED", "CANCELLED", "BLOCKED"}:
             return current
         lease_id = f"lease-{uuid4().hex}"
         if not self.store.acquire_run_lease(run_id, lease_id, self.lease_seconds):
@@ -325,6 +325,36 @@ class ResearchEngine:
                 lost.set()
                 return
 
+    def resolve_tool_attempt(self, run_id: str, attempt_id: str, action: str) -> ResearchRun:
+        run = self.get_run(run_id)
+        if run.state != "BLOCKED":
+            raise ValueError("only blocked runs can resolve a tool attempt")
+        attempt = next((item for item in run.tool_executions if item.id == attempt_id), None)
+        if attempt is None or attempt.status != "UNKNOWN_EFFECT" or attempt.completed_at is not None:
+            raise ValueError("unknown in-flight tool attempt not found")
+        task = next((item for item in run.tasks if item.id == attempt.task_id), None)
+        if task is None or task.state != "UNKNOWN_EFFECT":
+            raise ValueError("unknown tool attempt task not found")
+        if action == "RETRY":
+            task.state = "PENDING"
+            run.state = "CREATED"
+            run.completed_at = None
+            event_type = "TOOL_ATTEMPT_RETRY_AUTHORIZED"
+            attempt.resolution = "RETRY_AUTHORIZED"
+        elif action == "MARK_FAILED":
+            task.state = "FAILED"
+            run.completed_at = datetime.now(UTC)
+            run.state = "FAILED"
+            event_type = "TOOL_ATTEMPT_MARKED_FAILED"
+            attempt.resolution = "MARKED_FAILED"
+        else:
+            raise ValueError("action must be RETRY or MARK_FAILED")
+        attempt.completed_at = datetime.now(UTC)
+        attempt.error_type = "Resolved"
+        attempt.error_message = f"Operator resolution: {action}"
+        self._persist(run, event_type, {"attempt_id": attempt.id, "action": action})
+        return run
+
     def _execute(
         self,
         run_id: str,
@@ -334,13 +364,44 @@ class ResearchEngine:
     ) -> ResearchRun:
         self._ensure_lease(heartbeat_lost)
         run = self.get_run(run_id)
-        if run.state in {"COMPLETED", "PARTIAL", "FAILED", "CANCELLED"}:
+        if run.state in {"COMPLETED", "PARTIAL", "FAILED", "CANCELLED", "BLOCKED"}:
             return run
         case = self.get_case(run.case_id)
         abandoned = [task for task in run.tasks if task.state == "RUNNING"]
         for task in abandoned:
-            task.state = "PENDING"
-            self._persist(run, "TASK_RECOVERED", {"task_id": task.id}, lease_id)
+            unfinished = next(
+                (
+                    execution
+                    for execution in reversed(run.tool_executions)
+                    if execution.task_id == task.id
+                    and execution.status == "UNKNOWN_EFFECT"
+                    and execution.completed_at is None
+                ),
+                None,
+            )
+            if unfinished is None:
+                attempt_key = f"{run.id}:{task.id}:legacy-recovery"
+                unfinished = ToolExecution(
+                    task_id=task.id,
+                    tool_name=task.tool_name,
+                    status="UNKNOWN_EFFECT",
+                    attempt_key=attempt_key,
+                    result_hash=sha256(attempt_key.encode()).hexdigest(),
+                    completed_at=None,
+                    error_type="LegacyRecovery",
+                    error_message="Task was RUNNING without a durable attempt receipt.",
+                    error_hash=sha256(attempt_key.encode()).hexdigest(),
+                )
+                run.tool_executions.append(unfinished)
+            task.state = "UNKNOWN_EFFECT"
+            run.state = "BLOCKED"
+            self._persist(
+                run,
+                "TOOL_ATTEMPT_UNKNOWN_EFFECT",
+                {"task_id": task.id, "attempt_id": unfinished.id, "attempt_key": unfinished.attempt_key},
+                lease_id,
+            )
+            return run
         completed = {task.id for task in run.tasks if task.state == "COMPLETED"}
         if completed:
             self._append_event(run.id, "RUN_RESUMED", {"completed_task_ids": sorted(completed)}, lease_id)
@@ -358,24 +419,39 @@ class ResearchEngine:
                 run.state = "RUNNING"
                 self._persist(run, "TASK_STARTED", {"task_id": task.id}, lease_id)
                 tool_started_at = datetime.now(UTC)
+                attempt_key = f"{run.id}:{task.id}:attempt-{sum(item.task_id == task.id for item in run.tool_executions) + 1}"
+                attempt_hash = sha256(attempt_key.encode()).hexdigest()
+                attempt = ToolExecution(
+                    task_id=task.id,
+                    tool_name=task.tool_name,
+                    status="UNKNOWN_EFFECT",
+                    attempt_key=attempt_key,
+                    result_hash=attempt_hash,
+                    started_at=tool_started_at,
+                    completed_at=None,
+                    error_type="InFlight",
+                    error_message="Provider result has not been acknowledged.",
+                    error_hash=attempt_hash,
+                )
+                run.tool_executions.append(attempt)
+                self._persist(
+                    run,
+                    "TOOL_ATTEMPT_STARTED",
+                    {"task_id": task.id, "attempt_id": attempt.id, "attempt_key": attempt_key},
+                    lease_id,
+                )
                 try:
                     records = self.provider.collect(task, case)
                 except Exception as error:
                     self._ensure_lease(heartbeat_lost)
                     diagnostic = f"{type(error).__name__}:{error}"
                     diagnostic_hash = sha256(diagnostic.encode()).hexdigest()
-                    run.tool_executions.append(
-                        ToolExecution(
-                            task_id=task.id,
-                            tool_name=task.tool_name,
-                            status="FAILED",
-                            result_hash=diagnostic_hash,
-                            started_at=tool_started_at,
-                            error_type=type(error).__name__,
-                            error_message=str(error)[:1000],
-                            error_hash=diagnostic_hash,
-                        )
-                    )
+                    attempt.status = "FAILED"
+                    attempt.result_hash = diagnostic_hash
+                    attempt.completed_at = datetime.now(UTC)
+                    attempt.error_type = type(error).__name__
+                    attempt.error_message = str(error)[:1000]
+                    attempt.error_hash = diagnostic_hash
                     task.state = "FAILED"
                     return self._fail(
                         run,
@@ -402,15 +478,12 @@ class ResearchEngine:
                         run.evidence[existing_evidence[key]] = record
                 run.evidence.extend(new_evidence)
                 result_hash = evidence_hash(qualified) if qualified else sha256(b"empty").hexdigest()
-                run.tool_executions.append(
-                    ToolExecution(
-                        task_id=task.id,
-                        tool_name=task.tool_name,
-                        status="SUCCEEDED",
-                        result_hash=result_hash,
-                        started_at=tool_started_at,
-                    )
-                )
+                attempt.status = "SUCCEEDED"
+                attempt.result_hash = result_hash
+                attempt.completed_at = datetime.now(UTC)
+                attempt.error_type = None
+                attempt.error_message = None
+                attempt.error_hash = None
                 task.state = "COMPLETED"
                 completed.add(task.id)
                 executed_this_call += 1
@@ -451,7 +524,7 @@ class ResearchEngine:
 
     def cancel(self, run_id: str, reason: str) -> ResearchRun:
         run = self.get_run(run_id)
-        if run.state in {"COMPLETED", "PARTIAL", "FAILED", "CANCELLED"}:
+        if run.state in {"COMPLETED", "PARTIAL", "FAILED", "CANCELLED", "BLOCKED"}:
             return run
         run.completed_at = datetime.now(UTC)
         run.state = "CANCELLED"
