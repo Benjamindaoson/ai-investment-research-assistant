@@ -12,6 +12,7 @@ describe("RuntimeProviderReadiness", () => {
     render(<RuntimeProviderReadiness health={health} isPending={false} error={null} />);
     expect(screen.getByText("Live external evidence")).toBeTruthy();
     expect(screen.getByText("finevidence-http")).toBeTruthy();
+    expect(screen.getByText("external-evidence")).toBeTruthy();
     expect(screen.getByText(/not evidence quality/)).toBeTruthy();
   });
 
