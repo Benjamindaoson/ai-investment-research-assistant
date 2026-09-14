@@ -232,6 +232,42 @@ describe("ResearchRuntimeRepository", () => {
     });
   });
 
+  it("parses nullable evidence requirement slots from runtime runs", async () => {
+    const runtimeRun = {
+      ...run,
+      tasks: [{
+        id: "task-1",
+        title: "Financials",
+        state: "PENDING",
+        evidence_requirements: [{
+          id: "requirement-1",
+          description: "Revenue",
+          minimum_records: 1,
+          required_stances: ["SUPPORTING"],
+          fact_type: "RETRIEVED_FACT",
+          role: "value",
+          entity: null,
+          metric: null,
+          period: null,
+          segment: null,
+          basis: null,
+          geography: null,
+          currency: null,
+          unit: null,
+          operation: null,
+          criticality: "CRITICAL",
+          evidence_role: null,
+        }],
+      }],
+    } as RuntimeRun;
+    const fetchImpl = (async () => new Response(JSON.stringify(runtimeRun), { status: 200 })) as typeof fetch;
+    const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+
+    await expect(repository.getRun("run-1")).resolves.toMatchObject({
+      tasks: [{ evidence_requirements: [{ entity: null, metric: null, period: null, segment: null }] }],
+    });
+  });
+
   it("posts run-scoped financial analysis with field-level evidence links", async () => {
     let requestBody = "";
     let requestUrl = "";

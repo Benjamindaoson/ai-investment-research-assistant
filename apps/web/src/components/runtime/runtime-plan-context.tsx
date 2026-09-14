@@ -1,6 +1,6 @@
 import type { RuntimePlan } from "@/services/research-runtime-service";
 
-export function RuntimePlanContext({ plan }: { plan?: RuntimePlan }) {
+export function RuntimePlanContext({ plan }: { plan?: RuntimePlan | null }) {
   return <section className="decision-panel runtime-plan-context">
     <header><div><small>VALIDATED PLAN · READ-ONLY</small><h2>Decision context</h2></div><span>{plan?.status ?? "unavailable"}</span></header>
     {!plan && <p className="form-note">Plan context is unavailable in this historical run response.</p>}
