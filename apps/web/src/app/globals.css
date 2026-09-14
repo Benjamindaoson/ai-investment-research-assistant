@@ -201,6 +201,11 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .valuation-scenario-input-grid { grid-template-columns: repeat(3, minmax(0, 1fr)); margin-top: var(--space-4); }
 .valuation-scenario-input-grid fieldset { display: grid; gap: var(--space-2); min-width: 0; border: var(--border-width) solid var(--border-color); border-radius: var(--radius-md); padding: var(--space-3); }
 .valuation-scenario-input-grid legend { padding: 0 var(--space-1); color: var(--color-accent); font-weight: var(--weight-bold); }
+.runtime-case-history-list { display: grid; gap: var(--space-2); }
+.runtime-case-history-row { display: grid; grid-template-columns: minmax(0, 1fr) auto auto; align-items: center; gap: var(--space-3); border-top: var(--border-width) solid var(--border-color); padding: var(--space-3) 0; }
+.runtime-case-history-row:first-child { border-top: 0; }
+.runtime-case-history-row > div { display: grid; gap: var(--space-1); min-width: 0; }
+.runtime-case-history-row small { color: var(--color-muted); }
 .red-team-grid label small { color: var(--color-muted); font-weight: var(--weight-regular); }
 .context-summary { display: grid; gap: var(--space-1); border-top: var(--border-width) solid var(--border-color); padding-top: var(--space-4); }
 .context-summary small { color: var(--color-muted-subtle); font-size: var(--font-size-2xs); letter-spacing: .08em; margin-top: var(--space-3); }
@@ -332,3 +337,4 @@ button, a { -webkit-tap-highlight-color: transparent; }
 @media (max-width: 800px) { .runtime-plan-grid { grid-template-columns: 1fr 1fr; } }
 @media (max-width: 800px) { .red-team-grid { grid-template-columns: 1fr; } .red-team-grid label:nth-child(3), .red-team-grid label:nth-child(4), .red-team-grid label:nth-child(5) { grid-column: auto; } }
 @media (max-width: 800px) { .valuation-base-input, .valuation-scenario-input-grid { grid-template-columns: 1fr; } }
+@media (max-width: 800px) { .runtime-case-history-row { grid-template-columns: minmax(0, 1fr) auto; } .runtime-case-history-row .link-button { grid-column: 1 / -1; justify-self: start; } }

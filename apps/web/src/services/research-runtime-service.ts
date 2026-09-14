@@ -299,6 +299,9 @@ const runtimeRunSchema = z.object({
   valuation_scenarios: valuationScenariosSchema.nullable().optional(),
   red_team_reviews: z.array(redTeamReviewSchema).default([]),
   decisions: z.array(decisionRecordSchema).default([]),
+  created_at: z.string().datetime().optional(),
+  updated_at: z.string().datetime().optional(),
+  completed_at: z.string().datetime().nullable().optional(),
 }).passthrough();
 export type RuntimeRun = z.infer<typeof runtimeRunSchema>;
 
@@ -330,6 +333,7 @@ export type InvestmentMemory = z.infer<typeof investmentMemorySchema>;
 export interface ResearchRuntimeService {
   createCase(input: RuntimeCaseInput): Promise<RuntimeCaseResult>;
   getRun(runId: string): Promise<RuntimeRun>;
+  getCaseRuns(caseId: string): Promise<RuntimeRun[]>;
   executeRun(runId: string): Promise<RuntimeRun>;
   replanRun(runId: string): Promise<RuntimeRun>;
   getTrace(runId: string): Promise<RuntimeTrace>;
@@ -369,6 +373,10 @@ export class HttpResearchRuntimeService implements ResearchRuntimeService {
 
   async getRun(runId: string): Promise<RuntimeRun> {
     return runtimeRunSchema.parse(await this.requestJson(`/api/v1/research-runs/${encodeURIComponent(runId)}`, { headers: { accept: "application/json" } }));
+  }
+
+  async getCaseRuns(caseId: string): Promise<RuntimeRun[]> {
+    return z.array(runtimeRunSchema).parse(await this.requestJson(`/api/v1/research-cases/${encodeURIComponent(caseId)}/runs`, { headers: { accept: "application/json" } }));
   }
 
   async executeRun(runId: string): Promise<RuntimeRun> {
@@ -481,6 +489,7 @@ class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
 
   async createCase(): Promise<RuntimeCaseResult> { return this.unavailable(); }
   async getRun(): Promise<RuntimeRun> { return this.unavailable(); }
+  async getCaseRuns(): Promise<RuntimeRun[]> { return this.unavailable(); }
   async executeRun(): Promise<RuntimeRun> { return this.unavailable(); }
   async replanRun(): Promise<RuntimeRun> { return this.unavailable(); }
   async getTrace(): Promise<RuntimeTrace> { return this.unavailable(); }

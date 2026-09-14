@@ -70,6 +70,18 @@ describe("ResearchRuntimeRepository", () => {
     await expect(repository.executeRun("run-1")).resolves.toMatchObject({ state: "COMPLETED" });
   });
 
+  it("reads case-scoped run history through the typed boundary", async () => {
+    let requestUrl = "";
+    const fetchImpl = (async (input) => {
+      requestUrl = String(input);
+      return new Response(JSON.stringify([{ ...run, created_at: "2026-09-14T00:00:00.000Z" }]), { status: 200 });
+    }) as typeof fetch;
+    const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+
+    await expect(repository.getCaseRuns("case/1")).resolves.toHaveLength(1);
+    expect(requestUrl).toBe("http://runtime.test/api/v1/research-cases/case%2F1/runs");
+  });
+
   it("preserves detailed claims from a completed run", async () => {
     const detailedRun = { ...run, state: "COMPLETED", claims: [{
       id: "claim-1", task_id: "market", statement: "Market evidence qualifies.", status: "QUALIFIED",

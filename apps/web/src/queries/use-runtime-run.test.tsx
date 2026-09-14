@@ -2,13 +2,14 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { runtimeRunQueryKey, useAnalyzeRuntimeFinancialsMutation, useAnalyzeRuntimeValuationMutation, useCreateRedTeamReviewMutation } from "./use-runtime-run";
+import { runtimeCaseRunsQueryKey, runtimeRunQueryKey, useAnalyzeRuntimeFinancialsMutation, useAnalyzeRuntimeValuationMutation, useCreateRedTeamReviewMutation, useRuntimeCaseRunsQuery } from "./use-runtime-run";
 import type { FinancialAnalysisResult, RuntimeRun, ValuationScenarioInput, ValuationScenarios } from "@/services/research-runtime-service";
 
 const analyze = vi.hoisted(() => vi.fn());
 const createReview = vi.hoisted(() => vi.fn());
 const analyzeValuation = vi.hoisted(() => vi.fn());
-vi.mock("@/repositories", () => ({ researchRuntimeRepository: { analyzeFinancialsForRun: analyze, analyzeValuationScenarios: analyzeValuation, createRedTeamReview: createReview } }));
+const getCaseRuns = vi.hoisted(() => vi.fn());
+vi.mock("@/repositories", () => ({ researchRuntimeRepository: { analyzeFinancialsForRun: analyze, analyzeValuationScenarios: analyzeValuation, createRedTeamReview: createReview, getCaseRuns } }));
 
 const run: RuntimeRun = {
   id: "run-1", case_id: "case-1", state: "COMPLETED", tasks: [], evidence: [], tool_executions: [], claims: [], thesis: null, memo: null,
@@ -61,6 +62,19 @@ describe("useAnalyzeRuntimeFinancialsMutation", () => {
     });
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(client.getQueryData<RuntimeRun>(runtimeRunQueryKey("run-1"))).toEqual(reviewedRun);
+  });
+});
+
+describe("useRuntimeCaseRunsQuery", () => {
+  it("loads case history into its own query cache", async () => {
+    getCaseRuns.mockResolvedValueOnce([run]);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const { result } = renderHook(() => useRuntimeCaseRunsQuery("case-1"), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual([run]);
+    expect(client.getQueryData(runtimeCaseRunsQueryKey("case-1"))).toEqual([run]);
   });
 });
 

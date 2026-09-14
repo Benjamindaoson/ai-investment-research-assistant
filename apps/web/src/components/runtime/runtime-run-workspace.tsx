@@ -13,10 +13,12 @@ import { RuntimeTaskContract } from "@/components/runtime/runtime-task-contract"
 import { RuntimeToolTrace } from "@/components/runtime/runtime-tool-trace";
 import { RuntimeValuationScenarios } from "@/components/runtime/runtime-valuation-scenarios";
 import { ValuationScenarioForm } from "@/components/runtime/valuation-scenario-form";
-import { useCancelRuntimeRunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeMemoryQuery, useRuntimeRunQuery, useRuntimeTraceQuery } from "@/queries/use-runtime-run";
+import { RuntimeCaseHistory } from "@/components/runtime/runtime-case-history";
+import { useCancelRuntimeRunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeCaseRunsQuery, useRuntimeMemoryQuery, useRuntimeRunQuery, useRuntimeTraceQuery } from "@/queries/use-runtime-run";
 
 export function RuntimeRunWorkspace({ runId }: { runId: string }) {
   const query = useRuntimeRunQuery(runId);
+  const caseRunsQuery = useRuntimeCaseRunsQuery(query.data?.case_id ?? "");
   const memoryQuery = useRuntimeMemoryQuery(runId, Boolean(query.data?.memo));
   const traceQuery = useRuntimeTraceQuery(runId);
   const execute = useExecuteRuntimeRunMutation(runId);
@@ -42,6 +44,7 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
         {(execute.isError || cancel.isError || replan.isError) && <p className="form-error" role="alert">{(execute.error ?? cancel.error ?? replan.error)?.message}</p>}
       </section>
       <RuntimePlanContext plan={run.plan} />
+      <RuntimeCaseHistory runs={caseRunsQuery.data} activeRunId={run.id} isPending={caseRunsQuery.isPending} error={caseRunsQuery.error} />
       <RuntimeTaskContract tasks={run.tasks} traceTasks={traceQuery.data?.tasks} />
       <RuntimeToolTrace executions={run.tool_executions} />
       <RuntimeEvidenceTrace evidence={run.evidence} />

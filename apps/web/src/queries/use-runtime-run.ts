@@ -5,6 +5,7 @@ import { researchRuntimeRepository } from "@/repositories";
 import type { DecisionRecordInput, EvidenceLinkedFinancialAnalysisInput, RedTeamReviewInput, RuntimeCaseInput, RuntimeRun, RuntimeTrace, ValuationScenarioInput } from "@/services/research-runtime-service";
 
 export const runtimeRunQueryKey = (runId: string) => ["runtime", "run", runId] as const;
+export const runtimeCaseRunsQueryKey = (caseId: string) => ["runtime", "case-runs", caseId] as const;
 export const runtimeMemoryQueryKey = (runId: string) => ["runtime", "memory", runId] as const;
 export const runtimeTraceQueryKey = (runId: string) => ["runtime", "trace", runId] as const;
 
@@ -14,6 +15,10 @@ export function useCreateRuntimeCaseMutation() {
 
 export function useRuntimeRunQuery(runId: string) {
   return useQuery({ queryKey: runtimeRunQueryKey(runId), queryFn: () => researchRuntimeRepository.getRun(runId) });
+}
+
+export function useRuntimeCaseRunsQuery(caseId: string) {
+  return useQuery({ queryKey: runtimeCaseRunsQueryKey(caseId), queryFn: () => researchRuntimeRepository.getCaseRuns(caseId), enabled: caseId.length > 0 });
 }
 
 export function useRuntimeMemoryQuery(runId: string, enabled: boolean) {
