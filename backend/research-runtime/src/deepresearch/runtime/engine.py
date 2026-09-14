@@ -26,6 +26,7 @@ from deepresearch.domain.models import (
     Thesis,
     ThesisDelta,
     ToolExecution,
+    ValuationScenariosResult,
 )
 from deepresearch.persistence.store import SQLiteStore
 from deepresearch.runtime.evidence import EvidenceProvider, EvidenceProviderError, evidence_hash
@@ -608,6 +609,12 @@ class ResearchEngine:
             raise KeyError(f"financial analysis missing for {run_id}")
         return run.financial_analysis
 
+    def get_valuation_scenarios(self, run_id: str) -> ValuationScenariosResult:
+        run = self.get_run(run_id)
+        if run.valuation_scenarios is None:
+            raise KeyError(f"valuation scenarios missing for {run_id}")
+        return run.valuation_scenarios
+
     def record_financial_analysis(self, run_id: str, analysis: FinancialAnalysisResult) -> ResearchRun:
         run = self.get_run(run_id)
         records = {record.id: record for record in run.evidence}
@@ -628,6 +635,39 @@ class ResearchEngine:
                 "period": analysis.period,
                 "input_hash": analysis.input_hash,
                 "evidence_ids": analysis.evidence_ids,
+            },
+        )
+        return run
+
+    def record_valuation_scenarios(self, run_id: str, result: ValuationScenariosResult) -> ResearchRun:
+        run = self.get_run(run_id)
+        if result.run_id != run.id or result.case_id != run.case_id:
+            raise ValueError("valuation scenario artifact target does not belong to this run")
+        requested_ids = set(result.base_revenue_evidence_ids)
+        for scenario in result.scenarios:
+            requested_ids.update(
+                evidence_id
+                for evidence_ids in scenario.assumptions.evidence_ids.values()
+                for evidence_id in evidence_ids
+            )
+        records = {record.id: record for record in run.evidence}
+        missing = sorted(requested_ids - records.keys())
+        if missing:
+            raise ValueError(f"valuation evidence not found in run: {missing}")
+        unqualified = sorted(
+            evidence_id for evidence_id in requested_ids if records[evidence_id].qualification != "QUALIFIED"
+        )
+        if unqualified:
+            raise ValueError(f"valuation evidence is not qualified: {unqualified}")
+        run.valuation_scenarios = result
+        self._persist(
+            run,
+            "VALUATION_SCENARIOS_RECORDED",
+            {
+                "artifact_id": result.id,
+                "input_hash": result.input_hash,
+                "scenario_names": [scenario.scenario for scenario in result.scenarios],
+                "evidence_ids": sorted(requested_ids),
             },
         )
         return run

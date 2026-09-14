@@ -98,6 +98,78 @@ class FinancialAnalysisResult(DomainModel):
     calculation_ledger: list[CalculationLedgerEntry] = Field(default_factory=list)
 
 
+ScenarioName = Literal["BULL", "BASE", "BEAR"]
+
+
+class ScenarioAssumption(DomainModel):
+    name: ScenarioName
+    revenue_growth_pct: Decimal = Field(ge=-100, le=1000)
+    operating_margin_pct: Decimal = Field(ge=-1000, le=1000)
+    fcf_margin_pct: Decimal = Field(ge=-1000, le=1000)
+    discount_rate_pct: Decimal = Field(gt=0, le=100)
+    terminal_growth_pct: Decimal = Field(ge=-100, lt=100)
+    net_cash: Decimal
+    shares_outstanding: Decimal = Field(gt=0)
+    evidence_ids: dict[str, list[str]] = Field(default_factory=dict)
+
+    @model_validator(mode="after")
+    def require_evidence_link_keys(self) -> "ScenarioAssumption":
+        required = {
+            "revenue_growth_pct",
+            "operating_margin_pct",
+            "fcf_margin_pct",
+            "discount_rate_pct",
+            "terminal_growth_pct",
+            "net_cash",
+            "shares_outstanding",
+        }
+        supplied = set(self.evidence_ids)
+        if supplied != required:
+            raise ValueError(f"scenario evidence links must match assumption fields: {sorted(required)}")
+        if any(not ids for ids in self.evidence_ids.values()):
+            raise ValueError("scenario evidence links must not be empty")
+        if any(not evidence_id.strip() for ids in self.evidence_ids.values() for evidence_id in ids):
+            raise ValueError("scenario evidence IDs must not be blank")
+        return self
+
+
+class ScenarioValuationInput(DomainModel):
+    base_revenue: Decimal = Field(ge=0)
+    base_revenue_evidence_ids: list[str] = Field(min_length=1, max_length=100)
+    scenarios: list[ScenarioAssumption] = Field(min_length=3, max_length=3)
+
+    @model_validator(mode="after")
+    def require_complete_scenarios(self) -> "ScenarioValuationInput":
+        names = [scenario.name for scenario in self.scenarios]
+        if set(names) != {"BULL", "BASE", "BEAR"}:
+            raise ValueError("scenario input must contain exactly one BULL, BASE, and BEAR")
+        if any(not evidence_id.strip() for evidence_id in self.base_revenue_evidence_ids):
+            raise ValueError("base revenue evidence IDs must not be blank")
+        return self
+
+
+class ScenarioValuationResult(DomainModel):
+    scenario: ScenarioName
+    assumptions: ScenarioAssumption
+    projected_revenue: Decimal
+    projected_operating_income: Decimal
+    free_cash_flow: Decimal
+    terminal_value: Decimal
+    equity_value: Decimal
+    value_per_share: Decimal
+
+
+class ValuationScenariosResult(DomainModel):
+    id: str = Field(default_factory=lambda: f"valuation-{uuid4().hex}")
+    run_id: str
+    case_id: str
+    input_hash: str = Field(min_length=64, max_length=64)
+    base_revenue: Decimal
+    base_revenue_evidence_ids: list[str] = Field(min_length=1, max_length=100)
+    scenarios: list[ScenarioValuationResult] = Field(min_length=3, max_length=3)
+    provenance: dict[str, Any] = Field(default_factory=dict)
+
+
 class EvidenceRequirement(DomainModel):
     id: str = Field(min_length=1, max_length=120)
     description: str = Field(min_length=1, max_length=1000)
@@ -280,6 +352,7 @@ class ResearchRun(DomainModel):
     thesis: Thesis | None = None
     memo: InvestmentMemo | None = None
     financial_analysis: FinancialAnalysisResult | None = None
+    valuation_scenarios: ValuationScenariosResult | None = None
     red_team_reviews: list[RedTeamReview] = Field(default_factory=list)
     decisions: list[DecisionRecord] = Field(default_factory=list)
     checkpoint: Checkpoint | None = None

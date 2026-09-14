@@ -127,6 +127,10 @@ Next.js runtime transport, live runtime workspace, case-scoped reruns, durable
 requirement-driven replanning, external claim verification gating, and an
 honest evaluation scorer.
 
+Structured Bull/Base/Bear valuation scenarios are also available as an
+explicit, evidence-linked illustrative terminal-value artifact; they do not
+fetch prices or create investment advice.
+
 Incomplete by design: live filing and market providers, LLM plan quality
 promotion, PostgreSQL, authentication, document parsing, monitoring triggers,
 rich memo export, and trading execution. FinEvidence remains an independent

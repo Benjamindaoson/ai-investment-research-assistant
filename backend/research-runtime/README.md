@@ -81,6 +81,12 @@ memo/memory 投影和人工 review。synthesis 请求/响应 hash 会保存在 t
   evidence-backed. A successful run-scoped calculation is persisted on the
   ResearchRun, emits FINANCIAL_ANALYSIS_RECORDED, and can be read back from
   GET /api/v1/research-runs/{run_id}/financial-analysis.
+- The run-scoped valuation scenario endpoint accepts exactly one explicit
+  BULL, BASE, and BEAR assumption set. Base revenue and every assumption field
+  must link to QUALIFIED evidence already present in the same run. The
+  Decimal-only terminal-value bridge is illustrative, persists through
+  `POST/GET /api/v1/research-runs/{run_id}/valuation-scenarios`, and never
+  fetches prices or infers missing inputs.
 - When the configured FinEvidence provider exposes claim verification, every
   evidence-backed claim is sent to /api/v1/evidence/verify. Unsupported claims
   make the run PARTIAL; provider transport or contract failures make it FAILED

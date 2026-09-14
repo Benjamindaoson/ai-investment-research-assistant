@@ -124,6 +124,40 @@ const financialAnalysisResultSchema = z.object({
   calculation_ledger: z.array(calculationLedgerEntrySchema).default([]),
 });
 export type FinancialAnalysisResult = z.infer<typeof financialAnalysisResultSchema>;
+
+const scenarioNameSchema = z.enum(["BULL", "BASE", "BEAR"]);
+const scenarioAssumptionSchema = z.object({
+  name: scenarioNameSchema,
+  revenue_growth_pct: decimalStringSchema,
+  operating_margin_pct: decimalStringSchema,
+  fcf_margin_pct: decimalStringSchema,
+  discount_rate_pct: decimalStringSchema,
+  terminal_growth_pct: decimalStringSchema,
+  net_cash: decimalStringSchema,
+  shares_outstanding: decimalStringSchema,
+  evidence_ids: z.record(z.string(), z.array(z.string().min(1))),
+});
+const scenarioValuationResultSchema = z.object({
+  scenario: scenarioNameSchema,
+  assumptions: scenarioAssumptionSchema,
+  projected_revenue: decimalStringSchema,
+  projected_operating_income: decimalStringSchema,
+  free_cash_flow: decimalStringSchema,
+  terminal_value: decimalStringSchema,
+  equity_value: decimalStringSchema,
+  value_per_share: decimalStringSchema,
+});
+const valuationScenariosSchema = z.object({
+  id: z.string(),
+  run_id: z.string(),
+  case_id: z.string(),
+  input_hash: z.string().length(64),
+  base_revenue: decimalStringSchema,
+  base_revenue_evidence_ids: z.array(z.string().min(1)),
+  scenarios: z.array(scenarioValuationResultSchema).length(3),
+  provenance: z.record(z.string(), z.unknown()),
+});
+export type ValuationScenarios = z.infer<typeof valuationScenariosSchema>;
 const evidenceLinkedFinancialAnalysisInputSchema = z.object({
   snapshot: financialSnapshotSchema,
   evidence_ids: z.record(z.string(), z.array(z.string().min(1)).min(1)),
@@ -256,6 +290,7 @@ const runtimeRunSchema = z.object({
   thesis: z.object({ id: z.string(), statement: z.string(), bull: z.string(), base: z.string(), bear: z.string(), claim_ids: z.array(z.string()), review_status: z.enum(["PENDING_REVIEW", "APPROVED", "NEEDS_REVIEW"]), provenance: z.record(z.string(), z.unknown()).optional() }).nullable(),
   memo: runtimeMemoSchema.nullable(),
   financial_analysis: financialAnalysisResultSchema.nullable().default(null),
+  valuation_scenarios: valuationScenariosSchema.nullable().optional(),
   red_team_reviews: z.array(redTeamReviewSchema).default([]),
   decisions: z.array(decisionRecordSchema).default([]),
 }).passthrough();
@@ -299,6 +334,7 @@ export interface ResearchRuntimeService {
   analyzeFinancials(snapshot: FinancialSnapshotInput): Promise<FinancialAnalysisResult>;
   analyzeFinancialsForRun(runId: string, input: EvidenceLinkedFinancialAnalysisInput): Promise<FinancialAnalysisResult>;
   getFinancialAnalysisForRun(runId: string): Promise<FinancialAnalysisResult>;
+  getValuationScenarios(runId: string): Promise<ValuationScenarios>;
   createRedTeamReview(runId: string, input: RedTeamReviewInput): Promise<RuntimeRun>;
   getRedTeamReviews(runId: string): Promise<RedTeamReview[]>;
   recordDecision(runId: string, input: DecisionRecordInput): Promise<RuntimeRun>;
@@ -393,6 +429,12 @@ export class HttpResearchRuntimeService implements ResearchRuntimeService {
     }));
   }
 
+  async getValuationScenarios(runId: string): Promise<ValuationScenarios> {
+    return valuationScenariosSchema.parse(await this.requestJson("/api/v1/research-runs/" + encodeURIComponent(runId) + "/valuation-scenarios", {
+      headers: { accept: "application/json" },
+    }));
+  }
+
   async createRedTeamReview(runId: string, input: RedTeamReviewInput): Promise<RuntimeRun> {
     const body = redTeamReviewInputSchema.parse(input);
     return runtimeRunSchema.parse(await this.requestJson("/api/v1/research-runs/" + encodeURIComponent(runId) + "/red-team-reviews", {
@@ -433,6 +475,7 @@ class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
   async analyzeFinancials(): Promise<FinancialAnalysisResult> { return this.unavailable(); }
   async analyzeFinancialsForRun(): Promise<FinancialAnalysisResult> { return this.unavailable(); }
   async getFinancialAnalysisForRun(): Promise<FinancialAnalysisResult> { return this.unavailable(); }
+  async getValuationScenarios(): Promise<ValuationScenarios> { return this.unavailable(); }
   async createRedTeamReview(): Promise<RuntimeRun> { return this.unavailable(); }
   async getRedTeamReviews(): Promise<RedTeamReview[]> { return this.unavailable(); }
   async recordDecision(): Promise<RuntimeRun> { return this.unavailable(); }

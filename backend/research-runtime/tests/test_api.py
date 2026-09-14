@@ -648,3 +648,41 @@ def test_api_exposes_explicit_unknown_attempt_resolution(tmp_path) -> None:
 
     assert invalid_action.status_code == 422
     assert missing_run.status_code == 404
+
+
+def test_api_persists_and_reads_valuation_scenarios(tmp_path) -> None:
+    client = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3")))
+    created = client.post(
+        "/api/v1/research-cases",
+        json={"question": "Assess ACME valuation", "target": "ACME"},
+    )
+    run_id = created.json()["run_id"]
+    assert client.get(f"/api/v1/research-runs/{run_id}/valuation-scenarios").status_code == 404
+    completed = client.post(f"/api/v1/research-runs/{run_id}/execute").json()
+    evidence_id = completed["evidence"][0]["id"]
+
+    def assumptions(name: str) -> dict:
+        links = {
+            "revenue_growth_pct": [evidence_id], "operating_margin_pct": [evidence_id],
+            "fcf_margin_pct": [evidence_id], "discount_rate_pct": [evidence_id],
+            "terminal_growth_pct": [evidence_id], "net_cash": [evidence_id],
+            "shares_outstanding": [evidence_id],
+        }
+        return {
+            "name": name, "revenue_growth_pct": "10", "operating_margin_pct": "20",
+            "fcf_margin_pct": "15", "discount_rate_pct": "10", "terminal_growth_pct": "2",
+            "net_cash": "10", "shares_outstanding": "10", "evidence_ids": links,
+        }
+
+    body = {"base_revenue": "100", "base_revenue_evidence_ids": [evidence_id], "scenarios": [assumptions(name) for name in ("BULL", "BASE", "BEAR")]}
+    recorded = client.post(f"/api/v1/research-runs/{run_id}/valuation-scenarios", json=body)
+    read_back = client.get(f"/api/v1/research-runs/{run_id}/valuation-scenarios")
+
+    assert recorded.status_code == 200
+    assert read_back.status_code == 200
+    assert read_back.json()["input_hash"] == recorded.json()["input_hash"]
+    assert [item["scenario"] for item in read_back.json()["scenarios"]] == ["BULL", "BASE", "BEAR"]
+    assert any(event["event_type"] == "VALUATION_SCENARIOS_RECORDED" for event in client.get(f"/api/v1/research-runs/{run_id}/events").json())
+
+    invalid = {**body, "scenarios": [{**assumptions("BULL"), "discount_rate_pct": "2", "terminal_growth_pct": "2"}, assumptions("BASE"), assumptions("BEAR")]}
+    assert client.post(f"/api/v1/research-runs/{run_id}/valuation-scenarios", json=invalid).status_code == 422

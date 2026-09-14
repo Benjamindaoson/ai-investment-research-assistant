@@ -9,6 +9,10 @@ from deepresearch.domain.models import (
     CalculationLedgerEntry,
     FinancialAnalysisResult,
     FinancialSnapshot,
+    ScenarioAssumption,
+    ScenarioValuationInput,
+    ScenarioValuationResult,
+    ValuationScenariosResult,
 )
 
 
@@ -137,3 +141,46 @@ class FinancialAnalysisTool:
         if prior is None or prior == 0:
             return None
         return (current / prior - 1) * 100
+
+
+class ScenarioValuationTool:
+    """Calculate an illustrative, explicit terminal-value scenario bridge."""
+
+    def analyze(self, run_id: str, case_id: str, request: ScenarioValuationInput) -> ValuationScenariosResult:
+        input_hash = sha256(request.model_dump_json().encode()).hexdigest()
+        results = [self._scenario(request.base_revenue, scenario) for scenario in request.scenarios]
+        return ValuationScenariosResult(
+            run_id=run_id,
+            case_id=case_id,
+            input_hash=input_hash,
+            base_revenue=request.base_revenue,
+            base_revenue_evidence_ids=request.base_revenue_evidence_ids,
+            scenarios=results,
+            provenance={
+                "calculator": "decimal-terminal-value-bridge",
+                "formula_version": "v1",
+                "illustrative": True,
+            },
+        )
+
+    @staticmethod
+    def _scenario(base_revenue: Decimal, assumptions: ScenarioAssumption) -> ScenarioValuationResult:
+        rate_spread = assumptions.discount_rate_pct - assumptions.terminal_growth_pct
+        if rate_spread <= 0:
+            raise ValueError(f"{assumptions.name} discount rate must exceed terminal growth")
+        projected_revenue = base_revenue * (Decimal("1") + assumptions.revenue_growth_pct / Decimal("100"))
+        projected_operating_income = projected_revenue * assumptions.operating_margin_pct / Decimal("100")
+        free_cash_flow = projected_revenue * assumptions.fcf_margin_pct / Decimal("100")
+        terminal_value = free_cash_flow * Decimal("100") / rate_spread
+        equity_value = terminal_value + assumptions.net_cash
+        value_per_share = equity_value / assumptions.shares_outstanding
+        return ScenarioValuationResult(
+            scenario=assumptions.name,
+            assumptions=assumptions,
+            projected_revenue=projected_revenue,
+            projected_operating_income=projected_operating_income,
+            free_cash_flow=free_cash_flow,
+            terminal_value=terminal_value,
+            equity_value=equity_value,
+            value_per_share=value_per_share,
+        )

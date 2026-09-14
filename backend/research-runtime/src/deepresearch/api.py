@@ -15,6 +15,7 @@ from deepresearch.domain.models import (
     RedTeamReview,
     ResearchCase,
     ResearchMandate,
+    ScenarioValuationInput,
 )
 from deepresearch.persistence.store import SQLiteStore
 from deepresearch.runtime.engine import ResearchEngine, RunLeaseConflictError, RunLeaseLostError
@@ -23,7 +24,7 @@ from deepresearch.runtime.evidence import (
     EvidenceProvider,
     HttpEvidenceProvider,
 )
-from deepresearch.runtime.financial import FinancialAnalysisTool
+from deepresearch.runtime.financial import FinancialAnalysisTool, ScenarioValuationTool
 from deepresearch.runtime.planner import (
     PlannerProviderError,
     ResearchPlanner,
@@ -118,6 +119,7 @@ def create_app(
         lease_seconds=lease_seconds,
     )
     financial_analysis = FinancialAnalysisTool()
+    valuation_scenarios = ScenarioValuationTool()
     app = FastAPI(title="Financial DeepResearch Runtime", version="0.1.0")
     cors_origins = [
         origin.strip()
@@ -159,6 +161,25 @@ def create_app(
             return engine.get_financial_analysis(run_id).model_dump(mode="json")
         except KeyError as error:
             raise HTTPException(status_code=404, detail="research financial analysis not found") from error
+
+    @app.post("/api/v1/research-runs/{run_id}/valuation-scenarios")
+    def analyze_run_valuation_scenarios(run_id: str, request: ScenarioValuationInput) -> dict[str, Any]:
+        try:
+            run = engine.get_run(run_id)
+            result = valuation_scenarios.analyze(run_id, run.case_id, request)
+            engine.record_valuation_scenarios(run_id, result)
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research run not found") from error
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
+        return result.model_dump(mode="json")
+
+    @app.get("/api/v1/research-runs/{run_id}/valuation-scenarios")
+    def get_run_valuation_scenarios(run_id: str) -> dict[str, Any]:
+        try:
+            return engine.get_valuation_scenarios(run_id).model_dump(mode="json")
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research valuation scenarios not found") from error
 
     @app.post("/api/v1/research-cases", status_code=status.HTTP_201_CREATED)
     def create_case(request: CreateCaseRequest) -> dict[str, str]:
