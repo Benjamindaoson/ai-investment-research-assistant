@@ -354,8 +354,11 @@ def test_engine_replan_rejects_unknown_dependency_without_mutation(tmp_path) -> 
 
 
 def test_engine_requires_external_claim_verification_for_completion(tmp_path) -> None:
+    observed = []
+
     class UnsupportedClaimProvider:
         qualification_authority = "external"
+        name = "finevidence-test"
 
         def collect(self, task, case):
             return [
@@ -376,6 +379,7 @@ def test_engine_requires_external_claim_verification_for_completion(tmp_path) ->
             ]
 
         def verify_claim(self, claim, evidence_ids):
+            observed.append(ResearchRun.model_validate(engine.store.get_run(run.id)).tool_executions[-1])
             return False
 
     engine = ResearchEngine(SQLiteStore(tmp_path / "runtime.sqlite3"), UnsupportedClaimProvider())
@@ -389,6 +393,13 @@ def test_engine_requires_external_claim_verification_for_completion(tmp_path) ->
     assert result.state == "PARTIAL"
     assert result.claims[0].status == "NEEDS_REVIEW"
     assert result.completed_at is not None
+    verification = next(item for item in result.tool_executions if item.operation == "CLAIM_VERIFICATION")
+    assert observed[0].status == "UNKNOWN_EFFECT"
+    assert verification.status == "SUCCEEDED"
+    assert verification.provider == "finevidence-test"
+    assert verification.verification_supported is False
+    assert len(verification.input_hash or "") == 64
+    assert any(event["event_type"] == "CLAIM_VERIFICATION_COMPLETED" for event in engine.store.events(run.id))
 
 
 def test_engine_records_claim_verification_transport_failure(tmp_path) -> None:
@@ -425,10 +436,72 @@ def test_engine_records_claim_verification_transport_failure(tmp_path) -> None:
     result = engine.execute(run.id)
 
     assert result.state == "FAILED"
+    verification = next(item for item in result.tool_executions if item.operation == "CLAIM_VERIFICATION")
+    assert verification.status == "FAILED"
+    assert verification.error_type == "EvidenceProviderError"
+    assert verification.error_message == "verification unavailable"
+    assert verification.error_hash is not None
+    assert any(event["event_type"] == "CLAIM_VERIFICATION_FAILED" for event in engine.store.events(run.id))
     assert any(
         event["event_type"] == "RUN_FAILED" and "verification unavailable" in event["payload"]["reason"]
         for event in engine.store.events(run.id)
     )
+
+
+def test_engine_does_not_adopt_claim_verification_after_lease_loss(monkeypatch, tmp_path) -> None:
+    lost = False
+
+    class LeaseLossProvider:
+        qualification_authority = "external"
+        name = "finevidence-test"
+
+        def collect(self, task, case):
+            return [
+                EvidenceRecord(
+                    task_id=task.id,
+                    requirement_id=task.evidence_requirements[0].id,
+                    stance="SUPPORTING",
+                    qualification="QUALIFIED",
+                    source_id="source",
+                    source_title="Source",
+                    excerpt="Observed evidence",
+                    provider="finevidence-http",
+                    source_url="https://example.test/source",
+                    locator="page:1",
+                    content_hash="f" * 64,
+                    provenance={"finevidence": {"coverage_status": "ELIGIBLE"}},
+                )
+            ]
+
+        def verify_claim(self, claim, evidence_ids):
+            nonlocal lost
+            lost = True
+            return True
+
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    original_save = store.save_run_owned
+
+    def reject_stale_write(payload, lease_id):
+        return False if lost else original_save(payload, lease_id)
+
+    monkeypatch.setattr(store, "save_run_owned", reject_stale_write)
+    engine = ResearchEngine(store, LeaseLossProvider())
+    run = engine.create_run(
+        ResearchCase(id="case-claim-lease-loss", question="Assess ACME evidence", target="ACME"),
+        [make_task("market")],
+    )
+
+    try:
+        engine.execute(run.id)
+    except RunLeaseLostError:
+        pass
+    else:
+        raise AssertionError("verification result was adopted after lease loss")
+
+    persisted = engine.get_run(run.id)
+    verification = next(item for item in persisted.tool_executions if item.operation == "CLAIM_VERIFICATION")
+    assert verification.status == "UNKNOWN_EFFECT"
+    assert verification.completed_at is None
 
 
 def test_engine_retries_replace_same_evidence_when_qualification_changes(tmp_path) -> None:
@@ -657,7 +730,7 @@ def test_engine_discards_result_after_lease_loss_and_allows_takeover(monkeypatch
 
     monkeypatch.setattr(store, "renew_run_lease", lose_renewal)
     provider = BlockingProvider()
-    engine = ResearchEngine(store, provider, lease_seconds=0.3)
+    engine = ResearchEngine(store, provider, lease_seconds=1.0)
     run = engine.create_run(
         ResearchCase(id="case-lease-loss", question="Assess ACME lease loss", target="ACME"),
         [make_task("market")],

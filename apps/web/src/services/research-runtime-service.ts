@@ -278,6 +278,8 @@ const runtimeToolExecutionSchema = z.object({
   tool_name: z.string(),
   provider: z.string().optional(),
   input_hash: z.string().length(64).nullable().optional(),
+  operation: z.enum(["EVIDENCE_COLLECTION", "CLAIM_VERIFICATION"]).optional(),
+  verification_supported: z.boolean().nullable().optional(),
   status: z.enum(["SUCCEEDED", "FAILED", "UNKNOWN_EFFECT"]),
   attempt_key: z.string().optional(),
   result_hash: z.string(),

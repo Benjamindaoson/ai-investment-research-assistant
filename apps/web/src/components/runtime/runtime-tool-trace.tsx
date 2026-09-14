@@ -7,9 +7,11 @@ export function RuntimeToolTrace({ executions }: { executions: RuntimeToolExecut
       {executions.length === 0 && <p className="form-note">No tool execution receipts returned for this run.</p>}
       {executions.map((execution) => <article className={`runtime-tool-record ${execution.status.toLowerCase()}`} key={execution.id}>
         <header><div><b>{execution.tool_name}</b><small>{execution.task_id} · {execution.id}</small></div><span>{execution.status}</span></header>
+        <p>Operation: {execution.operation ?? "EVIDENCE_COLLECTION"}</p>
         <p>Provider: {execution.provider ?? "unknown"}</p>
         {execution.input_hash && <p>Input hash: {execution.input_hash}</p>}
-        {execution.evidence_count !== undefined && <p>Evidence result: {execution.evidence_count} total · {execution.qualified_evidence_count ?? 0} qualified · {execution.review_evidence_count ?? 0} needs review · {execution.unqualified_evidence_count ?? 0} unqualified</p>}
+        {execution.operation === "CLAIM_VERIFICATION" && execution.verification_supported !== undefined && <p>Verification: {execution.verification_supported ? "supported" : "not supported"}</p>}
+        {execution.operation !== "CLAIM_VERIFICATION" && execution.evidence_count !== undefined && <p>Evidence result: {execution.evidence_count} total · {execution.qualified_evidence_count ?? 0} qualified · {execution.review_evidence_count ?? 0} needs review · {execution.unqualified_evidence_count ?? 0} unqualified</p>}
         <p>Attempt: {execution.attempt_key || "historical receipt"}</p>
         <p>Result hash: {execution.result_hash}</p>
         {execution.status === "FAILED" && execution.error_type && <p>Failure: {execution.error_type}: {execution.error_message || "No diagnostic message recorded."}</p>}

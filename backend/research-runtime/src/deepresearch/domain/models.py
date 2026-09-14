@@ -207,6 +207,8 @@ class ToolExecution(DomainModel):
     tool_name: str
     provider: str = Field(default="unknown", min_length=1, max_length=200)
     input_hash: str | None = Field(default=None, min_length=64, max_length=64)
+    operation: Literal["EVIDENCE_COLLECTION", "CLAIM_VERIFICATION"] = "EVIDENCE_COLLECTION"
+    verification_supported: bool | None = None
     status: Literal["SUCCEEDED", "FAILED", "UNKNOWN_EFFECT"]
     attempt_key: str = Field(default="", max_length=300)
     result_hash: str = Field(min_length=16, max_length=128)

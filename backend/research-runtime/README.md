@@ -96,7 +96,11 @@ memo/memory 投影和人工 review。synthesis 请求/响应 hash 会保存在 t
 - When the configured FinEvidence provider exposes claim verification, every
   evidence-backed claim is sent to /api/v1/evidence/verify. Unsupported claims
   make the run PARTIAL; provider transport or contract failures make it FAILED
-  with the original reason in RUN_FAILED. Deterministic demo runs stay offline.
+  with the original reason in RUN_FAILED. The verification call has its own
+  durable ToolExecution receipt: an in-flight receipt is written before the
+  call, and the receipt records supported/unsupported as a successful outcome
+  or the bounded provider diagnostic as FAILED. Deterministic demo runs stay
+  offline.
 - 已实现 FinEvidence v1 provider transport boundary：`FinEvidenceClient` 只
   通过 `/health`、`/api/v1/evidence/search`、`coverage`、`citation`、
   `/api/v1/table/query` 和 `/api/v1/evidence/verify` 消费外部 API，不实现

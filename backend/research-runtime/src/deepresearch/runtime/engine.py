@@ -508,7 +508,7 @@ class ResearchEngine:
         run.state = "VERIFYING"
         self._persist(run, "RUN_VERIFYING", {}, lease_id)
         try:
-            self._synthesize(run, case)
+            self._synthesize(run, case, lease_id, heartbeat_lost)
         except (EvidenceProviderError, SynthesisProviderError) as error:
             self._ensure_lease(heartbeat_lost)
             return self._fail(run, f"claim verification failed: {error}", lease_id)
@@ -719,7 +719,13 @@ class ResearchEngine:
                 return False
         return True
 
-    def _synthesize(self, run: ResearchRun, case: ResearchCase) -> None:
+    def _synthesize(
+        self,
+        run: ResearchRun,
+        case: ResearchCase,
+        lease_id: str | None = None,
+        heartbeat_lost: Event | None = None,
+    ) -> None:
         draft = self.synthesizer.synthesize(case, run)
         tasks_by_id = {task.id: task for task in run.tasks}
         evidence_by_id = {record.id: record for record in run.evidence}
@@ -746,8 +752,69 @@ class ResearchEngine:
                 confidence=proposed.confidence,
             )
             verify_claim = getattr(self.provider, "verify_claim", None)
-            if claim.status == "QUALIFIED" and callable(verify_claim) and not verify_claim(claim.statement, claim.evidence_ids):
-                claim.status = "NEEDS_REVIEW"
+            if claim.status == "QUALIFIED" and callable(verify_claim):
+                attempt_key = f"{run.id}:claim-verification:{claim.id}:attempt-1"
+                attempt_hash = sha256(attempt_key.encode()).hexdigest()
+                verification = ToolExecution(
+                    task_id=claim.task_id,
+                    tool_name="claim-verification",
+                    provider=str(getattr(self.provider, "name", self.provider.__class__.__name__)),
+                    input_hash=self._claim_input_hash(claim.statement, claim.evidence_ids),
+                    operation="CLAIM_VERIFICATION",
+                    status="UNKNOWN_EFFECT",
+                    attempt_key=attempt_key,
+                    result_hash=attempt_hash,
+                    completed_at=None,
+                    error_type="InFlight",
+                    error_message="Claim verification result has not been acknowledged.",
+                    error_hash=attempt_hash,
+                )
+                run.tool_executions.append(verification)
+                self._ensure_lease(heartbeat_lost)
+                self._persist(
+                    run,
+                    "CLAIM_VERIFICATION_STARTED",
+                    {"claim_id": claim.id, "attempt_id": verification.id, "attempt_key": attempt_key},
+                    lease_id,
+                )
+                try:
+                    provider_result = verify_claim(claim.statement, claim.evidence_ids)
+                    if not isinstance(provider_result, bool):
+                        raise EvidenceProviderError("claim verification provider must return bool")
+                    supported = provider_result
+                except Exception as error:
+                    self._ensure_lease(heartbeat_lost)
+                    diagnostic = f"{type(error).__name__}:{error}"
+                    diagnostic_hash = sha256(diagnostic.encode()).hexdigest()
+                    verification.status = "FAILED"
+                    verification.result_hash = diagnostic_hash
+                    verification.completed_at = datetime.now(UTC)
+                    verification.error_type = type(error).__name__
+                    verification.error_message = str(error)[:1000]
+                    verification.error_hash = diagnostic_hash
+                    self._persist(
+                        run,
+                        "CLAIM_VERIFICATION_FAILED",
+                        {"claim_id": claim.id, "attempt_id": verification.id, "error_hash": diagnostic_hash},
+                        lease_id,
+                    )
+                    raise EvidenceProviderError(f"claim verification failed: {error}") from error
+                self._ensure_lease(heartbeat_lost)
+                verification.status = "SUCCEEDED"
+                verification.verification_supported = supported
+                verification.result_hash = sha256(f"{verification.input_hash}:{supported}".encode()).hexdigest()
+                verification.completed_at = datetime.now(UTC)
+                verification.error_type = None
+                verification.error_message = None
+                verification.error_hash = None
+                self._persist(
+                    run,
+                    "CLAIM_VERIFICATION_COMPLETED",
+                    {"claim_id": claim.id, "attempt_id": verification.id, "supported": supported},
+                    lease_id,
+                )
+                if not supported:
+                    claim.status = "NEEDS_REVIEW"
             run.claims.append(claim)
         claim_ids = [claim.id for claim in run.claims]
         unresolved = [
@@ -996,6 +1063,11 @@ class ResearchEngine:
         case_input = case.model_dump_json(exclude={"created_at"})
         task_input = task.model_dump_json(exclude={"state"})
         return sha256(f"{case_input}:{task_input}".encode()).hexdigest()
+
+    @staticmethod
+    def _claim_input_hash(statement: str, evidence_ids: list[str]) -> str:
+        evidence_input = "\0".join(evidence_ids)
+        return sha256(f"{statement}\0{evidence_input}".encode()).hexdigest()
 
     def _append_event(
         self,
