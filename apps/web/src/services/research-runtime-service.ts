@@ -418,6 +418,7 @@ export interface ResearchRuntimeService {
   getHealth(): Promise<RuntimeHealth>;
   getEvents(runId: string): Promise<RuntimeEvent[]>;
   executeRun(runId: string): Promise<RuntimeRun>;
+  enqueueRun(runId: string): Promise<RuntimeRunControl>;
   replanRun(runId: string): Promise<RuntimeRun>;
   getTrace(runId: string): Promise<RuntimeTrace>;
   cancelRun(runId: string, reason: string): Promise<RuntimeRunControl>;
@@ -495,6 +496,14 @@ export class HttpResearchRuntimeService implements ResearchRuntimeService {
 
   async executeRun(runId: string): Promise<RuntimeRun> {
     return runtimeRunSchema.parse(await this.requestJson(`/api/v1/research-runs/${encodeURIComponent(runId)}/execute`, {
+      method: "POST",
+      headers: { accept: "application/json", "content-type": "application/json" },
+      body: JSON.stringify({}),
+    }));
+  }
+
+  async enqueueRun(runId: string): Promise<RuntimeRunControl> {
+    return runtimeRunControlSchema.parse(await this.requestJson(`/api/v1/research-runs/${encodeURIComponent(runId)}/enqueue`, {
       method: "POST",
       headers: { accept: "application/json", "content-type": "application/json" },
       body: JSON.stringify({}),
@@ -622,6 +631,7 @@ class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
   async getEvents(): Promise<RuntimeEvent[]> { return this.unavailable(); }
   async getRun(): Promise<RuntimeRun> { return this.unavailable(); }
   async getCaseRuns(): Promise<RuntimeRun[]> { return this.unavailable(); }
+  async enqueueRun(): Promise<RuntimeRunControl> { return this.unavailable(); }
   async executeRun(): Promise<RuntimeRun> { return this.unavailable(); }
   async replanRun(): Promise<RuntimeRun> { return this.unavailable(); }
   async getTrace(): Promise<RuntimeTrace> { return this.unavailable(); }

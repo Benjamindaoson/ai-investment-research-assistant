@@ -84,6 +84,7 @@ describe("ResearchRuntimeRepository", () => {
     const fetchImpl = (async (input) => {
       const url = String(input);
       if (url.endsWith("/research-cases")) return new Response(JSON.stringify({ case_id: "case-1", run_id: "run-1" }), { status: 201 });
+      if (url.endsWith("/enqueue")) return new Response(JSON.stringify({ id: "run-1", case_id: "case-1", state: "CREATED" }), { status: 202 });
       return new Response(JSON.stringify({ ...run, state: url.endsWith("/execute") ? "COMPLETED" : "CREATED" }), { status: 200 });
     }) as typeof fetch;
     const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
@@ -91,6 +92,7 @@ describe("ResearchRuntimeRepository", () => {
     await expect(repository.createCase({ question: "Assess ACME risk", target: "ACME" })).resolves.toEqual({ case_id: "case-1", run_id: "run-1" });
     await expect(repository.getRun("run-1")).resolves.toMatchObject({ state: "CREATED" });
     await expect(repository.executeRun("run-1")).resolves.toMatchObject({ state: "COMPLETED" });
+    await expect(repository.enqueueRun("run-1")).resolves.toEqual({ id: "run-1", case_id: "case-1", state: "CREATED" });
   });
 
   it("reads case-scoped run history through the typed boundary", async () => {
@@ -193,6 +195,20 @@ describe("ResearchRuntimeRepository", () => {
         constraints: ["Exclude management projections"],
       },
     });
+  });
+
+  it("enqueues a run through the durable worker endpoint", async () => {
+    let requestUrl = "";
+    let requestMethod = "";
+    const fetchImpl = (async (input, init) => {
+      requestUrl = String(input);
+      requestMethod = String(init?.method);
+      return new Response(JSON.stringify({ id: "run-1", case_id: "case-1", state: "PARTIAL" }), { status: 202 });
+    }) as typeof fetch;
+
+    await expect(repositoryFor(fetchImpl).enqueueRun("run/1")).resolves.toEqual({ id: "run-1", case_id: "case-1", state: "PARTIAL" });
+    expect(requestUrl).toBe("http://runtime.test/api/v1/research-runs/run%2F1/enqueue");
+    expect(requestMethod).toBe("POST");
   });
 
   it("replans a partial run through the typed repository boundary", async () => {

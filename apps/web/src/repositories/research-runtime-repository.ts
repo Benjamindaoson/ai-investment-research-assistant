@@ -11,8 +11,9 @@ export class ResearchRuntimeRepository {
   getEvaluation(runId: string): Promise<EvaluationResult | null> { return this.service.getEvaluation(runId); }
   getHealth(): Promise<RuntimeHealth> { return this.service.getHealth(); }
   getEvents(runId: string): Promise<RuntimeEvent[]> { return this.service.getEvents(runId); }
-  executeRun(runId: string): Promise<RuntimeRun> { return this.service.executeRun(runId); }
-  replanRun(runId: string): Promise<RuntimeRun> { return this.service.replanRun(runId); }
+ executeRun(runId: string): Promise<RuntimeRun> { return this.service.executeRun(runId); }
+  enqueueRun(runId: string): Promise<RuntimeRunControl> { return this.service.enqueueRun(runId); }
+ replanRun(runId: string): Promise<RuntimeRun> { return this.service.replanRun(runId); }
   getTrace(runId: string): Promise<RuntimeTrace> {
     return this.service.getTrace(runId);
   }

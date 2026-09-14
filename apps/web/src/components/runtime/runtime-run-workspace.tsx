@@ -20,7 +20,7 @@ import { RuntimeEventTrace } from "@/components/runtime/runtime-event-trace";
 import { RuntimeProviderReadiness } from "@/components/runtime/runtime-provider-readiness";
 import { RuntimeMemoExport } from "@/components/runtime/runtime-memo-export";
 import { RuntimeIcReview } from "@/components/runtime/runtime-ic-review";
-import { useCancelRuntimeRunMutation, useCreateRuntimeRerunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeCaseRunsQuery, useRuntimeEvaluationQuery, useRuntimeEventsQuery, useRuntimeHealthQuery, useRuntimeMemoryQuery, useRuntimeRunQuery, useRuntimeTraceQuery } from "@/queries/use-runtime-run";
+import { useCancelRuntimeRunMutation, useCreateRuntimeRerunMutation, useEnqueueRuntimeRunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeCaseRunsQuery, useRuntimeEvaluationQuery, useRuntimeEventsQuery, useRuntimeHealthQuery, useRuntimeMemoryQuery, useRuntimeRunQuery, useRuntimeTraceQuery } from "@/queries/use-runtime-run";
 
 export function RuntimeRunWorkspace({ runId }: { runId: string }) {
   const router = useRouter();
@@ -33,6 +33,7 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
   const eventsQuery = useRuntimeEventsQuery(runId, query.data?.state);
   const healthQuery = useRuntimeHealthQuery(Boolean(query.data));
   const execute = useExecuteRuntimeRunMutation(runId);
+  const enqueue = useEnqueueRuntimeRunMutation(runId);
   const replan = useReplanRuntimeRunMutation(runId);
   const cancel = useCancelRuntimeRunMutation(runId);
   const [reason, setReason] = useState("Analyst stopped the run.");
@@ -53,10 +54,11 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
     <AppShell context={<><div className="context-heading"><b>Runtime run</b><span>{run.state}</span></div><div className="context-summary"><small>TASKS</small><b>{run.tasks.length}</b><small>EVIDENCE</small><b>{run.evidence.length}</b><small>MEMO</small><b>{run.memo?.status ?? "pending"}</b></div></>}>
       <div className="page-title"><div><p>LIVE RUNTIME · {run.id}</p><h1>Research execution</h1><span>Backend-driven state, evidence coverage, and review-gated output.</span></div><span className={`thesis-state ${run.state.toLowerCase()}`}>{run.state}</span></div>
       <section className="decision-panel">
-        <header><div><small>RUN CONTROL</small><h2>Execution state</h2></div><div className="form-actions compact"><button type="button" className="outline" onClick={() => query.refetch()}>Refresh</button>{run.state === "CREATED" && <button type="button" className="blue-button" disabled={execute.isPending} onClick={() => execute.mutate()}>{execute.isPending ? "Executing…" : "Start research"}</button>}{run.state === "PARTIAL" && <button type="button" className="blue-button" disabled={replan.isPending} onClick={() => replan.mutate()}>{replan.isPending ? "Replanning…" : "Replan missing evidence"}</button>}</div></header>
+        <header><div><small>RUN CONTROL</small><h2>Execution state</h2></div><div className="form-actions compact"><button type="button" className="outline" onClick={() => query.refetch()}>Refresh</button>{run.state === "CREATED" && <button type="button" className="blue-button" disabled={execute.isPending} onClick={() => execute.mutate()}>{execute.isPending ? "Executing…" : "Start research"}</button>}{run.state === "PARTIAL" && <button type="button" className="blue-button" disabled={replan.isPending} onClick={() => replan.mutate()}>{replan.isPending ? "Replanning…" : "Replan missing evidence"}</button>}{(run.state === "CREATED" || run.state === "PARTIAL") && <button type="button" className="outline" disabled={enqueue.isPending || enqueue.isSuccess} onClick={() => enqueue.mutate()}>{enqueue.isPending ? "Queueing…" : enqueue.isSuccess ? "Queued" : "Queue for worker"}</button>}</div></header>
         {!terminal && <p className="form-note" role="status">Live refresh every 2 seconds while this run is active.</p>}
+        {enqueue.isSuccess && <p className="form-note" role="status">Durable queue request persisted; returned state: {enqueue.data.state}.</p>}
         {!terminal && <div className="form-actions"><input className="text-control" value={reason} onChange={(event) => setReason(event.target.value)} aria-label="Cancellation reason" /><button type="button" className="outline" disabled={cancel.isPending || reason.trim().length < 3} onClick={() => cancel.mutate(reason)}>{cancel.isPending ? "Cancelling…" : "Cancel run"}</button></div>}
-        {(execute.isError || cancel.isError || replan.isError) && <p className="form-error" role="alert">{(execute.error ?? cancel.error ?? replan.error)?.message}</p>}
+        {(execute.isError || cancel.isError || replan.isError || enqueue.isError) && <p className="form-error" role="alert">{(execute.error ?? cancel.error ?? replan.error ?? enqueue.error)?.message}</p>}
       </section>
       <RuntimePlanContext plan={run.plan} />
       <RuntimeProviderReadiness health={healthQuery.data} isPending={healthQuery.isPending} error={healthQuery.error} />

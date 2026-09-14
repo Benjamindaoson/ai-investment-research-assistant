@@ -99,6 +99,18 @@ export function useExecuteRuntimeRunMutation(runId: string) {
   });
 }
 
+export function useEnqueueRuntimeRunMutation(runId: string) {
+  const queryClient = useQueryClient();
+  return useMutation({
+    mutationFn: () => researchRuntimeRepository.enqueueRun(runId),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: runtimeRunQueryKey(runId) });
+      void queryClient.invalidateQueries({ queryKey: runtimeTraceQueryKey(runId) });
+      void queryClient.invalidateQueries({ queryKey: runtimeEventsQueryKey(runId) });
+      void queryClient.invalidateQueries({ queryKey: ["runtime", "case-runs"] });
+    },
+  });
+}
 export function useReplanRuntimeRunMutation(runId: string) {
   const queryClient = useQueryClient();
   return useMutation({
