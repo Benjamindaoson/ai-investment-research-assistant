@@ -30,6 +30,17 @@ const runtimeTraceSchema = z.object({
 export type RuntimeTrace = z.infer<typeof runtimeTraceSchema>;
 export type FetchLike = typeof fetch;
 
+const evaluationCheckSchema = z.object({
+  name: z.string(),
+  status: z.enum(["PASS", "FAIL", "N/A", "BLOCKED"]),
+  detail: z.string(),
+});
+const evaluationResultSchema = z.object({
+  id: z.string(), case_id: z.string(), run_id: z.string().nullable().optional(), evaluator: z.string(),
+  case_hash: z.string(), passed: z.boolean().nullable(), checks: z.array(evaluationCheckSchema).min(1), evaluated_at: z.string().datetime(),
+});
+export type EvaluationResult = z.infer<typeof evaluationResultSchema>;
+
 const researchMandateSchema = z.object({
   decision_type: z.enum(["INVESTMENT_COMMITTEE", "DUE_DILIGENCE", "SCREENING", "MONITORING", "STRATEGIC_REVIEW"]),
   time_horizon: z.string().min(1).max(100),
@@ -335,6 +346,7 @@ export interface ResearchRuntimeService {
   createCaseRun(caseId: string): Promise<RuntimeCaseResult>;
   getRun(runId: string): Promise<RuntimeRun>;
   getCaseRuns(caseId: string): Promise<RuntimeRun[]>;
+  getEvaluation(runId: string): Promise<EvaluationResult | null>;
   executeRun(runId: string): Promise<RuntimeRun>;
   replanRun(runId: string): Promise<RuntimeRun>;
   getTrace(runId: string): Promise<RuntimeTrace>;
@@ -386,6 +398,15 @@ export class HttpResearchRuntimeService implements ResearchRuntimeService {
 
   async getCaseRuns(caseId: string): Promise<RuntimeRun[]> {
     return z.array(runtimeRunSchema).parse(await this.requestJson(`/api/v1/research-cases/${encodeURIComponent(caseId)}/runs`, { headers: { accept: "application/json" } }));
+  }
+
+  async getEvaluation(runId: string): Promise<EvaluationResult | null> {
+    try {
+      return evaluationResultSchema.parse(await this.requestJson(`/api/v1/research-runs/${encodeURIComponent(runId)}/evaluation`, { headers: { accept: "application/json" } }));
+    } catch (error) {
+      if (error instanceof Error && error.message === "Research Runtime request failed with HTTP 404.") return null;
+      throw error;
+    }
   }
 
   async executeRun(runId: string): Promise<RuntimeRun> {
@@ -498,6 +519,7 @@ class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
 
   async createCase(): Promise<RuntimeCaseResult> { return this.unavailable(); }
   async createCaseRun(): Promise<RuntimeCaseResult> { return this.unavailable(); }
+  async getEvaluation(): Promise<EvaluationResult | null> { return this.unavailable(); }
   async getRun(): Promise<RuntimeRun> { return this.unavailable(); }
   async getCaseRuns(): Promise<RuntimeRun[]> { return this.unavailable(); }
   async executeRun(): Promise<RuntimeRun> { return this.unavailable(); }

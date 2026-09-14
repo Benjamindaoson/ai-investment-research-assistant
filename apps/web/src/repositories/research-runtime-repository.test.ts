@@ -97,6 +97,14 @@ describe("ResearchRuntimeRepository", () => {
     expect(requestMethod).toBe("POST");
   });
 
+  it("reads an evaluation artifact and treats documented 404 as not evaluated", async () => {
+    const evaluation = { id: "evaluation-1", case_id: "case-1", run_id: "run-1", evaluator: "scorer-v1", case_hash: "a".repeat(64), passed: false, checks: [{ name: "memo", status: "FAIL", detail: "Memo is incomplete." }], evaluated_at: "2026-09-14T00:00:00.000Z" };
+    const repository = repositoryFor((async () => new Response(JSON.stringify(evaluation), { status: 200 })) as typeof fetch);
+    await expect(repository.getEvaluation("run-1")).resolves.toEqual(evaluation);
+    const missing = repositoryFor((async () => new Response("missing", { status: 404 })) as typeof fetch);
+    await expect(missing.getEvaluation("run-1")).resolves.toBeNull();
+  });
+
   it("preserves detailed claims from a completed run", async () => {
     const detailedRun = { ...run, state: "COMPLETED", claims: [{
       id: "claim-1", task_id: "market", statement: "Market evidence qualifies.", status: "QUALIFIED",

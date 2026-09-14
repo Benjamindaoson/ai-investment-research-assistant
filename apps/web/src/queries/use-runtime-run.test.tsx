@@ -2,7 +2,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { runtimeCaseRunsQueryKey, runtimeRunQueryKey, useAnalyzeRuntimeFinancialsMutation, useAnalyzeRuntimeValuationMutation, useCreateRedTeamReviewMutation, useCreateRuntimeRerunMutation, useRuntimeCaseRunsQuery } from "./use-runtime-run";
+import { runtimeCaseRunsQueryKey, runtimeEvaluationQueryKey, runtimeRunQueryKey, useAnalyzeRuntimeFinancialsMutation, useAnalyzeRuntimeValuationMutation, useCreateRedTeamReviewMutation, useCreateRuntimeRerunMutation, useRuntimeCaseRunsQuery, useRuntimeEvaluationQuery } from "./use-runtime-run";
 import type { FinancialAnalysisResult, RuntimeRun, ValuationScenarioInput, ValuationScenarios } from "@/services/research-runtime-service";
 
 const analyze = vi.hoisted(() => vi.fn());
@@ -10,7 +10,8 @@ const createReview = vi.hoisted(() => vi.fn());
 const analyzeValuation = vi.hoisted(() => vi.fn());
 const getCaseRuns = vi.hoisted(() => vi.fn());
 const createCaseRun = vi.hoisted(() => vi.fn());
-vi.mock("@/repositories", () => ({ researchRuntimeRepository: { analyzeFinancialsForRun: analyze, analyzeValuationScenarios: analyzeValuation, createRedTeamReview: createReview, getCaseRuns, createCaseRun } }));
+const getEvaluation = vi.hoisted(() => vi.fn());
+vi.mock("@/repositories", () => ({ researchRuntimeRepository: { analyzeFinancialsForRun: analyze, analyzeValuationScenarios: analyzeValuation, createRedTeamReview: createReview, getCaseRuns, createCaseRun, getEvaluation } }));
 
 const run: RuntimeRun = {
   id: "run-1", case_id: "case-1", state: "COMPLETED", tasks: [], evidence: [], tool_executions: [], claims: [], thesis: null, memo: null,
@@ -90,6 +91,19 @@ describe("useCreateRuntimeRerunMutation", () => {
     await act(async () => { await result.current.mutateAsync(); });
     expect(createCaseRun).toHaveBeenCalledWith("case-1");
     expect(client.getQueryState(runtimeCaseRunsQueryKey("case-1"))).toBeDefined();
+  });
+});
+
+describe("useRuntimeEvaluationQuery", () => {
+  it("keeps the evaluation artifact separate from the run cache", async () => {
+    const evaluation = { id: "evaluation-1", case_id: "case-1", run_id: "run-1", evaluator: "scorer-v1", case_hash: "a".repeat(64), passed: true, checks: [{ name: "memo", status: "PASS", detail: "Memo is complete." }], evaluated_at: "2026-09-14T00:00:00.000Z" };
+    getEvaluation.mockResolvedValueOnce(evaluation);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const { result } = renderHook(() => useRuntimeEvaluationQuery("run-1"), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(client.getQueryData(runtimeEvaluationQueryKey("run-1"))).toEqual(evaluation);
   });
 });
 

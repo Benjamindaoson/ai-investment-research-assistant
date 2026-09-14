@@ -15,12 +15,14 @@ import { RuntimeToolTrace } from "@/components/runtime/runtime-tool-trace";
 import { RuntimeValuationScenarios } from "@/components/runtime/runtime-valuation-scenarios";
 import { ValuationScenarioForm } from "@/components/runtime/valuation-scenario-form";
 import { RuntimeCaseHistory } from "@/components/runtime/runtime-case-history";
-import { useCancelRuntimeRunMutation, useCreateRuntimeRerunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeCaseRunsQuery, useRuntimeMemoryQuery, useRuntimeRunQuery, useRuntimeTraceQuery } from "@/queries/use-runtime-run";
+import { RuntimeEvaluation } from "@/components/runtime/runtime-evaluation";
+import { useCancelRuntimeRunMutation, useCreateRuntimeRerunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeCaseRunsQuery, useRuntimeEvaluationQuery, useRuntimeMemoryQuery, useRuntimeRunQuery, useRuntimeTraceQuery } from "@/queries/use-runtime-run";
 
 export function RuntimeRunWorkspace({ runId }: { runId: string }) {
   const router = useRouter();
   const query = useRuntimeRunQuery(runId);
   const caseRunsQuery = useRuntimeCaseRunsQuery(query.data?.case_id ?? "");
+  const evaluationQuery = useRuntimeEvaluationQuery(runId);
   const rerun = useCreateRuntimeRerunMutation(query.data?.case_id ?? "");
   const memoryQuery = useRuntimeMemoryQuery(runId, Boolean(query.data?.memo));
   const traceQuery = useRuntimeTraceQuery(runId);
@@ -50,6 +52,7 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
         {(execute.isError || cancel.isError || replan.isError) && <p className="form-error" role="alert">{(execute.error ?? cancel.error ?? replan.error)?.message}</p>}
       </section>
       <RuntimePlanContext plan={run.plan} />
+      <RuntimeEvaluation evaluation={evaluationQuery.data} isPending={evaluationQuery.isPending} error={evaluationQuery.error} />
       <RuntimeCaseHistory runs={caseRunsQuery.data} activeRunId={run.id} isPending={caseRunsQuery.isPending} error={caseRunsQuery.error} onCreateRerun={createRerun} isRerunPending={rerun.isPending} rerunError={rerun.error} />
       <RuntimeTaskContract tasks={run.tasks} traceTasks={traceQuery.data?.tasks} />
       <RuntimeToolTrace executions={run.tool_executions} />
