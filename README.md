@@ -150,6 +150,11 @@ The runtime transport can be enabled for an external-compatible provider with
 `NEXT_PUBLIC_RESEARCH_RUNTIME_URL`; without it, the workspace remains in its
 explicit synthetic-data mode.
 
+The live run page polls active durable state and trace data every two seconds,
+then stops at terminal outcomes. This is bounded read-back of the runtime's
+checkpoint/lease state, not a claim of background execution or exactly-once
+provider work.
+
 Planner quality is evaluated independently from execution quality. The local
 evaluation command reports plan coverage, dependency edges, evidence
 requirements, counter-evidence coverage, task ceiling, and duplicate-task

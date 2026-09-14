@@ -10,6 +10,13 @@ export const runtimeEvaluationQueryKey = (runId: string) => ["runtime", "evaluat
 export const runtimeCasesQueryKey = ["runtime", "cases"] as const;
 export const runtimeMemoryQueryKey = (runId: string) => ["runtime", "memory", runId] as const;
 export const runtimeTraceQueryKey = (runId: string) => ["runtime", "trace", runId] as const;
+export const RUNTIME_REFRESH_INTERVAL_MS = 2000;
+
+const terminalRunStates = new Set<RuntimeRun["state"]>(["COMPLETED", "PARTIAL", "FAILED", "CANCELLED", "BLOCKED"]);
+
+export function runtimeRefreshInterval(state: RuntimeRun["state"] | undefined): number | false {
+  return state && !terminalRunStates.has(state) ? RUNTIME_REFRESH_INTERVAL_MS : false;
+}
 
 export function useCreateRuntimeCaseMutation() {
   return useMutation({ mutationFn: (input: RuntimeCaseInput) => researchRuntimeRepository.createCase(input) });
@@ -36,7 +43,11 @@ export function useCreateRuntimeRerunMutation(caseId: string) {
 }
 
 export function useRuntimeRunQuery(runId: string) {
-  return useQuery({ queryKey: runtimeRunQueryKey(runId), queryFn: () => researchRuntimeRepository.getRun(runId) });
+  return useQuery({
+    queryKey: runtimeRunQueryKey(runId),
+    queryFn: () => researchRuntimeRepository.getRun(runId),
+    refetchInterval: (query) => runtimeRefreshInterval(query.state.data?.state),
+  });
 }
 
 export function useRuntimeCaseRunsQuery(caseId: string) {
@@ -52,7 +63,11 @@ export function useRuntimeMemoryQuery(runId: string, enabled: boolean) {
 }
 
 export function useRuntimeTraceQuery(runId: string) {
-  return useQuery<RuntimeTrace>({ queryKey: runtimeTraceQueryKey(runId), queryFn: () => researchRuntimeRepository.getTrace(runId) });
+  return useQuery<RuntimeTrace>({
+    queryKey: runtimeTraceQueryKey(runId),
+    queryFn: () => researchRuntimeRepository.getTrace(runId),
+    refetchInterval: (query) => runtimeRefreshInterval(query.state.data?.state),
+  });
 }
 
 export function useExecuteRuntimeRunMutation(runId: string) {
@@ -62,6 +77,8 @@ export function useExecuteRuntimeRunMutation(runId: string) {
     onSuccess: (data) => {
       queryClient.setQueryData(runtimeRunQueryKey(runId), data);
       void queryClient.invalidateQueries({ queryKey: runtimeMemoryQueryKey(runId) });
+      void queryClient.invalidateQueries({ queryKey: runtimeTraceQueryKey(runId) });
+      void queryClient.invalidateQueries({ queryKey: ["runtime", "case-runs"] });
     },
   });
 }
@@ -73,6 +90,8 @@ export function useReplanRuntimeRunMutation(runId: string) {
     onSuccess: (data) => {
       queryClient.setQueryData(runtimeRunQueryKey(runId), data);
       void queryClient.invalidateQueries({ queryKey: runtimeMemoryQueryKey(runId) });
+      void queryClient.invalidateQueries({ queryKey: runtimeTraceQueryKey(runId) });
+      void queryClient.invalidateQueries({ queryKey: ["runtime", "case-runs"] });
     },
   });
 }
@@ -81,7 +100,11 @@ export function useCancelRuntimeRunMutation(runId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (reason: string) => researchRuntimeRepository.cancelRun(runId, reason),
-    onSuccess: () => queryClient.invalidateQueries({ queryKey: runtimeRunQueryKey(runId) }),
+    onSuccess: () => {
+      void queryClient.invalidateQueries({ queryKey: runtimeRunQueryKey(runId) });
+      void queryClient.invalidateQueries({ queryKey: runtimeTraceQueryKey(runId) });
+      void queryClient.invalidateQueries({ queryKey: ["runtime", "case-runs"] });
+    },
   });
 }
 

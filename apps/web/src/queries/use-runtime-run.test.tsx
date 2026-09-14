@@ -2,7 +2,7 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { runtimeCaseRunsQueryKey, runtimeEvaluationQueryKey, runtimeRunQueryKey, useAnalyzeRuntimeFinancialsMutation, useAnalyzeRuntimeValuationMutation, useCreateRedTeamReviewMutation, useCreateRuntimeRerunMutation, useRuntimeCaseRunsQuery, useRuntimeEvaluationQuery } from "./use-runtime-run";
+import { runtimeCaseRunsQueryKey, runtimeEvaluationQueryKey, runtimeRefreshInterval, runtimeRunQueryKey, useAnalyzeRuntimeFinancialsMutation, useAnalyzeRuntimeValuationMutation, useCreateRedTeamReviewMutation, useCreateRuntimeRerunMutation, useRuntimeCaseRunsQuery, useRuntimeEvaluationQuery } from "./use-runtime-run";
 import type { FinancialAnalysisResult, RuntimeRun, ValuationScenarioInput, ValuationScenarios } from "@/services/research-runtime-service";
 
 const analyze = vi.hoisted(() => vi.fn());
@@ -35,6 +35,17 @@ const valuation: ValuationScenarios = {
 const valuationInput: ValuationScenarioInput = {
   base_revenue: "100", base_revenue_evidence_ids: ["evidence-1"], scenarios: valuation.scenarios.map(({ assumptions }) => assumptions) as ValuationScenarioInput["scenarios"],
 };
+
+describe("runtimeRefreshInterval", () => {
+  it("refreshes active runs and stops at terminal states", () => {
+    expect(runtimeRefreshInterval("CREATED")).toBe(2000);
+    expect(runtimeRefreshInterval("RUNNING")).toBe(2000);
+    expect(runtimeRefreshInterval("VERIFYING")).toBe(2000);
+    expect(runtimeRefreshInterval("COMPLETED")).toBe(false);
+    expect(runtimeRefreshInterval("BLOCKED")).toBe(false);
+    expect(runtimeRefreshInterval(undefined)).toBe(false);
+  });
+});
 
 describe("useAnalyzeRuntimeFinancialsMutation", () => {
   it("projects a successful artifact into the cached run", async () => {
