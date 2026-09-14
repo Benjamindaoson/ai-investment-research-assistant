@@ -174,8 +174,20 @@ class FinEvidenceClient:
     def health(self) -> FinEvidenceHealth:
         return self._request("/health", FinEvidenceHealth)
 
-    def search(self, query: str, *, entity: str | None = None, top_k: int = 10) -> FinEvidenceSearchResponse:
-        payload = {"query": query, "filters": FinEvidenceFilters(entity=entity).model_dump(exclude_none=True), "top_k": top_k}
+    def search(
+        self,
+        query: str,
+        *,
+        entity: str | None = None,
+        metric: str | None = None,
+        period: str | None = None,
+        top_k: int = 10,
+    ) -> FinEvidenceSearchResponse:
+        payload = {
+            "query": query,
+            "filters": FinEvidenceFilters(entity=entity, metric=metric, period=period).model_dump(exclude_none=True),
+            "top_k": top_k,
+        }
         return self._request("/api/v1/evidence/search", FinEvidenceSearchResponse, payload)
 
     def coverage(self, question: str, required_claims: list[dict[str, Any]], evidence_ids: list[str]) -> FinEvidenceCoverageResponse:
@@ -234,8 +246,15 @@ class HttpEvidenceProvider:
         return records
 
     def _retrieve(self, query: str, case: ResearchCase, task: ResearchTask) -> list[FinEvidenceObject]:
-        del case, task
-        return self.client.search(query, top_k=10).evidence
+        del case
+        requirement = task.evidence_requirements[0] if len(task.evidence_requirements) == 1 else None
+        return self.client.search(
+            query,
+            entity=requirement.entity if requirement else None,
+            metric=requirement.metric if requirement else None,
+            period=requirement.period if requirement else None,
+            top_k=10,
+        ).evidence
 
     @staticmethod
     def _requirement_payload(requirement: EvidenceRequirement, target: str) -> dict[str, Any]:

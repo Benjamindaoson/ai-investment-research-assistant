@@ -36,7 +36,6 @@ def test_real_finevidence_v1_chain_preserves_identity_and_provenance() -> None:
                 description="HSBC annual report context",
                 fact_type="CONTEXT_FACT",
                 role="context",
-                entity="HSBC",
                 criticality="OPTIONAL",
                 evidence_role="CONTEXT_SUPPORT",
             )

@@ -151,6 +151,11 @@ def test_http_provider_serializes_structured_requirement_semantics(monkeypatch: 
     HttpEvidenceProvider("https://evidence.example").collect(task, case)
 
     requirement = router.payloads[1]["required_claims"][0]
+    assert router.payloads[0]["filters"] == {
+        "entity": "SUBSIDIARY",
+        "metric": "revenue",
+        "period": "FY2025",
+    }
     assert requirement == {
         "requirement_id": "market-signal",
         "description": "ACME revenue trend",
@@ -163,6 +168,30 @@ def test_http_provider_serializes_structured_requirement_semantics(monkeypatch: 
         "evidence_role": "DERIVATION_INPUT",
     }
     assert "segment" not in requirement
+
+
+def test_http_provider_does_not_merge_multiple_requirement_filters(monkeypatch: pytest.MonkeyPatch) -> None:
+    router = Router(
+        {
+            "/api/v1/evidence/search": {"api_version": "v1", "evidence": [evidence_object()], "catalog_size": 1},
+            "/api/v1/evidence/coverage": {"api_version": "v1", "coverage_score": 1.0, "independent_coverage": 1.0, "critical_coverage": 1.0, "missing_requirements": [], "status": "ELIGIBLE", "evidence": [evidence_object(status="SUPPORTED")]},
+            "/api/v1/evidence/ev-1/citation": citation(),
+        }
+    )
+    monkeypatch.setattr("deepresearch.runtime.evidence.urlopen", router)
+    task, case = make_inputs()
+    task = task.model_copy(
+        update={
+            "evidence_requirements": [
+                task.evidence_requirements[0].model_copy(update={"metric": "revenue"}),
+                EvidenceRequirement(id="other", description="other metric", metric="margin"),
+            ]
+        }
+    )
+
+    HttpEvidenceProvider("https://evidence.example").collect(task, case)
+
+    assert router.payloads[0]["filters"] == {}
 
 
 def test_http_provider_does_not_promote_partial_coverage(monkeypatch: pytest.MonkeyPatch) -> None:
