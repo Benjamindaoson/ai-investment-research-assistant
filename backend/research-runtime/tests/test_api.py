@@ -340,6 +340,7 @@ def test_api_records_red_team_review_and_reopens_thesis(tmp_path) -> None:
     assert response.status_code == 200
     assert response.json()["thesis"]["review_status"] == "NEEDS_REVIEW"
     assert response.json()["memo"]["status"] == "READY_FOR_REVIEW"
+    assert response.json()["memo"]["red_team_review_ids"] == [response.json()["red_team_reviews"][0]["id"]]
     assert response.json()["red_team_reviews"][0]["evidence_ids"] == [counter_id]
     assert listed.status_code == 200
     assert listed.json() == response.json()["red_team_reviews"]

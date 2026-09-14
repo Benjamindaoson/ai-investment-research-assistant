@@ -606,6 +606,8 @@ class ResearchEngine:
         if any(item.id == review.id for item in run.red_team_reviews):
             raise ValueError(f"red-team review already exists: {review.id}")
         run.red_team_reviews.append(review)
+        if run.memo is not None:
+            run.memo.red_team_review_ids.append(review.id)
         if review.outcome == "REQUIRES_RESEARCH":
             run.thesis.review_status = "NEEDS_REVIEW"
             if run.memo is not None:

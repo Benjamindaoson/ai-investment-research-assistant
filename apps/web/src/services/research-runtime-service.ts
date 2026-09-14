@@ -91,6 +91,7 @@ const runtimeMemoSchema = z.object({
   evidence_ids: z.array(z.string()),
   counter_evidence_ids: z.array(z.string()),
   unresolved_requirement_ids: z.array(z.string()),
+  red_team_review_ids: z.array(z.string()).default([]),
   ic_review_ids: z.array(z.string()).default([]),
   sections: z.array(runtimeMemoSectionSchema).default([]),
   provenance: z.record(z.string(), z.unknown()),
