@@ -2,8 +2,8 @@
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import { act, renderHook, waitFor } from "@testing-library/react";
 import { describe, expect, it, vi } from "vitest";
-import { runtimeCaseRunsQueryKey, runtimeEvaluationQueryKey, runtimeIcReviewsQueryKey, runtimeRefreshInterval, runtimeRunQueryKey, useAnalyzeRuntimeFinancialsMutation, useAnalyzeRuntimeValuationMutation, useCreateInvestmentCommitteeReviewMutation, useCreateRedTeamReviewMutation, useCreateRuntimeRerunMutation, useRuntimeCaseRunsQuery, useRuntimeEvaluationQuery } from "./use-runtime-run";
-import type { FinancialAnalysisResult, RuntimeRun, ValuationScenarioInput, ValuationScenarios } from "@/services/research-runtime-service";
+import { runtimeCaseRunsQueryKey, runtimeEvaluationQueryKey, runtimeEventsQueryKey, runtimeIcReviewsQueryKey, runtimeRefreshInterval, runtimeRunQueryKey, useAnalyzeRuntimeFinancialsMutation, useAnalyzeRuntimeValuationMutation, useCreateInvestmentCommitteeReviewMutation, useCreateRedTeamReviewMutation, useCreateRuntimeRerunMutation, useRuntimeCaseRunsQuery, useRuntimeEvaluationQuery, useRuntimeEventsQuery } from "./use-runtime-run";
+import type { FinancialAnalysisResult, RuntimeEvent, RuntimeRun, ValuationScenarioInput, ValuationScenarios } from "@/services/research-runtime-service";
 
 const analyze = vi.hoisted(() => vi.fn());
 const createReview = vi.hoisted(() => vi.fn());
@@ -12,7 +12,8 @@ const analyzeValuation = vi.hoisted(() => vi.fn());
 const getCaseRuns = vi.hoisted(() => vi.fn());
 const createCaseRun = vi.hoisted(() => vi.fn());
 const getEvaluation = vi.hoisted(() => vi.fn());
-vi.mock("@/repositories", () => ({ researchRuntimeRepository: { analyzeFinancialsForRun: analyze, analyzeValuationScenarios: analyzeValuation, createRedTeamReview: createReview, createInvestmentCommitteeReview: createIcReview, getCaseRuns, createCaseRun, getEvaluation } }));
+const getEvents = vi.hoisted(() => vi.fn());
+vi.mock("@/repositories", () => ({ researchRuntimeRepository: { analyzeFinancialsForRun: analyze, analyzeValuationScenarios: analyzeValuation, createRedTeamReview: createReview, createInvestmentCommitteeReview: createIcReview, getCaseRuns, createCaseRun, getEvaluation, getEvents } }));
 
 const run: RuntimeRun = {
   id: "run-1", case_id: "case-1", state: "COMPLETED", tasks: [], evidence: [], tool_executions: [], claims: [], thesis: null, memo: null,
@@ -132,6 +133,24 @@ describe("useRuntimeEvaluationQuery", () => {
 
     await waitFor(() => expect(result.current.isSuccess).toBe(true));
     expect(client.getQueryData(runtimeEvaluationQueryKey("run-1"))).toEqual(evaluation);
+  });
+});
+
+describe("useRuntimeEventsQuery", () => {
+  it("loads events and uses active-run refresh semantics", async () => {
+    const events: RuntimeEvent[] = [{ seq: 1, run_id: "run-1", event_type: "RUN_CREATED", payload: {}, occurred_at: "2026-09-14T00:00:00.000Z" }];
+    getEvents.mockResolvedValueOnce(events);
+    const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
+    const wrapper = ({ children }: { children: React.ReactNode }) => <QueryClientProvider client={client}>{children}</QueryClientProvider>;
+    const { result } = renderHook(() => useRuntimeEventsQuery("run-1", "RUNNING"), { wrapper });
+
+    await waitFor(() => expect(result.current.isSuccess).toBe(true));
+    expect(result.current.data).toEqual(events);
+    expect(client.getQueryData(runtimeEventsQueryKey("run-1"))).toEqual(events);
+  });
+
+  it("stops polling for terminal runs", () => {
+    expect(runtimeRefreshInterval("COMPLETED")).toBe(false);
   });
 });
 

@@ -2,7 +2,7 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { researchRuntimeRepository } from "@/repositories";
-import type { DecisionRecordInput, EvidenceLinkedFinancialAnalysisInput, InvestmentCommitteeReviewInput, RedTeamReviewInput, RuntimeCaseInput, RuntimeResearchCase, RuntimeRun, RuntimeTrace, ValuationScenarioInput } from "@/services/research-runtime-service";
+import type { DecisionRecordInput, EvidenceLinkedFinancialAnalysisInput, InvestmentCommitteeReviewInput, RedTeamReviewInput, RuntimeCaseInput, RuntimeEvent, RuntimeResearchCase, RuntimeRun, RuntimeTrace, ValuationScenarioInput } from "@/services/research-runtime-service";
 
 export const runtimeRunQueryKey = (runId: string) => ["runtime", "run", runId] as const;
 export const runtimeCaseRunsQueryKey = (caseId: string) => ["runtime", "case-runs", caseId] as const;
@@ -10,6 +10,7 @@ export const runtimeEvaluationQueryKey = (runId: string) => ["runtime", "evaluat
 export const runtimeCasesQueryKey = ["runtime", "cases"] as const;
 export const runtimeMemoryQueryKey = (runId: string) => ["runtime", "memory", runId] as const;
 export const runtimeTraceQueryKey = (runId: string) => ["runtime", "trace", runId] as const;
+export const runtimeEventsQueryKey = (runId: string) => ["runtime", "events", runId] as const;
 export const runtimeIcReviewsQueryKey = (runId: string) => ["runtime", "ic-reviews", runId] as const;
 export const RUNTIME_REFRESH_INTERVAL_MS = 2000;
 
@@ -68,6 +69,15 @@ export function useRuntimeTraceQuery(runId: string) {
     queryKey: runtimeTraceQueryKey(runId),
     queryFn: () => researchRuntimeRepository.getTrace(runId),
     refetchInterval: (query) => runtimeRefreshInterval(query.state.data?.state),
+  });
+}
+
+export function useRuntimeEventsQuery(runId: string, state: RuntimeRun["state"] | undefined) {
+  return useQuery<RuntimeEvent[]>({
+    queryKey: runtimeEventsQueryKey(runId),
+    queryFn: () => researchRuntimeRepository.getEvents(runId),
+    enabled: runId.length > 0,
+    refetchInterval: runtimeRefreshInterval(state),
   });
 }
 

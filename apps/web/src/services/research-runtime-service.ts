@@ -30,6 +30,15 @@ const runtimeTraceSchema = z.object({
 export type RuntimeTrace = z.infer<typeof runtimeTraceSchema>;
 export type FetchLike = typeof fetch;
 
+const runtimeEventSchema = z.object({
+  seq: z.number().int().positive(),
+  run_id: z.string(),
+  event_type: z.string().min(1),
+  payload: z.record(z.string(), z.unknown()),
+  occurred_at: z.string().datetime({ offset: true }),
+});
+export type RuntimeEvent = z.infer<typeof runtimeEventSchema>;
+
 const evaluationCheckSchema = z.object({
   name: z.string(),
   status: z.enum(["PASS", "FAIL", "N/A", "BLOCKED"]),
@@ -395,6 +404,7 @@ export interface ResearchRuntimeService {
   getRun(runId: string): Promise<RuntimeRun>;
   getCaseRuns(caseId: string): Promise<RuntimeRun[]>;
   getEvaluation(runId: string): Promise<EvaluationResult | null>;
+  getEvents(runId: string): Promise<RuntimeEvent[]>;
   executeRun(runId: string): Promise<RuntimeRun>;
   replanRun(runId: string): Promise<RuntimeRun>;
   getTrace(runId: string): Promise<RuntimeTrace>;
@@ -461,6 +471,10 @@ export class HttpResearchRuntimeService implements ResearchRuntimeService {
       if (error instanceof Error && error.message === "Research Runtime request failed with HTTP 404.") return null;
       throw error;
     }
+  }
+
+  async getEvents(runId: string): Promise<RuntimeEvent[]> {
+    return z.array(runtimeEventSchema).parse(await this.requestJson(`/api/v1/research-runs/${encodeURIComponent(runId)}/events`, { headers: { accept: "application/json" } }));
   }
 
   async executeRun(runId: string): Promise<RuntimeRun> {
@@ -588,6 +602,7 @@ class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
   async getCases(): Promise<RuntimeResearchCase[]> { return this.unavailable(); }
   async createCaseRun(): Promise<RuntimeCaseResult> { return this.unavailable(); }
   async getEvaluation(): Promise<EvaluationResult | null> { return this.unavailable(); }
+  async getEvents(): Promise<RuntimeEvent[]> { return this.unavailable(); }
   async getRun(): Promise<RuntimeRun> { return this.unavailable(); }
   async getCaseRuns(): Promise<RuntimeRun[]> { return this.unavailable(); }
   async executeRun(): Promise<RuntimeRun> { return this.unavailable(); }

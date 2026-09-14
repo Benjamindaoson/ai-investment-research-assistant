@@ -1,4 +1,4 @@
-import type { DecisionRecordInput, EvaluationResult, EvidenceLinkedFinancialAnalysisInput, FinancialAnalysisResult, FinancialSnapshotInput, InvestmentCommitteeReview, InvestmentCommitteeReviewInput, InvestmentMemory, RedTeamReview, RedTeamReviewInput, ResearchRuntimeService, RuntimeCaseInput, RuntimeCaseResult, RuntimeMemo, RuntimeResearchCase, RuntimeRun, RuntimeRunControl, RuntimeTrace, ValuationScenarioInput, ValuationScenarios } from "@/services/research-runtime-service";
+import type { DecisionRecordInput, EvaluationResult, EvidenceLinkedFinancialAnalysisInput, FinancialAnalysisResult, FinancialSnapshotInput, InvestmentCommitteeReview, InvestmentCommitteeReviewInput, InvestmentMemory, RedTeamReview, RedTeamReviewInput, ResearchRuntimeService, RuntimeCaseInput, RuntimeCaseResult, RuntimeEvent, RuntimeMemo, RuntimeResearchCase, RuntimeRun, RuntimeRunControl, RuntimeTrace, ValuationScenarioInput, ValuationScenarios } from "@/services/research-runtime-service";
 
 export class ResearchRuntimeRepository {
   constructor(private readonly service: ResearchRuntimeService) {}
@@ -9,6 +9,7 @@ export class ResearchRuntimeRepository {
   getRun(runId: string): Promise<RuntimeRun> { return this.service.getRun(runId); }
   getCaseRuns(caseId: string): Promise<RuntimeRun[]> { return this.service.getCaseRuns(caseId); }
   getEvaluation(runId: string): Promise<EvaluationResult | null> { return this.service.getEvaluation(runId); }
+  getEvents(runId: string): Promise<RuntimeEvent[]> { return this.service.getEvents(runId); }
   executeRun(runId: string): Promise<RuntimeRun> { return this.service.executeRun(runId); }
   replanRun(runId: string): Promise<RuntimeRun> { return this.service.replanRun(runId); }
   getTrace(runId: string): Promise<RuntimeTrace> {

@@ -16,9 +16,10 @@ import { RuntimeValuationScenarios } from "@/components/runtime/runtime-valuatio
 import { ValuationScenarioForm } from "@/components/runtime/valuation-scenario-form";
 import { RuntimeCaseHistory } from "@/components/runtime/runtime-case-history";
 import { RuntimeEvaluation } from "@/components/runtime/runtime-evaluation";
+import { RuntimeEventTrace } from "@/components/runtime/runtime-event-trace";
 import { RuntimeMemoExport } from "@/components/runtime/runtime-memo-export";
 import { RuntimeIcReview } from "@/components/runtime/runtime-ic-review";
-import { useCancelRuntimeRunMutation, useCreateRuntimeRerunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeCaseRunsQuery, useRuntimeEvaluationQuery, useRuntimeMemoryQuery, useRuntimeRunQuery, useRuntimeTraceQuery } from "@/queries/use-runtime-run";
+import { useCancelRuntimeRunMutation, useCreateRuntimeRerunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeCaseRunsQuery, useRuntimeEvaluationQuery, useRuntimeEventsQuery, useRuntimeMemoryQuery, useRuntimeRunQuery, useRuntimeTraceQuery } from "@/queries/use-runtime-run";
 
 export function RuntimeRunWorkspace({ runId }: { runId: string }) {
   const router = useRouter();
@@ -28,6 +29,7 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
   const rerun = useCreateRuntimeRerunMutation(query.data?.case_id ?? "");
   const memoryQuery = useRuntimeMemoryQuery(runId, Boolean(query.data?.memo));
   const traceQuery = useRuntimeTraceQuery(runId);
+  const eventsQuery = useRuntimeEventsQuery(runId, query.data?.state);
   const execute = useExecuteRuntimeRunMutation(runId);
   const replan = useReplanRuntimeRunMutation(runId);
   const cancel = useCancelRuntimeRunMutation(runId);
@@ -59,6 +61,7 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
       <RuntimeCaseHistory runs={caseRunsQuery.data} activeRunId={run.id} isPending={caseRunsQuery.isPending} error={caseRunsQuery.error} onCreateRerun={createRerun} isRerunPending={rerun.isPending} rerunError={rerun.error} />
       <RuntimeTaskContract tasks={run.tasks} traceTasks={traceQuery.data?.tasks} />
       <RuntimeToolTrace executions={run.tool_executions} />
+      <RuntimeEventTrace events={eventsQuery.data} isPending={eventsQuery.isPending} error={eventsQuery.error} />
       <RuntimeEvidenceTrace evidence={run.evidence} />
       <RuntimeClaimTrace claims={run.claims} evidence={run.evidence} />
       <section className="company-section-grid"><article className="company-section"><header><h3>Evidence coverage</h3><span>{run.evidence.length} observed</span></header><p>{qualified} qualified · {needsReview} needs review · {counter} counter/conflicting</p></article><article className="company-section"><header><h3>Memo projection</h3><span>{run.memo?.status ?? "not generated"}</span></header><p>{run.memo?.executive_summary ?? "Memo is generated after synthesis."}</p></article></section>

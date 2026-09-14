@@ -186,6 +186,15 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .runtime-tool-record header small, .runtime-tool-record footer { color: var(--color-muted); font-size: var(--font-size-2xs); }
 .runtime-tool-record > p { margin: var(--space-3) 0; overflow-wrap: anywhere; color: var(--color-ink-soft); font-size: var(--font-size-2xs); }
 .runtime-tool-record > header > span { border-radius: var(--radius-sm); background: var(--surface-subtle); padding: 3px 6px; font-size: var(--font-size-2xs); }
+.runtime-event-trace { margin-top: var(--space-3); }
+.runtime-event-list { display: grid; gap: var(--space-2); padding: 0 var(--space-4) var(--space-4); }
+.runtime-event-record { border: var(--border-width) solid var(--border-color); border-left: 3px solid var(--color-accent); border-radius: var(--radius-md); padding: var(--space-3); }
+.runtime-event-record summary { cursor: pointer; list-style: none; }
+.runtime-event-record summary::-webkit-details-marker { display: none; }
+.runtime-event-record summary span { display: grid; gap: 3px; }
+.runtime-event-record summary b { color: var(--color-ink); font-size: var(--font-size-xs); }
+.runtime-event-record summary small { color: var(--color-muted); font-size: var(--font-size-2xs); }
+.runtime-event-record pre { margin: var(--space-3) 0 0; overflow: auto; border-top: var(--border-width) solid var(--border-color); padding-top: var(--space-3); color: var(--color-ink-soft); font-size: var(--font-size-2xs); white-space: pre-wrap; overflow-wrap: anywhere; }
 .runtime-valuation-panel { margin-top: var(--space-3); }
 .runtime-valuation-grid { overflow-x: auto; padding: 0 var(--space-4) var(--space-2); }
 .runtime-valuation-header, .runtime-valuation-row { display: grid; grid-template-columns: .7fr repeat(6, minmax(110px, 1fr)); gap: var(--space-2); min-width: 820px; align-items: center; padding: var(--space-3) 0; border-bottom: var(--border-width) solid var(--border-color); font-size: var(--font-size-2xs); }

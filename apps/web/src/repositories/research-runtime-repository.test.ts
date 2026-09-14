@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ResearchRuntimeRepository } from "./research-runtime-repository";
-import { createResearchRuntimeService, type InvestmentMemory, type RuntimeMemo, type RuntimeRun, type RuntimeTrace, type ValuationScenarioInput, type ValuationScenarios } from "@/services/research-runtime-service";
+import { createResearchRuntimeService, type InvestmentMemory, type RuntimeEvent, type RuntimeMemo, type RuntimeRun, type RuntimeTrace, type ValuationScenarioInput, type ValuationScenarios } from "@/services/research-runtime-service";
 
 const trace: RuntimeTrace = {
   run_id: "run-1",
@@ -49,12 +49,26 @@ const run: RuntimeRun = {
 };
 
 const repositoryFor = (fetchImpl: typeof fetch) => new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
+const events: RuntimeEvent[] = [{ seq: 1, run_id: "run-1", event_type: "RUN_CREATED", payload: { task_ids: ["market"] }, occurred_at: "2026-09-14T08:00:00.000000+08:00" }];
 
 describe("ResearchRuntimeRepository", () => {
   it("parses the runtime trace through the HTTP service boundary", async () => {
     const fetchImpl = (async () => new Response(JSON.stringify(trace), { status: 200 })) as typeof fetch;
     const repository = new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
     await expect(repository.getTrace("run-1")).resolves.toEqual(trace);
+  });
+
+  it("reads ordered event payloads through the HTTP service boundary", async () => {
+    const fetchImpl = (async (input) => {
+      expect(String(input)).toBe("http://runtime.test/api/v1/research-runs/run-1/events");
+      return new Response(JSON.stringify(events), { status: 200 });
+    }) as typeof fetch;
+    await expect(repositoryFor(fetchImpl).getEvents("run-1")).resolves.toEqual(events);
+  });
+
+  it("rejects event responses whose payload is not JSON object data", async () => {
+    const fetchImpl = (async () => new Response(JSON.stringify([{ ...events[0], payload: ["invalid"] }]), { status: 200 })) as typeof fetch;
+    await expect(repositoryFor(fetchImpl).getEvents("run-1")).rejects.toThrow();
   });
 
   it("creates, reads, and executes a runtime run through the repository", async () => {
