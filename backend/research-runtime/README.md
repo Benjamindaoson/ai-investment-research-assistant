@@ -22,6 +22,12 @@ artifact 保留在 SQLite 中。
 provider；旧的 `FINEVIDENCE_BASE_URL` 仅作为兼容别名。未设置时使用明确标记的 deterministic provider，保证本地测试不
 需要网络或凭证。FinEvidence 的启动方式（另一个冻结仓库）是：
 
+每个 evidence task 都会持久化一份 execution receipt。receipt 包含 provider
+名称、绑定 case/task contract 的 `input_hash`，以及 runtime qualification
+之后的 evidence 总数、`QUALIFIED`、`NEEDS_REVIEW`、`UNQUALIFIED` 计数；它不
+保存原始 HTTP query、response 或 excerpt。旧 SQLite receipt 会以兼容默认值
+加载，FinEvidence 仍然只通过下面的 HTTP v1 boundary 接入。
+
 ```powershell
 cd "D:\01_work\Enterprise Multimodal RAG\finevidence"
 \.venv\Scripts\python.exe -m uvicorn finevidence.api.app:app --host 127.0.0.1 --port 8000

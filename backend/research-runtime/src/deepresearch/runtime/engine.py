@@ -371,6 +371,7 @@ class ResearchEngine:
         if run.state in {"COMPLETED", "PARTIAL", "FAILED", "CANCELLED", "BLOCKED"}:
             return run
         case = self.get_case(run.case_id)
+        provider_name = str(getattr(self.provider, "name", self.provider.__class__.__name__))
         abandoned = [task for task in run.tasks if task.state == "RUNNING"]
         for task in abandoned:
             unfinished = next(
@@ -388,6 +389,8 @@ class ResearchEngine:
                 unfinished = ToolExecution(
                     task_id=task.id,
                     tool_name=task.tool_name,
+                    provider=provider_name,
+                    input_hash=self._task_input_hash(case, task),
                     status="UNKNOWN_EFFECT",
                     attempt_key=attempt_key,
                     result_hash=sha256(attempt_key.encode()).hexdigest(),
@@ -428,6 +431,8 @@ class ResearchEngine:
                 attempt = ToolExecution(
                     task_id=task.id,
                     tool_name=task.tool_name,
+                    provider=provider_name,
+                    input_hash=self._task_input_hash(case, task),
                     status="UNKNOWN_EFFECT",
                     attempt_key=attempt_key,
                     result_hash=attempt_hash,
@@ -464,6 +469,10 @@ class ResearchEngine:
                     )
                 self._ensure_lease(heartbeat_lost)
                 qualified = [self._qualify(record, task) for record in records]
+                attempt.evidence_count = len(qualified)
+                attempt.qualified_evidence_count = sum(record.qualification == "QUALIFIED" for record in qualified)
+                attempt.review_evidence_count = sum(record.qualification == "NEEDS_REVIEW" for record in qualified)
+                attempt.unqualified_evidence_count = sum(record.qualification == "UNQUALIFIED" for record in qualified)
                 existing_evidence = {
                     (record.id, record.content_hash): index for index, record in enumerate(run.evidence)
                 }
@@ -981,6 +990,12 @@ class ResearchEngine:
     def _ensure_lease(heartbeat_lost: Event | None) -> None:
         if heartbeat_lost is not None and heartbeat_lost.is_set():
             raise RunLeaseLostError("research run lease ownership was lost")
+
+    @staticmethod
+    def _task_input_hash(case: ResearchCase, task: ResearchTask) -> str:
+        case_input = case.model_dump_json(exclude={"created_at"})
+        task_input = task.model_dump_json(exclude={"state"})
+        return sha256(f"{case_input}:{task_input}".encode()).hexdigest()
 
     def _append_event(
         self,

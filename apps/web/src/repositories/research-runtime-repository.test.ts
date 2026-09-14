@@ -129,7 +129,8 @@ describe("ResearchRuntimeRepository", () => {
 
   it("preserves tool execution receipts from a completed run", async () => {
     const detailedRun = { ...run, tool_executions: [{
-      id: "tool-1", task_id: "market", tool_name: "research", status: "SUCCEEDED", result_hash: "a".repeat(16),
+      id: "tool-1", task_id: "market", tool_name: "research", provider: "finevidence-http", input_hash: "e".repeat(64), status: "SUCCEEDED", result_hash: "a".repeat(16),
+      evidence_count: 4, qualified_evidence_count: 2, review_evidence_count: 1, unqualified_evidence_count: 1,
       started_at: "2026-09-14T00:00:00.000Z", completed_at: "2026-09-14T00:00:01.000Z",
     }] };
     const fetchImpl = (async () => new Response(JSON.stringify(detailedRun), { status: 200 })) as typeof fetch;

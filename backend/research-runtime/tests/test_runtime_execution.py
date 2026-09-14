@@ -31,6 +31,7 @@ def test_engine_executes_dag_and_resumes_without_duplicate_tools(tmp_path) -> No
     engine = ResearchEngine(SQLiteStore(tmp_path / "runtime.sqlite3"), provider)
     case = ResearchCase(id="case-1", question="Assess ACME's margin durability", target="ACME")
     run = engine.create_run(case, [make_task("market"), make_task("thesis", ["market"])])
+    expected_input_hash = engine._task_input_hash(case, run.tasks[0])
 
     interrupted = engine.execute(run.id, stop_after_tasks=1)
     assert interrupted.state == "RUNNING"
@@ -39,6 +40,12 @@ def test_engine_executes_dag_and_resumes_without_duplicate_tools(tmp_path) -> No
     assert interrupted.plan.status == "VALIDATED"
     assert interrupted.plan.tasks[0].state == "PENDING"
     assert len(interrupted.tool_executions) == 1
+    assert interrupted.tool_executions[0].provider == "deterministic-demo"
+    assert interrupted.tool_executions[0].input_hash == expected_input_hash
+    assert interrupted.tool_executions[0].evidence_count == 2
+    assert interrupted.tool_executions[0].qualified_evidence_count == 1
+    assert interrupted.tool_executions[0].review_evidence_count == 1
+    assert interrupted.tool_executions[0].unqualified_evidence_count == 0
 
     resumed = engine.execute(run.id)
     assert resumed.state == "COMPLETED"
@@ -96,6 +103,10 @@ def test_engine_marks_missing_evidence_partial(tmp_path) -> None:
     assert result.memo.status == "DRAFT"
     assert result.tool_executions[0].status == "SUCCEEDED"
     assert result.tool_executions[0].result_hash == sha256(b"empty").hexdigest()
+    assert result.tool_executions[0].evidence_count == 0
+    assert result.tool_executions[0].qualified_evidence_count == 0
+    assert result.tool_executions[0].review_evidence_count == 0
+    assert result.tool_executions[0].unqualified_evidence_count == 0
     assert result.memo.unresolved_requirement_ids == ["risk:req-risk"]
     assert {"risk:req-risk"} <= set(result.memo.sections[0].unresolved_requirement_ids)
     assert all(section.body for section in result.memo.sections)
@@ -483,6 +494,9 @@ def test_engine_records_provider_failure_as_failed_tool_execution(tmp_path) -> N
     assert failure.error_message == message[:1000]
     assert failure.error_hash == sha256(f"RuntimeError:{message}".encode()).hexdigest()
     assert failure.result_hash == failure.error_hash
+    assert failure.provider == "deterministic-demo"
+    assert len(failure.input_hash or "") == 64
+    assert failure.evidence_count == 0
     assert len(failure.error_hash) == 64
     assert any(event["event_type"] == "RUN_FAILED" for event in engine.store.events(run.id))
 
@@ -703,6 +717,29 @@ def test_engine_blocks_legacy_running_task_without_attempt_and_can_mark_failed(t
     assert failed.state == "FAILED"
     assert failed.tasks[0].state == "FAILED"
     assert any(event["event_type"] == "TOOL_ATTEMPT_MARKED_FAILED" for event in store.events(run.id))
+
+
+def test_engine_loads_legacy_tool_receipt_with_execution_defaults(tmp_path) -> None:
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    engine = ResearchEngine(store, DeterministicEvidenceProvider())
+    run = engine.create_run(
+        ResearchCase(id="case-legacy-receipt", question="Assess ACME legacy receipt", target="ACME"),
+        [make_task("market")],
+    )
+    payload = store.get_run(run.id)
+    payload["tool_executions"] = [{
+        "id": "tool-legacy",
+        "task_id": "market",
+        "tool_name": "research",
+        "status": "SUCCEEDED",
+        "result_hash": "a" * 64,
+    }]
+    loaded = ResearchRun.model_validate(payload)
+
+    assert loaded.tool_executions[0].provider == "unknown"
+    assert loaded.tool_executions[0].input_hash is None
+    assert loaded.tool_executions[0].evidence_count == 0
+    assert loaded.tool_executions[0].unqualified_evidence_count == 0
 
 
 def _capture_error(errors, operation) -> None:

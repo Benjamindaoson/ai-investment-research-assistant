@@ -8,7 +8,7 @@ afterEach(cleanup);
 describe("RuntimeToolTrace", () => {
   it("renders successful and failed execution receipts without changing status", () => {
     render(<RuntimeToolTrace executions={[
-      { id: "tool-1", task_id: "market", tool_name: "research", status: "SUCCEEDED", result_hash: "a".repeat(16), started_at: "2026-09-14T00:00:00.000Z", completed_at: "2026-09-14T00:00:01.000Z" },
+      { id: "tool-1", task_id: "market", tool_name: "research", provider: "finevidence-http", input_hash: "e".repeat(64), status: "SUCCEEDED", result_hash: "a".repeat(16), evidence_count: 4, qualified_evidence_count: 2, review_evidence_count: 1, unqualified_evidence_count: 1, started_at: "2026-09-14T00:00:00.000Z", completed_at: "2026-09-14T00:00:01.000Z" },
       { id: "tool-2", task_id: "risk", tool_name: "research", status: "FAILED", result_hash: "b".repeat(16), started_at: "2026-09-14T00:00:02.000Z", completed_at: "2026-09-14T00:00:03.000Z", error_type: "TimeoutError", error_message: "provider timed out", error_hash: "c".repeat(64) },
     ]} />);
 
@@ -19,6 +19,9 @@ describe("RuntimeToolTrace", () => {
     expect(screen.getByText("Failure: TimeoutError: provider timed out")).toBeTruthy();
     expect(screen.getByText(`Diagnostic hash: ${"c".repeat(64)}`)).toBeTruthy();
     expect(screen.getByText("Started: 2026-09-14T00:00:02.000Z")).toBeTruthy();
+    expect(screen.getByText("Provider: finevidence-http")).toBeTruthy();
+    expect(screen.getByText(`Input hash: ${"e".repeat(64)}`)).toBeTruthy();
+    expect(screen.getByText("Evidence result: 4 total · 2 qualified · 1 needs review · 1 unqualified")).toBeTruthy();
   });
 
   it("renders an explicit empty state for historical runs", () => {

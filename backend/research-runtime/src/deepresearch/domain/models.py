@@ -205,9 +205,15 @@ class ToolExecution(DomainModel):
     id: str = Field(default_factory=lambda: f"tool-{uuid4().hex}")
     task_id: str
     tool_name: str
+    provider: str = Field(default="unknown", min_length=1, max_length=200)
+    input_hash: str | None = Field(default=None, min_length=64, max_length=64)
     status: Literal["SUCCEEDED", "FAILED", "UNKNOWN_EFFECT"]
     attempt_key: str = Field(default="", max_length=300)
     result_hash: str = Field(min_length=16, max_length=128)
+    evidence_count: int = Field(default=0, ge=0)
+    qualified_evidence_count: int = Field(default=0, ge=0)
+    review_evidence_count: int = Field(default=0, ge=0)
+    unqualified_evidence_count: int = Field(default=0, ge=0)
     started_at: datetime = Field(default_factory=utc_now)
     completed_at: datetime | None = Field(default_factory=utc_now)
     error_type: str | None = Field(default=None, max_length=200)
