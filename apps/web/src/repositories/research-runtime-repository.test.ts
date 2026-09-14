@@ -1,6 +1,6 @@
 import { describe, expect, it } from "vitest";
 import { ResearchRuntimeRepository } from "./research-runtime-repository";
-import { createResearchRuntimeService, type InvestmentMemory, type RuntimeEvent, type RuntimeMemo, type RuntimeRun, type RuntimeTrace, type ValuationScenarioInput, type ValuationScenarios } from "@/services/research-runtime-service";
+import { createResearchRuntimeService, type InvestmentMemory, type RuntimeEvent, type RuntimeHealth, type RuntimeMemo, type RuntimeRun, type RuntimeTrace, type ValuationScenarioInput, type ValuationScenarios } from "@/services/research-runtime-service";
 
 const trace: RuntimeTrace = {
   run_id: "run-1",
@@ -50,6 +50,7 @@ const run: RuntimeRun = {
 
 const repositoryFor = (fetchImpl: typeof fetch) => new ResearchRuntimeRepository(createResearchRuntimeService("http://runtime.test", fetchImpl));
 const events: RuntimeEvent[] = [{ seq: 1, run_id: "run-1", event_type: "RUN_CREATED", payload: { task_ids: ["market"] }, occurred_at: "2026-09-14T08:00:00.000000+08:00" }];
+const health: RuntimeHealth = { status: "ok", service: "financial-deepresearch-runtime", evidence_mode: "DETERMINISTIC_FIXTURE", evidence_provider: "deterministic-demo", planner: "deterministic-financial-planner · v1", synthesizer: "deterministic-evidence-synthesis · v1", tools: ["deterministic-research"] };
 
 describe("ResearchRuntimeRepository", () => {
   it("parses the runtime trace through the HTTP service boundary", async () => {
@@ -64,6 +65,14 @@ describe("ResearchRuntimeRepository", () => {
       return new Response(JSON.stringify(events), { status: 200 });
     }) as typeof fetch;
     await expect(repositoryFor(fetchImpl).getEvents("run-1")).resolves.toEqual(events);
+  });
+
+  it("reads non-secret provider readiness through the HTTP service boundary", async () => {
+    const fetchImpl = (async (input) => {
+      expect(String(input)).toBe("http://runtime.test/api/v1/health");
+      return new Response(JSON.stringify(health), { status: 200 });
+    }) as typeof fetch;
+    await expect(repositoryFor(fetchImpl).getHealth()).resolves.toEqual(health);
   });
 
   it("rejects event responses whose payload is not JSON object data", async () => {

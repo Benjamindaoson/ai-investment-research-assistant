@@ -17,9 +17,10 @@ import { ValuationScenarioForm } from "@/components/runtime/valuation-scenario-f
 import { RuntimeCaseHistory } from "@/components/runtime/runtime-case-history";
 import { RuntimeEvaluation } from "@/components/runtime/runtime-evaluation";
 import { RuntimeEventTrace } from "@/components/runtime/runtime-event-trace";
+import { RuntimeProviderReadiness } from "@/components/runtime/runtime-provider-readiness";
 import { RuntimeMemoExport } from "@/components/runtime/runtime-memo-export";
 import { RuntimeIcReview } from "@/components/runtime/runtime-ic-review";
-import { useCancelRuntimeRunMutation, useCreateRuntimeRerunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeCaseRunsQuery, useRuntimeEvaluationQuery, useRuntimeEventsQuery, useRuntimeMemoryQuery, useRuntimeRunQuery, useRuntimeTraceQuery } from "@/queries/use-runtime-run";
+import { useCancelRuntimeRunMutation, useCreateRuntimeRerunMutation, useExecuteRuntimeRunMutation, useReplanRuntimeRunMutation, useRuntimeCaseRunsQuery, useRuntimeEvaluationQuery, useRuntimeEventsQuery, useRuntimeHealthQuery, useRuntimeMemoryQuery, useRuntimeRunQuery, useRuntimeTraceQuery } from "@/queries/use-runtime-run";
 
 export function RuntimeRunWorkspace({ runId }: { runId: string }) {
   const router = useRouter();
@@ -30,6 +31,7 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
   const memoryQuery = useRuntimeMemoryQuery(runId, Boolean(query.data?.memo));
   const traceQuery = useRuntimeTraceQuery(runId);
   const eventsQuery = useRuntimeEventsQuery(runId, query.data?.state);
+  const healthQuery = useRuntimeHealthQuery(Boolean(query.data));
   const execute = useExecuteRuntimeRunMutation(runId);
   const replan = useReplanRuntimeRunMutation(runId);
   const cancel = useCancelRuntimeRunMutation(runId);
@@ -57,6 +59,7 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
         {(execute.isError || cancel.isError || replan.isError) && <p className="form-error" role="alert">{(execute.error ?? cancel.error ?? replan.error)?.message}</p>}
       </section>
       <RuntimePlanContext plan={run.plan} />
+      <RuntimeProviderReadiness health={healthQuery.data} isPending={healthQuery.isPending} error={healthQuery.error} />
       <RuntimeEvaluation evaluation={evaluationQuery.data} isPending={evaluationQuery.isPending} error={evaluationQuery.error} />
       <RuntimeCaseHistory runs={caseRunsQuery.data} activeRunId={run.id} isPending={caseRunsQuery.isPending} error={caseRunsQuery.error} onCreateRerun={createRerun} isRerunPending={rerun.isPending} rerunError={rerun.error} />
       <RuntimeTaskContract tasks={run.tasks} traceTasks={traceQuery.data?.tasks} />

@@ -187,6 +187,7 @@ button, a { -webkit-tap-highlight-color: transparent; }
 .runtime-tool-record > p { margin: var(--space-3) 0; overflow-wrap: anywhere; color: var(--color-ink-soft); font-size: var(--font-size-2xs); }
 .runtime-tool-record > header > span { border-radius: var(--radius-sm); background: var(--surface-subtle); padding: 3px 6px; font-size: var(--font-size-2xs); }
 .runtime-event-trace { margin-top: var(--space-3); }
+.runtime-provider-readiness { margin-top: var(--space-3); }
 .runtime-event-list { display: grid; gap: var(--space-2); padding: 0 var(--space-4) var(--space-4); }
 .runtime-event-record { border: var(--border-width) solid var(--border-color); border-left: 3px solid var(--color-accent); border-radius: var(--radius-md); padding: var(--space-3); }
 .runtime-event-record summary { cursor: pointer; list-style: none; }

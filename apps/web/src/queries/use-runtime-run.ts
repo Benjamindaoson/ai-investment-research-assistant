@@ -2,11 +2,12 @@
 
 import { useMutation, useQuery, useQueryClient } from "@tanstack/react-query";
 import { researchRuntimeRepository } from "@/repositories";
-import type { DecisionRecordInput, EvidenceLinkedFinancialAnalysisInput, InvestmentCommitteeReviewInput, RedTeamReviewInput, RuntimeCaseInput, RuntimeEvent, RuntimeResearchCase, RuntimeRun, RuntimeTrace, ValuationScenarioInput } from "@/services/research-runtime-service";
+import type { DecisionRecordInput, EvidenceLinkedFinancialAnalysisInput, InvestmentCommitteeReviewInput, RedTeamReviewInput, RuntimeCaseInput, RuntimeEvent, RuntimeHealth, RuntimeResearchCase, RuntimeRun, RuntimeTrace, ValuationScenarioInput } from "@/services/research-runtime-service";
 
 export const runtimeRunQueryKey = (runId: string) => ["runtime", "run", runId] as const;
 export const runtimeCaseRunsQueryKey = (caseId: string) => ["runtime", "case-runs", caseId] as const;
 export const runtimeEvaluationQueryKey = (runId: string) => ["runtime", "evaluation", runId] as const;
+export const runtimeHealthQueryKey = ["runtime", "health"] as const;
 export const runtimeCasesQueryKey = ["runtime", "cases"] as const;
 export const runtimeMemoryQueryKey = (runId: string) => ["runtime", "memory", runId] as const;
 export const runtimeTraceQueryKey = (runId: string) => ["runtime", "trace", runId] as const;
@@ -58,6 +59,10 @@ export function useRuntimeCaseRunsQuery(caseId: string) {
 
 export function useRuntimeEvaluationQuery(runId: string) {
   return useQuery({ queryKey: runtimeEvaluationQueryKey(runId), queryFn: () => researchRuntimeRepository.getEvaluation(runId), enabled: runId.length > 0 });
+}
+
+export function useRuntimeHealthQuery(enabled: boolean) {
+  return useQuery<RuntimeHealth>({ queryKey: runtimeHealthQueryKey, queryFn: () => researchRuntimeRepository.getHealth(), enabled, staleTime: 30_000 });
 }
 
 export function useRuntimeMemoryQuery(runId: string, enabled: boolean) {

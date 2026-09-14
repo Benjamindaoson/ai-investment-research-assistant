@@ -50,6 +50,17 @@ const evaluationResultSchema = z.object({
 });
 export type EvaluationResult = z.infer<typeof evaluationResultSchema>;
 
+const runtimeHealthSchema = z.object({
+  status: z.literal("ok"),
+  service: z.string(),
+  evidence_mode: z.enum(["LIVE_EXTERNAL", "DETERMINISTIC_FIXTURE", "CUSTOM"]),
+  evidence_provider: z.string().min(1),
+  planner: z.string().min(1),
+  synthesizer: z.string().min(1),
+  tools: z.array(z.string().min(1)),
+});
+export type RuntimeHealth = z.infer<typeof runtimeHealthSchema>;
+
 const researchMandateSchema = z.object({
   decision_type: z.enum(["INVESTMENT_COMMITTEE", "DUE_DILIGENCE", "SCREENING", "MONITORING", "STRATEGIC_REVIEW"]),
   time_horizon: z.string().min(1).max(100),
@@ -404,6 +415,7 @@ export interface ResearchRuntimeService {
   getRun(runId: string): Promise<RuntimeRun>;
   getCaseRuns(caseId: string): Promise<RuntimeRun[]>;
   getEvaluation(runId: string): Promise<EvaluationResult | null>;
+  getHealth(): Promise<RuntimeHealth>;
   getEvents(runId: string): Promise<RuntimeEvent[]>;
   executeRun(runId: string): Promise<RuntimeRun>;
   replanRun(runId: string): Promise<RuntimeRun>;
@@ -471,6 +483,10 @@ export class HttpResearchRuntimeService implements ResearchRuntimeService {
       if (error instanceof Error && error.message === "Research Runtime request failed with HTTP 404.") return null;
       throw error;
     }
+  }
+
+  async getHealth(): Promise<RuntimeHealth> {
+    return runtimeHealthSchema.parse(await this.requestJson("/api/v1/health", { headers: { accept: "application/json" } }));
   }
 
   async getEvents(runId: string): Promise<RuntimeEvent[]> {
@@ -602,6 +618,7 @@ class UnconfiguredResearchRuntimeService implements ResearchRuntimeService {
   async getCases(): Promise<RuntimeResearchCase[]> { return this.unavailable(); }
   async createCaseRun(): Promise<RuntimeCaseResult> { return this.unavailable(); }
   async getEvaluation(): Promise<EvaluationResult | null> { return this.unavailable(); }
+  async getHealth(): Promise<RuntimeHealth> { return this.unavailable(); }
   async getEvents(): Promise<RuntimeEvent[]> { return this.unavailable(); }
   async getRun(): Promise<RuntimeRun> { return this.unavailable(); }
   async getCaseRuns(): Promise<RuntimeRun[]> { return this.unavailable(); }

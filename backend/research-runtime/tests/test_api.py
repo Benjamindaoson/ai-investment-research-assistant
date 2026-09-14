@@ -635,6 +635,32 @@ def test_api_uses_deterministic_provider_only_without_fin_evidence_url(monkeypat
     assert CapturingDeterministicProvider.created is True
 
 
+def test_api_health_identifies_deterministic_runtime_without_secrets(tmp_path, monkeypatch) -> None:
+    monkeypatch.delenv("FIN_EVIDENCE_BASE_URL", raising=False)
+    monkeypatch.delenv("FINEVIDENCE_BASE_URL", raising=False)
+    response = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3"))).get("/api/v1/health")
+
+    assert response.status_code == 200
+    payload = response.json()
+    assert payload["status"] == "ok"
+    assert payload["evidence_mode"] == "DETERMINISTIC_FIXTURE"
+    assert payload["evidence_provider"] == "deterministic-demo"
+    assert payload["planner"] == "deterministic-financial-planner · v1"
+    assert payload["synthesizer"] == "deterministic-evidence-synthesis · v1"
+    assert "authorization" not in payload
+
+
+def test_api_health_identifies_external_provider(tmp_path) -> None:
+    class ExternalProvider(DeterministicEvidenceProvider):
+        name = "finevidence-http"
+        qualification_authority = "external"
+
+    response = TestClient(create_app(SQLiteStore(tmp_path / "runtime.sqlite3"), provider=ExternalProvider())).get("/api/v1/health")
+
+    assert response.json()["evidence_mode"] == "LIVE_EXTERNAL"
+    assert response.json()["evidence_provider"] == "finevidence-http"
+
+
 def test_api_persists_and_reads_latest_run_evaluation(tmp_path) -> None:
     store_path = tmp_path / "runtime.sqlite3"
     client = TestClient(create_app(SQLiteStore(store_path)))

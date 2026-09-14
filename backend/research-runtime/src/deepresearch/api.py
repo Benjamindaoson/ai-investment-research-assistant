@@ -136,11 +136,13 @@ def create_app(
             }
         )
     lease_seconds = float(os.environ.get("RESEARCH_RUNTIME_LEASE_SECONDS", "300"))
+    configured_planner = planner or create_configured_research_planner()
+    configured_synthesizer = synthesizer or create_configured_research_synthesizer()
     engine = ResearchEngine(
         runtime_store,
         configured_provider,
-        planner=planner or create_configured_research_planner(),
-        synthesizer=synthesizer or create_configured_research_synthesizer(),
+        planner=configured_planner,
+        synthesizer=configured_synthesizer,
         tool_registry=configured_registry,
         lease_seconds=lease_seconds,
     )
@@ -163,8 +165,18 @@ def create_app(
     )
 
     @app.get("/api/v1/health")
-    def health() -> dict[str, str]:
-        return {"status": "ok", "service": "financial-deepresearch-runtime"}
+    def health() -> dict[str, Any]:
+        authority = getattr(configured_provider, "qualification_authority", "custom")
+        evidence_mode = {"external": "LIVE_EXTERNAL", "runtime": "DETERMINISTIC_FIXTURE"}.get(authority, "CUSTOM")
+        return {
+            "status": "ok",
+            "service": "financial-deepresearch-runtime",
+            "evidence_mode": evidence_mode,
+            "evidence_provider": getattr(configured_provider, "name", type(configured_provider).__name__),
+            "planner": f"{configured_planner.name} · {configured_planner.version}",
+            "synthesizer": f"{configured_synthesizer.name} · {configured_synthesizer.version}",
+            "tools": list((configured_registry or ResearchToolRegistry.from_provider(configured_provider)).names),
+        }
 
     @app.post("/api/v1/financial-analysis")
     def analyze_financials(snapshot: FinancialSnapshot) -> dict[str, Any]:
