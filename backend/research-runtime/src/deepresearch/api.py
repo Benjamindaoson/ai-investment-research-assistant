@@ -33,6 +33,11 @@ from deepresearch.runtime.financial import (
     ScenarioValuationTool,
     financial_snapshot_from_facts,
 )
+from deepresearch.runtime.mvp import (
+    MvpWorkflowIncompleteError,
+    MvpWorkflowRequest,
+    complete_mvp_workflow,
+)
 from deepresearch.runtime.planner import (
     PlannerProviderError,
     ResearchPlanner,
@@ -325,6 +330,25 @@ def create_app(
             status_code=status.HTTP_202_ACCEPTED if queued else status.HTTP_200_OK,
             content={"run_id": run.id, "state": run.state, "queued": queued},
         )
+
+    @app.post("/api/v1/research-runs/{run_id}/mvp-complete")
+    def complete_mvp(run_id: str, request: MvpWorkflowRequest) -> dict[str, Any]:
+        try:
+            return complete_mvp_workflow(
+                engine,
+                financial_analysis,
+                valuation_scenarios,
+                run_id,
+                request,
+            ).model_dump(mode="json")
+        except KeyError as error:
+            raise HTTPException(status_code=404, detail="research run not found") from error
+        except MvpWorkflowIncompleteError as error:
+            raise HTTPException(status_code=409, detail={"message": str(error), "state": error.state}) from error
+        except (RunLeaseConflictError, RunLeaseLostError) as error:
+            raise HTTPException(status_code=409, detail=str(error)) from error
+        except ValueError as error:
+            raise HTTPException(status_code=422, detail=str(error)) from error
 
     @app.post("/api/v1/research-runs/{run_id}/replan")
     def replan(run_id: str) -> dict[str, Any]:

@@ -36,6 +36,33 @@ worker 复用同一 ResearchEngine、lease、checkpoint 和 failure semantics；
 `RUNNING`、`PARTIAL` run 可在进程中断后恢复。当前 worker 是本地 SQLite
 进程，不等同于 Redis/PostgreSQL 级别的分布式调度。
 
+## 单机 MVP 完整闭环
+
+要验证产品的完整后端主线，先创建一个 case/run 并执行研究，再调用：
+
+```text
+POST /api/v1/research-runs/{run_id}/mvp-complete
+```
+
+请求必须显式提供 `financial_facts`、三情景 `valuation`、一条带
+counter/conflicting evidence 的 `red_team`、`BULL/BEAR/FINANCIAL/INDUSTRY/PARTNER`
+五类 IC review，以及人工 `decision`。这个入口会在本地同步完成：
+
+```text
+research execution
+→ typed financial facts / calculation ledger
+→ Bull / Base / Bear valuation
+→ red-team review
+→ five-role IC review
+→ human decision
+→ deterministic evaluation artifact
+```
+
+所有事实和 review evidence 都必须引用当前 run 中的 `QUALIFIED` evidence；
+系统不会从 excerpt 猜数字，也不会自动伪造 IC 结论。返回的 receipt 包含
+各 artifact 的标识，详情继续通过现有 GET endpoints 查询。这个接口是单机
+MVP 编排入口，不是生产级事务工作流；长任务仍可使用上面的 enqueue + worker。
+
 需要把已验证的财务数值送入 calculation ledger 时，可调用
 `POST /api/v1/research-runs/{run_id}/financial-facts`。每个 fact 必须明确
 声明 snapshot field、decimal value、period、unit、currency、basis 和
@@ -151,6 +178,12 @@ memo/memory 投影和人工 review。synthesis 请求/响应 hash 会保存在 t
   fetches prices or infers missing inputs. When these artifacts are recorded,
   the memo projection retains the financial input hash and valuation artifact
   ID for review/export traceability.
+- The single-machine MVP endpoint
+  `POST /api/v1/research-runs/{run_id}/mvp-complete` composes the typed facts,
+  financial calculation, valuation, red-team, five-role IC review, human
+  decision, and deterministic evaluation steps. It requires explicit inputs
+  and qualified evidence at every review boundary; it is the canonical local
+  end-to-end smoke path, not a production transaction coordinator.
 - When the configured FinEvidence provider exposes claim verification, every
   evidence-backed claim is sent to /api/v1/evidence/verify. Unsupported claims
   make the run PARTIAL; provider transport or contract failures make it FAILED
