@@ -10,6 +10,7 @@ from deepresearch.runtime.evidence import (
     EvidenceProviderError,
     FinEvidenceClient,
     HttpEvidenceProvider,
+    HttpTableEvidenceProvider,
 )
 
 
@@ -176,6 +177,39 @@ def test_http_provider_does_not_promote_partial_coverage(monkeypatch: pytest.Mon
     task, case = make_inputs()
 
     assert HttpEvidenceProvider("https://evidence.example").collect(task, case)[0].qualification == "NEEDS_REVIEW"
+
+
+def test_http_table_provider_uses_table_query_and_shared_provenance(monkeypatch: pytest.MonkeyPatch) -> None:
+    router = Router(
+        {
+            "/api/v1/table/query": {"api_version": "v1", "evidence": [evidence_object()]},
+            "/api/v1/evidence/coverage": {"api_version": "v1", "coverage_score": 1.0, "independent_coverage": 1.0, "critical_coverage": 1.0, "missing_requirements": [], "status": "ELIGIBLE", "evidence": [evidence_object(status="SUPPORTED")]},
+            "/api/v1/evidence/ev-1/citation": citation(),
+        }
+    )
+    monkeypatch.setattr("deepresearch.runtime.evidence.urlopen", router)
+    task, case = make_inputs()
+    task = task.model_copy(
+        update={
+            "evidence_requirements": [
+                EvidenceRequirement(
+                    id="market-signal",
+                    description="ACME revenue trend",
+                    entity="ACME",
+                    metric="revenue",
+                    period="FY2025",
+                )
+            ]
+        }
+    )
+
+    records = HttpTableEvidenceProvider("https://evidence.example").collect(task, case)
+
+    assert router.paths == ["/api/v1/table/query", "/api/v1/evidence/coverage", "/api/v1/evidence/ev-1/citation"]
+    assert router.payloads[0] == {"entity": "ACME", "metric": "revenue", "period": "FY2025", "top_k": 20}
+    assert records[0].qualification == "QUALIFIED"
+    assert records[0].provider == "finevidence-table-http"
+    assert records[0].provenance["finevidence"]["citation"]["evidence_id"] == records[0].provenance["finevidence"]["evidence_id"]
 
 
 def test_http_provider_bounds_long_page_excerpt(monkeypatch: pytest.MonkeyPatch) -> None:

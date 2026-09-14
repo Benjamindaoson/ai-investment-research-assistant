@@ -200,16 +200,16 @@ class HttpEvidenceProvider:
     name = "finevidence-http"
     qualification_authority = "external"
 
-    def __init__(self, base_url: str, timeout_seconds: float = 10.0) -> None:
-        self.client = FinEvidenceClient(base_url, timeout_seconds)
+    def __init__(self, base_url: str | FinEvidenceClient, timeout_seconds: float = 10.0) -> None:
+        self.client = base_url if isinstance(base_url, FinEvidenceClient) else FinEvidenceClient(base_url, timeout_seconds)
 
     def verify_claim(self, claim: str, evidence_ids: list[str]) -> bool:
         return self.client.verify(claim, evidence_ids).supported
 
     def collect(self, task: ResearchTask, case: ResearchCase) -> list[EvidenceRecord]:
         query = " ".join([case.target, case.question, task.title, task.purpose, *(item.description for item in task.evidence_requirements)])
-        search = self.client.search(query, top_k=10)
-        evidence_ids = [item.evidence_id for item in search.evidence]
+        evidence = self._retrieve(query, case, task)
+        evidence_ids = [item.evidence_id for item in evidence]
         coverages: list[tuple[EvidenceRequirement, FinEvidenceCoverageResponse]] = []
         for requirement in task.evidence_requirements:
             coverages.append(
@@ -222,16 +222,20 @@ class HttpEvidenceProvider:
                     ),
                 )
             )
-        citations = {item.evidence_id: self.client.citation(item.evidence_id) for item in search.evidence}
+        citations = {item.evidence_id: self.client.citation(item.evidence_id) for item in evidence}
         records: list[EvidenceRecord] = []
         for requirement, coverage in coverages:
             supported = {item.evidence_id: item for item in coverage.evidence}
-            for item in search.evidence:
+            for item in evidence:
                 citation = citations[item.evidence_id]
                 if citation.evidence_id != item.evidence_id or citation.document_id != item.document_id:
                     raise EvidenceProviderError("citation does not match the searched evidence")
                 records.append(self._record(item, citation, task, case, requirement, coverage.status, supported.get(item.evidence_id)))
         return records
+
+    def _retrieve(self, query: str, case: ResearchCase, task: ResearchTask) -> list[FinEvidenceObject]:
+        del case, task
+        return self.client.search(query, top_k=10).evidence
 
     @staticmethod
     def _requirement_payload(requirement: EvidenceRequirement, target: str) -> dict[str, Any]:
@@ -315,6 +319,20 @@ class HttpEvidenceProvider:
                 },
             },
         )
+
+
+class HttpTableEvidenceProvider(HttpEvidenceProvider):
+    """Exact metadata-first table evidence adapter for FinEvidence v1."""
+
+    name = "finevidence-table-http"
+
+    def _retrieve(self, query: str, case: ResearchCase, task: ResearchTask) -> list[FinEvidenceObject]:
+        del query
+        requirements = task.evidence_requirements
+        entity = next((item.entity for item in requirements if item.entity), case.target)
+        metric = next((item.metric for item in requirements if item.metric), None)
+        period = next((item.period for item in requirements if item.period), None)
+        return self.client.table_query(entity=entity, metric=metric, period=period, top_k=20).evidence
 
 
 class DeterministicEvidenceProvider:

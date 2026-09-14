@@ -3,7 +3,11 @@ import os
 import pytest
 
 from deepresearch.domain.models import EvidenceRequirement, ResearchCase, ResearchTask
-from deepresearch.runtime.evidence import FinEvidenceClient, HttpEvidenceProvider
+from deepresearch.runtime.evidence import (
+    FinEvidenceClient,
+    HttpEvidenceProvider,
+    HttpTableEvidenceProvider,
+)
 
 
 @pytest.mark.integration
@@ -41,19 +45,24 @@ def test_real_finevidence_v1_chain_preserves_identity_and_provenance() -> None:
     )
 
     records = HttpEvidenceProvider(base_url, timeout).collect(task, case)
+    table_records = HttpTableEvidenceProvider(base_url, timeout).collect(task, case)
 
-    for record in records:
-        assert record.provider == "finevidence-http"
-        assert record.provenance_complete
-        finevidence = record.provenance["finevidence"]
-        assert finevidence["api_version"] == "v1"
-        assert finevidence["evidence_id"]
-        assert finevidence["document_id"] == record.source_id
-        assert finevidence["coverage_status"] in {"ELIGIBLE", "PARTIAL", "INSUFFICIENT"}
-        assert finevidence["citation"]["evidence_id"] == finevidence["evidence_id"]
-        assert finevidence["citation"]["document_id"] == finevidence["document_id"]
-        assert finevidence["citation"]["source_url"] == record.source_url
-        assert finevidence["citation"]["page_number"] >= 1
-        assert len(record.content_hash or "") == 64
-        if finevidence["coverage_status"] != "ELIGIBLE":
-            assert record.qualification != "QUALIFIED"
+    for expected_provider, provider_records in (
+        ("finevidence-http", records),
+        ("finevidence-table-http", table_records),
+    ):
+        for record in provider_records:
+            assert record.provider == expected_provider
+            assert record.provenance_complete
+            finevidence = record.provenance["finevidence"]
+            assert finevidence["api_version"] == "v1"
+            assert finevidence["evidence_id"]
+            assert finevidence["document_id"] == record.source_id
+            assert finevidence["coverage_status"] in {"ELIGIBLE", "PARTIAL", "INSUFFICIENT"}
+            assert finevidence["citation"]["evidence_id"] == finevidence["evidence_id"]
+            assert finevidence["citation"]["document_id"] == finevidence["document_id"]
+            assert finevidence["citation"]["source_url"] == record.source_url
+            assert finevidence["citation"]["page_number"] >= 1
+            assert len(record.content_hash or "") == 64
+            if finevidence["coverage_status"] != "ELIGIBLE":
+                assert record.qualification != "QUALIFIED"

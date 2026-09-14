@@ -35,6 +35,11 @@ qualification authority 与 claim verification 也跟随任务实际解析到的
 未注入 registry 时，现有 deterministic/external/research aliases 会映射到构造
 函数传入的单一 provider，保持旧调用方兼容。
 
+当 API 使用真实 `FIN_EVIDENCE_BASE_URL` 自动构造默认 registry 时，还会注册
+`financial-table`。它只通过 FinEvidence `/api/v1/table/query` 获取 exact
+metadata-first candidate evidence，仍然必须经过 coverage/citation；不会把
+table payload 自动转换成 FinancialSnapshot 或投资结论。
+
 `EvidenceRequirement` 还会携带 FinEvidence coverage 所需的 fact type、role、
 entity/metric/period 等 slots、criticality 和 evidence role。HTTP provider
 原样传递这些字段；缺少的可选 slots 不会被伪造，entity 才会回退到 case target。

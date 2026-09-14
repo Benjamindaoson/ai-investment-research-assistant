@@ -23,6 +23,7 @@ from deepresearch.runtime.evidence import (
     DeterministicEvidenceProvider,
     EvidenceProvider,
     HttpEvidenceProvider,
+    HttpTableEvidenceProvider,
 )
 from deepresearch.runtime.financial import FinancialAnalysisTool, ScenarioValuationTool
 from deepresearch.runtime.planner import (
@@ -112,13 +113,24 @@ def create_app(
         base_url = os.environ.get("FIN_EVIDENCE_BASE_URL") or os.environ.get("FINEVIDENCE_BASE_URL")
         timeout = float(os.environ.get("FIN_EVIDENCE_TIMEOUT_SECONDS") or os.environ.get("FINEVIDENCE_TIMEOUT_SECONDS", "120"))
         configured_provider = HttpEvidenceProvider(base_url, timeout) if base_url else DeterministicEvidenceProvider()
+    configured_registry = tool_registry
+    if configured_registry is None and isinstance(configured_provider, HttpEvidenceProvider) and hasattr(configured_provider, "client"):
+        configured_registry = ResearchToolRegistry(
+            {
+                **{
+                    name: configured_provider
+                    for name in ("deterministic-research", "external-evidence", "research", "evidence.search")
+                },
+                "financial-table": HttpTableEvidenceProvider(configured_provider.client),
+            }
+        )
     lease_seconds = float(os.environ.get("RESEARCH_RUNTIME_LEASE_SECONDS", "300"))
     engine = ResearchEngine(
         runtime_store,
         configured_provider,
         planner=planner or create_configured_research_planner(),
         synthesizer=synthesizer or create_configured_research_synthesizer(),
-        tool_registry=tool_registry,
+        tool_registry=configured_registry,
         lease_seconds=lease_seconds,
     )
     financial_analysis = FinancialAnalysisTool()

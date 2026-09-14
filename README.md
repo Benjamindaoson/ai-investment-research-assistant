@@ -18,6 +18,9 @@ for the task.
 Evidence requirements preserve FinEvidence-aligned fact type, role, criticality,
 evidence role, and financial/source slots from the research plan through the
 coverage request; missing values remain missing rather than being inferred.
+Real FinEvidence configuration also exposes the registered `financial-table`
+data tool for exact entity/metric/period candidate evidence; it does not infer
+financial values or bypass the existing qualification gate.
 
 ## Canonical architecture
 
