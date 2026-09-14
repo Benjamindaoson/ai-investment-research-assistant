@@ -165,7 +165,11 @@ class LLMResearchSynthesizer:
                         "role": "system",
                         "content": (
                             "Return only JSON with claims and thesis. Each task must have exactly one claim. "
-                            "Only cite evidence IDs present in the supplied QUALIFIED evidence. "
+                            "Only cite evidence IDs present in the supplied QUALIFIED evidence and belonging to "
+                            "the same task as the claim. Every claim statement must be directly entailed by its "
+                            "cited evidence excerpt; do not generalize beyond the source or combine unsupported "
+                            "facts. Use cautious insufficiency language when direct support is missing, and keep "
+                            "evidence_ids empty so the runtime leaves that claim NEEDS_REVIEW. "
                             "Use the evidence stance, including counter and conflicting evidence, in the scenarios. "
                             "Do not invent facts, citations, numbers, or evidence IDs. "
                             'Shape: {"claims":[{"task_id":"...","statement":"...",'

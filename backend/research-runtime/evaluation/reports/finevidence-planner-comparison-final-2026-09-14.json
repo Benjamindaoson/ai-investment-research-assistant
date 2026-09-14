@@ -1,0 +1,171 @@
+{
+  "schema": "finevidence-planner-comparison-v2",
+  "generated_at": "2026-09-14T10:11:29.408399+00:00",
+  "catalog_observation": {
+    "catalog_size": 984,
+    "endpoint": "http://127.0.0.1:8000",
+    "same_endpoint_for_both_runs": true,
+    "status": "ok"
+  },
+  "same_catalog_comparison": {
+    "deterministic_planner": {
+      "evaluation": {
+        "case_hash": "e7052c226353c2e8f351f409161bfc84b44455411871b6d3bc5faf256ec997ad",
+        "case_id": "LLM-PLANNER-REGRESSION-001",
+        "checks": [
+          {
+            "detail": "observed=FAILED, expected=COMPLETED",
+            "name": "terminal_state",
+            "status": "FAIL"
+          },
+          {
+            "detail": "observed=30, minimum=1",
+            "name": "qualified_evidence",
+            "status": "PASS"
+          },
+          {
+            "detail": "at least one claim must link to evidence",
+            "name": "evidence_linked_claim",
+            "status": "FAIL"
+          }
+        ],
+        "evaluated_at": "2026-09-14T10:01:03.656938Z",
+        "evaluator": "deterministic-run-scorer-v1",
+        "id": "evaluation-df8d64f653eb44eb991efc3779a24f5f",
+        "passed": false,
+        "run_id": "run-88f34cb0882e4d0887e3c515e0ee0dc3"
+      },
+      "metrics": {
+        "claim_count": 0,
+        "claim_verification_receipt_count": 0,
+        "claim_verification_support_rate": null,
+        "counter_evidence_coverage_rate": 1.0,
+        "evidence_count": 30,
+        "memo_ready": false,
+        "memo_section_count": 0,
+        "memo_status": null,
+        "qualified_evidence_rate": 1.0,
+        "state": "FAILED",
+        "unresolved_requirement_rate": 0.0
+      },
+      "plan_score": {
+        "case_hash": "cea76544efa2835a8e0eb70cfd96ab7ab3b2b5671a3c3c78852c0d31fb5670cf",
+        "case_id": "LLM-PLANNER-REGRESSION-001",
+        "checks": [
+          {
+            "detail": "missing=[], observed=3, minimum=3",
+            "name": "task_coverage",
+            "status": "PASS"
+          },
+          {
+            "detail": "observed={'market': [], 'fundamentals': [], 'risk': ['fundamentals', 'market']}, expected={}",
+            "name": "dependency_edges",
+            "status": "PASS"
+          },
+          {
+            "detail": "missing_task_ids=[]",
+            "name": "evidence_requirements",
+            "status": "PASS"
+          },
+          {
+            "detail": "missing_task_ids=[]",
+            "name": "counter_evidence",
+            "status": "PASS"
+          },
+          {
+            "detail": "missing_task_ids=[]",
+            "name": "all_tasks_have_evidence_requirements",
+            "status": "PASS"
+          },
+          {
+            "detail": "observed_task_ids=['risk']",
+            "name": "counter_evidence_anywhere",
+            "status": "PASS"
+          },
+          {
+            "detail": "invalid_tools=[], allowed=['deterministic-research', 'evidence.search', 'external-evidence', 'financial-table', 'research']",
+            "name": "tool_contract",
+            "status": "PASS"
+          },
+          {
+            "detail": "observed=3, maximum=5",
+            "name": "task_ceiling",
+            "status": "PASS"
+          },
+          {
+            "detail": "duplicate_titles=[]",
+            "name": "duplicate_tasks",
+            "status": "PASS"
+          }
+        ],
+        "evaluated_at": "2026-09-14T10:01:03.669480Z",
+        "evaluator": "deterministic-plan-scorer-v1",
+        "id": "evaluation-b98c6b9ee3ae4d889b267ec14ef46173",
+        "passed": true,
+        "run_id": null
+      },
+      "planner": "deterministic-financial-planner",
+      "run_id": "run-88f34cb0882e4d0887e3c515e0ee0dc3"
+    },
+    "llm_generated_plan_replay": {
+      "planner": "llm:claude-opus-4-8",
+      "run_id": "run-6a7caddf7abc4f66b1c624585162a5e6",
+      "case_id": "LLM-PLANNER-REGRESSION-001",
+      "question": "Assess ACME's revenue durability, margin resilience, competitive position, and downside risks.",
+      "scope": "same_catalog_regression",
+      "metrics": {
+        "claim_count": 4,
+        "claim_verification_receipt_count": 4,
+        "claim_verification_support_rate": 0.0,
+        "counter_evidence_coverage_rate": 1.0,
+        "evidence_count": 90,
+        "memo_ready": false,
+        "memo_section_count": 5,
+        "memo_status": "DRAFT",
+        "qualified_evidence_rate": 1.0,
+        "state": "PARTIAL",
+        "unresolved_requirement_rate": 0.0
+      },
+      "evaluation_note": "Real LLM planner regression replay on the same FinEvidence endpoint/catalog observation. The run reached PARTIAL and remains DRAFT because the external claim-verification gate did not support the generated claims."
+    },
+    "metrics_definition": {
+      "qualified_evidence_rate": "qualified evidence records / observed evidence records",
+      "claim_verification_support_rate": "supported claim verification receipts / claim verification receipts",
+      "unresolved_requirement_rate": "unresolved requirements / total requirements",
+      "memo_readiness": "COMPLETED run plus READY_FOR_REVIEW memo",
+      "counter_evidence_coverage_rate": "counter requirements with qualified counter/conflicting evidence / counter requirements"
+    },
+    "interpretation": "Both planners used the same observed FinEvidence catalog endpoint. The deterministic branch failed before producing a claim-linked memo in this regression attempt; the LLM branch produced a structurally complete draft but failed the external claim-verification gate. These are observed outcomes, not evidence that either planner is intrinsically superior."
+  },
+  "completed_reference_run": {
+    "planner": "deterministic-financial-planner",
+    "run_id": "run-cb32c21afd84419badce9c4c0a722df9",
+    "case_id": "case-d23213b105",
+    "question": "Assess ACME margin durability using supporting and disconfirming evidence.",
+    "scope": "completed_reference_run",
+    "metrics": {
+      "state": "COMPLETED",
+      "evidence_count": 30,
+      "qualified_evidence_rate": 1.0,
+      "claim_count": 3,
+      "claim_verification_receipt_count": 3,
+      "claim_verification_support_rate": 1.0,
+      "unresolved_requirement_rate": 0.0,
+      "counter_evidence_coverage_rate": 1.0,
+      "memo_status": "READY_FOR_REVIEW",
+      "memo_ready": true,
+      "memo_section_count": 5
+    },
+    "evaluation_note": "This is the persisted deterministic ACME run used for the delivered PDF. It is a completed reference run, not the exact LLM regression case."
+  },
+  "artifacts": {
+    "llm_regression_report": "backend/research-runtime/evaluation/reports/llm-planner-regression-2026-09-14.json",
+    "completed_deterministic_snapshot": "backend/research-runtime/evaluation/reports/deterministic-run-cb32c21-snapshot.json",
+    "investment_memo_pdf": "output/pdf/financial-deepresearch-memo-run-cb32c21afd84419badce9c4c0a722df9.pdf"
+  },
+  "limitations": [
+    "The comparison uses a live local FinEvidence catalog observation, not a frozen immutable catalog snapshot.",
+    "The completed deterministic reference run and the exact LLM regression case have different persisted case IDs; the same-catalog comparison is the exact regression pair, while the completed reference is included to document a verified end-to-end memo artifact.",
+    "The LLM provider response is real and configured through existing environment variables; no API key is included in this artifact."
+  ]
+}

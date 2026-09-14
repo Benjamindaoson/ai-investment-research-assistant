@@ -13,6 +13,7 @@ from deepresearch.persistence.store import SQLiteStore
 from deepresearch.runtime.engine import ResearchEngine, RunLeaseConflictError, RunLeaseLostError
 from deepresearch.runtime.evidence import DeterministicEvidenceProvider, EvidenceProviderError
 from deepresearch.runtime.planner import research_input_hash
+from deepresearch.runtime.synthesis import SynthesisClaimDraft, SynthesisDraft, SynthesisThesisDraft
 
 
 def make_task(task_id: str, depends_on: list[str] | None = None) -> ResearchTask:
@@ -400,6 +401,56 @@ def test_engine_requires_external_claim_verification_for_completion(tmp_path) ->
     assert verification.verification_supported is False
     assert len(verification.input_hash or "") == 64
     assert any(event["event_type"] == "CLAIM_VERIFICATION_COMPLETED" for event in engine.store.events(run.id))
+    verification_trace = engine.trace(run.id)["claim_verification"]
+    assert verification_trace[0]["claim_id"] == result.claims[0].id
+    assert verification_trace[0]["evidence"][0]["qualification"] == "QUALIFIED"
+    assert verification_trace[0]["verifier_response"]["supported"] is False
+    assert "supported=false" in verification_trace[0]["evidence_gaps"][-1]
+
+
+def test_engine_rejects_cross_task_claim_evidence(tmp_path) -> None:
+    class CrossTaskSynthesizer:
+        name = "cross-task-test"
+        version = "v1"
+
+        def synthesize(self, case, run):
+            evidence = next(item for item in run.evidence if item.task_id == "risk")
+            return SynthesisDraft(
+                claims=[
+                    SynthesisClaimDraft(
+                        task_id="market",
+                        statement="Market claim.",
+                        evidence_ids=[evidence.id],
+                        confidence=0.5,
+                    ),
+                    SynthesisClaimDraft(
+                        task_id="risk",
+                        statement="Risk claim.",
+                        evidence_ids=[evidence.id],
+                        confidence=0.5,
+                    ),
+                ],
+                thesis=SynthesisThesisDraft(statement="Thesis.", bull="Bull.", base="Base.", bear="Bear."),
+            )
+
+    engine = ResearchEngine(
+        SQLiteStore(tmp_path / "runtime.sqlite3"),
+        DeterministicEvidenceProvider(),
+        synthesizer=CrossTaskSynthesizer(),
+    )
+    run = engine.create_run(
+        ResearchCase(id="case-cross-task", question="Assess ACME evidence", target="ACME"),
+        [make_task("market"), make_task("risk")],
+    )
+
+    result = engine.execute(run.id)
+
+    assert result.state == "FAILED"
+    assert any(
+        event["event_type"] == "RUN_FAILED"
+        and "another task" in event["payload"]["reason"]
+        for event in engine.store.events(run.id)
+    )
 
 
 def test_engine_records_claim_verification_transport_failure(tmp_path) -> None:
@@ -442,6 +493,15 @@ def test_engine_records_claim_verification_transport_failure(tmp_path) -> None:
     assert verification.error_message == "verification unavailable"
     assert verification.error_hash is not None
     assert any(event["event_type"] == "CLAIM_VERIFICATION_FAILED" for event in engine.store.events(run.id))
+    verification_trace = engine.trace(run.id)["claim_verification"]
+    assert verification_trace[0]["claim_id"] == verification.claim_id
+    assert verification_trace[0]["claim_status"] == "NOT_PERSISTED"
+    assert verification_trace[0]["evidence_gaps"] == [
+        "claim record was not persisted",
+        "claim cites no evidence records",
+        "verifier failed: EvidenceProviderError",
+    ]
+    assert verification_trace[0]["verifier_response"]["error_message"] == "verification unavailable"
     assert any(
         event["event_type"] == "RUN_FAILED" and "verification unavailable" in event["payload"]["reason"]
         for event in engine.store.events(run.id)

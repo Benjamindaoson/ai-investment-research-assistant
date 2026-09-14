@@ -13,7 +13,8 @@ python -m venv .venv
 
 健康检查：`http://127.0.0.1:8000/api/v1/health`。运行结果可通过
 `/api/v1/research-runs/{run_id}/trace` 查看证据资格、provenance 完整性和
-claim-to-evidence 链接。运行后可通过
+claim-to-evidence 链接；其中 `claim_verification` 会按 Claim 展示证据
+资格、FinEvidence coverage、验证响应和可解释的 evidence gaps。运行后可通过
 `POST /api/v1/research-runs/{run_id}/evaluate` 写入 golden-case evaluation，
 再用 `GET /api/v1/research-runs/{run_id}/evaluation` 读取最新结果；所有历史
 artifact 保留在 SQLite 中。Completed/partial run 的 deterministic scorer 还会
@@ -93,6 +94,27 @@ research execution
 系统不会从 excerpt 猜数字，也不会自动伪造 IC 结论。返回的 receipt 包含
 各 artifact 的标识，详情继续通过现有 GET endpoints 查询。这个接口是单机
 MVP 编排入口，不是生产级事务工作流；长任务仍可使用上面的 enqueue + worker。
+
+## 本地评测与投资报告
+
+真实 LLM planner 回归、同一 FinEvidence catalog 的 deterministic/LLM 对比和
+已持久化 run 的 PDF memo 都是本地 artifact，不改变 runtime 的 canonical 依赖方向：
+
+```powershell
+python tools/export_runtime_snapshot.py `
+  --database-url "postgresql://deepresearch:deepresearch@127.0.0.1:5432/deepresearch" `
+  --run-id <completed-run-id> `
+  --output evaluation/reports/run-snapshot.json
+
+python tools/export_investment_report_pdf.py `
+  --snapshot evaluation/reports/run-snapshot.json `
+  --output ../../output/pdf/investment-memo.pdf
+```
+
+PDF 只接受已经持久化的 run snapshot，保留 thesis、Bull/Base/Bear、反证、
+Claim verification receipts、memo sections、source locator 和 provenance；
+`PARTIAL`/`DRAFT` 不会被渲染成已批准结论。比较报告中的 `memo_ready` 只有在
+run 为 `COMPLETED` 且 memo 为 `READY_FOR_REVIEW` 时才为 true。
 
 需要把已验证的财务数值送入 calculation ledger 时，可调用
 `POST /api/v1/research-runs/{run_id}/financial-facts`。每个 fact 必须明确

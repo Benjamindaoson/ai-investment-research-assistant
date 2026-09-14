@@ -88,6 +88,7 @@ def test_api_creates_and_executes_case(tmp_path) -> None:
     assert trace.status_code == 200
     assert trace.json()["evidence"]["provenance_complete"] == 6
     assert all(not claim["unresolved_evidence_ids"] for claim in trace.json()["claims"])
+    assert trace.json()["claim_verification"] == []
     assert client.get("/api/v1/research-runs/missing/trace").status_code == 404
     assert client.get("/api/v1/research-runs/missing/memo").status_code == 404
     assert client.get("/api/v1/research-cases/missing").status_code == 404

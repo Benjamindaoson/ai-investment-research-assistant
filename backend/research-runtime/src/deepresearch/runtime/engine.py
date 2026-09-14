@@ -318,6 +318,58 @@ class ResearchEngine:
                 }
                 for claim in run.claims
             ],
+            "claim_verification": [
+                self._claim_verification_summary(run, receipt)
+                for receipt in run.tool_executions
+                if receipt.operation == "CLAIM_VERIFICATION"
+            ],
+        }
+
+    @staticmethod
+    def _claim_verification_summary(run: ResearchRun, receipt: ToolExecution) -> dict[str, object]:
+        claim = next((item for item in run.claims if item.id == receipt.claim_id), None)
+        evidence_by_id = {record.id: record for record in run.evidence}
+        cited = [evidence_by_id[evidence_id] for evidence_id in (claim.evidence_ids if claim else []) if evidence_id in evidence_by_id]
+        evidence = [
+            {
+                "id": record.id,
+                "qualification": record.qualification,
+                "stance": record.stance,
+                "source_id": record.source_id,
+                "source_title": record.source_title,
+                "locator": record.locator,
+                "coverage_status": record.provenance.get("finevidence", {}).get("coverage_status"),
+                "verification": record.provenance.get("finevidence", {}).get("verification"),
+            }
+            for record in cited
+        ]
+        gaps: list[str] = []
+        if claim is None:
+            gaps.append("claim record was not persisted")
+        if not cited:
+            gaps.append("claim cites no evidence records")
+        if any(record["qualification"] != "QUALIFIED" for record in evidence):
+            gaps.append("claim cites evidence that is not QUALIFIED")
+        if receipt.verification_supported is False:
+            gaps.append("FinEvidence verifier returned supported=false")
+        if receipt.status == "FAILED":
+            gaps.append(f"verifier failed: {receipt.error_type or 'unknown error'}")
+        return {
+            "claim_id": receipt.claim_id,
+            "task_id": receipt.task_id,
+            "claim_status": claim.status if claim else "NOT_PERSISTED",
+            "evidence": evidence,
+            "evidence_gaps": gaps,
+            "verifier_response": {
+                "status": receipt.status,
+                "supported": receipt.verification_supported,
+                "provider": receipt.provider,
+                "attempt_id": receipt.id,
+                "result_hash": receipt.result_hash,
+                "error_type": receipt.error_type,
+                "error_message": receipt.error_message,
+                "error_hash": receipt.error_hash,
+            },
         }
 
     def execute(self, run_id: str, stop_after_tasks: int | None = None) -> ResearchRun:
@@ -820,6 +872,15 @@ class ResearchEngine:
             missing = sorted(set(evidence_ids) - evidence_by_id.keys())
             if missing:
                 raise SynthesisProviderError(f"synthesis claim references unknown evidence: {missing}")
+            out_of_scope = sorted(
+                evidence_id
+                for evidence_id in evidence_ids
+                if evidence_by_id[evidence_id].task_id != proposed.task_id
+            )
+            if out_of_scope:
+                raise SynthesisProviderError(
+                    f"synthesis claim references evidence from another task: {out_of_scope}"
+                )
             unqualified = sorted(
                 evidence_id for evidence_id in evidence_ids if evidence_by_id[evidence_id].qualification != "QUALIFIED"
             )
@@ -839,6 +900,7 @@ class ResearchEngine:
                 attempt_hash = sha256(attempt_key.encode()).hexdigest()
                 verification = ToolExecution(
                     task_id=claim.task_id,
+                    claim_id=claim.id,
                     tool_name="claim-verification",
                     provider=str(getattr(provider, "name", provider.__class__.__name__)),
                     input_hash=self._claim_input_hash(claim.statement, claim.evidence_ids),

@@ -288,6 +288,7 @@ class ResearchPlan(DomainModel):
 class ToolExecution(DomainModel):
     id: str = Field(default_factory=lambda: f"tool-{uuid4().hex}")
     task_id: str
+    claim_id: str | None = None
     tool_name: str
     provider: str = Field(default="unknown", min_length=1, max_length=200)
     input_hash: str | None = Field(default=None, min_length=64, max_length=64)

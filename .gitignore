@@ -36,3 +36,4 @@ venv/
 backend/research-runtime/.data/
 *.sqlite3
 *.egg-info/
+tmp/
