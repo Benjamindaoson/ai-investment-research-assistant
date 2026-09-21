@@ -1,3 +1,6 @@
+> **Portfolio role: PUBLIC PRODUCT CASE STUDY**  
+> Human-reviewed, evidence-first AI and robotics investment research workspace. It remains separate from financial QA, retrieval research, and reward-model training.
+
 # Atlas Research Workspace
 
 **Evidence-first AI & Embodied Intelligence Research OS**
