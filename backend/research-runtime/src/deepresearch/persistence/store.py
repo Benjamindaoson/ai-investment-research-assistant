@@ -136,6 +136,14 @@ class SQLiteStore:
     def save_run_owned(self, payload: dict[str, Any], lease_id: str) -> bool:
         now = time.time()
         with self._transaction() as connection:
+            current = connection.execute(
+                "SELECT payload FROM runs WHERE id = ?",
+                (payload["id"],),
+            ).fetchone()
+            if current is not None:
+                current_payload = json.loads(current["payload"])
+                if current_payload.get("state") == "CANCELLED" and payload.get("state") != "CANCELLED":
+                    return False
             cursor = connection.execute(
                 """UPDATE runs SET case_id = ?, payload = ?
                 WHERE id = ? AND EXISTS (
