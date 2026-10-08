@@ -8,7 +8,7 @@ from pathlib import Path
 
 from deepresearch.api import create_app
 from deepresearch.persistence.store import SQLiteStore
-from deepresearch.runtime.engine import ResearchEngine, RunLeaseConflictError
+from deepresearch.runtime.engine import ResearchEngine, RunLeaseConflictError, RunLeaseLostError
 from deepresearch.runtime.queue import RedisRunQueue, RunQueue
 
 
@@ -24,7 +24,7 @@ def run_once(engine: ResearchEngine, queue: RunQueue | None = None) -> int:
         attempted += 1
         try:
             engine.execute(run.id)
-        except RunLeaseConflictError:
+        except (RunLeaseConflictError, RunLeaseLostError):
             continue
     return attempted
 
