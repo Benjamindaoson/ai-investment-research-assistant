@@ -28,6 +28,19 @@ def _pending_claim_verification(run: Any) -> Any | None:
     )
 
 
+def _latest_task_input_hash(run: Any, task_id: str) -> str | None:
+    return next(
+        (
+            execution.input_hash
+            for execution in reversed(run.tool_executions)
+            if execution.task_id == task_id
+            and execution.operation == "EVIDENCE_COLLECTION"
+            and execution.input_hash
+        ),
+        None,
+    )
+
+
 def patch_research_engine(engine_cls: type[Any]) -> None:
     """Install deterministic reliability fixes on ``ResearchEngine`` once."""
 
@@ -127,12 +140,18 @@ def patch_research_engine(engine_cls: type[Any]) -> None:
                 raise ValueError("replanner did not retain an existing task")
 
         planned = {task.id: task for task in plan.tasks}
-        changed_task_ids = {
-            task.id
-            for task in run.tasks
-            if task.id in planned
-            and self._task_input_hash(case, task) != self._task_input_hash(case, planned[task.id])
-        }
+        changed_task_ids: set[str] = set()
+        for task in run.tasks:
+            refreshed = planned.get(task.id)
+            if refreshed is None:
+                continue
+            refreshed_input_hash = self._task_input_hash(case, refreshed)
+            if self._task_input_hash(case, task) != refreshed_input_hash:
+                changed_task_ids.add(task.id)
+                continue
+            previous_input_hash = _latest_task_input_hash(run, task.id)
+            if task.state == "COMPLETED" and previous_input_hash and previous_input_hash != refreshed_input_hash:
+                changed_task_ids.add(task.id)
         reset_task_ids = {item.split(":", 1)[0] for item in unresolved} | changed_task_ids
         merged_tasks = []
         for task in run.tasks:
