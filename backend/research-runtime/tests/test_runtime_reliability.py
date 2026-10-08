@@ -147,6 +147,29 @@ def test_verifying_run_blocks_on_unknown_claim_verification_receipt(tmp_path) ->
     assert resumed.tool_executions[0].completed_at is not None
 
 
+def test_verifying_run_is_runnable_without_requeue(tmp_path) -> None:
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    engine = ResearchEngine(store, DeterministicEvidenceProvider(), planner=SameTaskPlanner())
+    case = ResearchCase(id="case-runnable-verify", question="Assess ACME verification", target="ACME")
+    run = engine.create_run(case, tasks=[_task()])
+    run.tasks[0].state = "COMPLETED"
+    run.state = "VERIFYING"
+    store.save_run(run.model_dump(mode="json"))
+
+    assert [item.id for item in engine.list_runnable_runs()] == [run.id]
+
+
+def test_enqueued_run_remains_runnable_after_later_events(tmp_path) -> None:
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    engine = ResearchEngine(store, DeterministicEvidenceProvider(), planner=SameTaskPlanner())
+    case = ResearchCase(id="case-runnable-queued", question="Assess ACME queue recovery", target="ACME")
+    run = engine.create_run(case, tasks=[_task()])
+    engine.enqueue(run.id)
+    store.append_event(run.id, "RUN_LEASE_ACQUIRED", {"lease_id": "diagnostic-only"})
+
+    assert [item.id for item in engine.list_runnable_runs()] == [run.id]
+
+
 def test_store_atomically_persists_run_completion_event_and_memory(tmp_path) -> None:
     store = SQLiteStore(tmp_path / "runtime.sqlite3")
     run_payload = {"id": "run-atomic", "case_id": "case-atomic", "state": "COMPLETED"}
