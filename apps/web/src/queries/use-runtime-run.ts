@@ -86,15 +86,22 @@ export function useRuntimeEventsQuery(runId: string, state: RuntimeRun["state"] 
   });
 }
 
+function refreshRuntimeSurface(queryClient: ReturnType<typeof useQueryClient>, runId: string, caseId?: string) {
+  void queryClient.invalidateQueries({ queryKey: runtimeRunQueryKey(runId) });
+  void queryClient.invalidateQueries({ queryKey: runtimeTraceQueryKey(runId) });
+  void queryClient.invalidateQueries({ queryKey: runtimeEventsQueryKey(runId) });
+  void queryClient.invalidateQueries({ queryKey: runtimeMemoryQueryKey(runId) });
+  if (caseId) void queryClient.invalidateQueries({ queryKey: runtimeCaseRunsQueryKey(caseId) });
+  void queryClient.invalidateQueries({ queryKey: ["runtime", "case-runs"] });
+}
+
 export function useExecuteRuntimeRunMutation(runId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: () => researchRuntimeRepository.executeRun(runId),
     onSuccess: (data) => {
       queryClient.setQueryData(runtimeRunQueryKey(runId), data);
-      void queryClient.invalidateQueries({ queryKey: runtimeMemoryQueryKey(runId) });
-      void queryClient.invalidateQueries({ queryKey: runtimeTraceQueryKey(runId) });
-      void queryClient.invalidateQueries({ queryKey: ["runtime", "case-runs"] });
+      refreshRuntimeSurface(queryClient, runId, data.case_id);
     },
   });
 }
@@ -104,10 +111,7 @@ export function useEnqueueRuntimeRunMutation(runId: string) {
   return useMutation({
     mutationFn: () => researchRuntimeRepository.enqueueRun(runId),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: runtimeRunQueryKey(runId) });
-      void queryClient.invalidateQueries({ queryKey: runtimeTraceQueryKey(runId) });
-      void queryClient.invalidateQueries({ queryKey: runtimeEventsQueryKey(runId) });
-      void queryClient.invalidateQueries({ queryKey: ["runtime", "case-runs"] });
+      refreshRuntimeSurface(queryClient, runId);
     },
   });
 }
@@ -117,9 +121,7 @@ export function useReplanRuntimeRunMutation(runId: string) {
     mutationFn: () => researchRuntimeRepository.replanRun(runId),
     onSuccess: (data) => {
       queryClient.setQueryData(runtimeRunQueryKey(runId), data);
-      void queryClient.invalidateQueries({ queryKey: runtimeMemoryQueryKey(runId) });
-      void queryClient.invalidateQueries({ queryKey: runtimeTraceQueryKey(runId) });
-      void queryClient.invalidateQueries({ queryKey: ["runtime", "case-runs"] });
+      refreshRuntimeSurface(queryClient, runId, data.case_id);
     },
   });
 }
@@ -129,9 +131,7 @@ export function useCancelRuntimeRunMutation(runId: string) {
   return useMutation({
     mutationFn: (reason: string) => researchRuntimeRepository.cancelRun(runId, reason),
     onSuccess: () => {
-      void queryClient.invalidateQueries({ queryKey: runtimeRunQueryKey(runId) });
-      void queryClient.invalidateQueries({ queryKey: runtimeTraceQueryKey(runId) });
-      void queryClient.invalidateQueries({ queryKey: ["runtime", "case-runs"] });
+      refreshRuntimeSurface(queryClient, runId);
     },
   });
 }
@@ -142,6 +142,7 @@ export function useAnalyzeRuntimeFinancialsMutation(runId: string) {
     mutationFn: (input: EvidenceLinkedFinancialAnalysisInput) => researchRuntimeRepository.analyzeFinancialsForRun(runId, input),
     onSuccess: (analysis) => {
       queryClient.setQueryData<RuntimeRun>(runtimeRunQueryKey(runId), (current) => current ? { ...current, financial_analysis: analysis } : current);
+      refreshRuntimeSurface(queryClient, runId);
     },
   });
 }
@@ -150,7 +151,10 @@ export function useAnalyzeRuntimeValuationMutation(runId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: ValuationScenarioInput) => researchRuntimeRepository.analyzeValuationScenarios(runId, input),
-    onSuccess: (artifact) => queryClient.setQueryData<RuntimeRun>(runtimeRunQueryKey(runId), (current) => current ? { ...current, valuation_scenarios: artifact } : current),
+    onSuccess: (artifact) => {
+      queryClient.setQueryData<RuntimeRun>(runtimeRunQueryKey(runId), (current) => current ? { ...current, valuation_scenarios: artifact } : current);
+      refreshRuntimeSurface(queryClient, runId);
+    },
   });
 }
 
@@ -158,7 +162,10 @@ export function useCreateRedTeamReviewMutation(runId: string) {
   const queryClient = useQueryClient();
   return useMutation({
     mutationFn: (input: RedTeamReviewInput) => researchRuntimeRepository.createRedTeamReview(runId, input),
-    onSuccess: (data) => queryClient.setQueryData<RuntimeRun>(runtimeRunQueryKey(runId), data),
+    onSuccess: (data) => {
+      queryClient.setQueryData<RuntimeRun>(runtimeRunQueryKey(runId), data);
+      refreshRuntimeSurface(queryClient, runId, data.case_id);
+    },
   });
 }
 
@@ -169,6 +176,7 @@ export function useCreateInvestmentCommitteeReviewMutation(runId: string) {
     onSuccess: (data) => {
       queryClient.setQueryData(runtimeRunQueryKey(runId), data);
       void queryClient.invalidateQueries({ queryKey: runtimeIcReviewsQueryKey(runId) });
+      refreshRuntimeSurface(queryClient, runId, data.case_id);
     },
   });
 }
@@ -179,7 +187,7 @@ export function useRecordRuntimeDecisionMutation(runId: string) {
     mutationFn: (input: DecisionRecordInput) => researchRuntimeRepository.recordDecision(runId, input),
     onSuccess: (data) => {
       queryClient.setQueryData(runtimeRunQueryKey(runId), data);
-      void queryClient.invalidateQueries({ queryKey: runtimeMemoryQueryKey(runId) });
+      refreshRuntimeSurface(queryClient, runId, data.case_id);
     },
   });
 }

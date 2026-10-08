@@ -112,7 +112,48 @@ class FinancialFactSet(DomainModel):
             raise ValueError("financial fact set requires a revenue fact")
         if any(fact.period != self.period for fact in self.facts):
             raise ValueError("financial facts must use the fact set period")
+        currencies = {fact.currency.strip().casefold() for fact in self.facts}
+        if len(currencies) != 1:
+            raise ValueError("financial facts must use one currency")
+        unit_scales = {self._canonical_unit_scale(fact.unit, fact.currency) for fact in self.facts}
+        if len(unit_scales) != 1:
+            raise ValueError("financial facts must use one unit scale")
         return self
+
+    @staticmethod
+    def _canonical_unit_scale(unit: str, currency: str) -> str:
+        text = unit.strip().casefold()
+        currency_token = currency.strip().casefold()
+        replacements = {
+            currency_token: " ",
+            "$": " usd ",
+            "u.s. dollars": "usd",
+            "us dollars": "usd",
+            "dollars": "usd",
+            "millions": "million",
+            "mn": "million",
+            "mm": "million",
+            " m ": " million ",
+            "billions": "billion",
+            "bn": "billion",
+            " b ": " billion ",
+            "thousands": "thousand",
+            "k": "thousand",
+        }
+        text = f" {text} "
+        for source, target in replacements.items():
+            if source:
+                text = text.replace(source, target)
+        compact = " ".join(text.split())
+        if "billion" in compact:
+            return "billion"
+        if "million" in compact:
+            return "million"
+        if "thousand" in compact:
+            return "thousand"
+        if compact in {"", "reported", "currency"}:
+            return "unit"
+        return compact
 
 
 class FinancialSnapshot(DomainModel):
@@ -311,6 +352,7 @@ class ToolExecution(DomainModel):
 
 class EvidenceRecord(DomainModel):
     id: str = Field(default_factory=lambda: f"evidence-{uuid4().hex}")
+    provider_evidence_id: str | None = Field(default=None, min_length=1, max_length=300)
     task_id: str
     requirement_id: str
     stance: EvidenceStance

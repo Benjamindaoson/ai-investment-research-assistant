@@ -1,11 +1,13 @@
 "use client";
 
 import { useRouter } from "next/navigation";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { RuntimeCaseInbox } from "@/components/runtime/runtime-case-inbox";
 import { useCreateRuntimeCaseMutation, useRuntimeCasesQuery } from "@/queries/use-runtime-run";
 import type { ResearchMandate } from "@/services/research-runtime-service";
+
+const defaultQuestion = "Assess ACME margin durability using supporting and disconfirming evidence.";
 
 const decisionTypes: Array<[ResearchMandate["decision_type"], string]> = [
   ["INVESTMENT_COMMITTEE", "Investment committee"],
@@ -23,7 +25,7 @@ export function RuntimeStartWorkspace() {
   const router = useRouter();
   const createCase = useCreateRuntimeCaseMutation();
   const [target, setTarget] = useState("ACME");
-  const [question, setQuestion] = useState("Assess ACME margin durability using supporting and disconfirming evidence.");
+  const [question, setQuestion] = useState(defaultQuestion);
   const [decisionType, setDecisionType] = useState<ResearchMandate["decision_type"]>("INVESTMENT_COMMITTEE");
   const [timeHorizon, setTimeHorizon] = useState("12 months");
   const [materiality, setMateriality] = useState<ResearchMandate["materiality"]>("MEDIUM");
@@ -31,6 +33,14 @@ export function RuntimeStartWorkspace() {
   const [constraints, setConstraints] = useState("");
   const configured = Boolean(process.env.NEXT_PUBLIC_RESEARCH_RUNTIME_URL);
   const casesQuery = useRuntimeCasesQuery(configured);
+
+  useEffect(() => {
+    const params = new URLSearchParams(window.location.search);
+    const urlQuestion = params.get("question")?.trim();
+    if (urlQuestion) setQuestion(urlQuestion);
+    const urlTarget = params.get("target")?.trim();
+    if (urlTarget) setTarget(urlTarget);
+  }, []);
 
   async function submit() {
     const result = await createCase.mutateAsync({

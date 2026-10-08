@@ -216,7 +216,28 @@ class HttpEvidenceProvider:
         self.client = base_url if isinstance(base_url, FinEvidenceClient) else FinEvidenceClient(base_url, timeout_seconds)
 
     def verify_claim(self, claim: str, evidence_ids: list[str]) -> bool:
-        return self.client.verify(claim, evidence_ids).supported
+        return self.client.verify(claim, self._canonical_evidence_ids(evidence_ids)).supported
+
+    @staticmethod
+    def _canonical_evidence_ids(evidence_ids: list[str]) -> list[str]:
+        """Return IDs FinEvidence is likely to know, preserving caller order.
+
+        Runtime records may append a requirement suffix to provider IDs when the
+        same retrieved object satisfies several task requirements. FinEvidence
+        verification only knows provider evidence IDs. Preserve ordinary IDs and
+        remove only the known suffix shapes so page-level IDs such as
+        ``doc:p365:image`` are not accidentally truncated.
+        """
+        result: list[str] = []
+        for evidence_id in evidence_ids:
+            candidates = [evidence_id]
+            colon_count = evidence_id.count(":")
+            if colon_count == 1 or colon_count >= 3:
+                candidates.append(evidence_id.rsplit(":", 1)[0])
+            for candidate in candidates:
+                if candidate and candidate not in result:
+                    result.append(candidate)
+        return result
 
     def collect(self, task: ResearchTask, case: ResearchCase) -> list[EvidenceRecord]:
         query = " ".join([case.target, case.question, task.title, task.purpose, *(item.description for item in task.evidence_requirements)])
@@ -314,6 +335,7 @@ class HttpEvidenceProvider:
         qualified = coverage_status == "ELIGIBLE" and verification.coverage_status == "SUPPORTED"
         return EvidenceRecord(
             id=record_id,
+            provider_evidence_id=item.evidence_id,
             task_id=task.id,
             requirement_id=requirement.id,
             stance=cls._stance(requirement),
