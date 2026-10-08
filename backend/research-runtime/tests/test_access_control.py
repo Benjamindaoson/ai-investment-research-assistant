@@ -15,6 +15,14 @@ def _completed_run(client: TestClient) -> tuple[str, dict]:
     return run_id, run
 
 
+def _counter_evidence_id(run: dict) -> str:
+    return next(
+        item["id"]
+        for item in run["evidence"]
+        if item["stance"] == "COUNTER" and item["qualification"] == "QUALIFIED"
+    )
+
+
 def _review_payload(evidence_id: str) -> dict:
     return {
         "reviewer": "reviewer@example.com",
@@ -39,7 +47,7 @@ def test_review_write_requires_actor_headers(tmp_path) -> None:
     install_access_control(app)
     client = TestClient(app)
     run_id, run = _completed_run(client)
-    evidence_id = run["evidence"][0]["id"]
+    evidence_id = _counter_evidence_id(run)
 
     response = client.post(
         f"/api/v1/research-runs/{run_id}/red-team-reviews",
@@ -55,7 +63,7 @@ def test_reviewer_can_write_review_but_not_decision(tmp_path) -> None:
     install_access_control(app)
     client = TestClient(app)
     run_id, run = _completed_run(client)
-    evidence_id = run["evidence"][0]["id"]
+    evidence_id = _counter_evidence_id(run)
     thesis_id = run["thesis"]["id"]
     reviewer_headers = {"X-Actor": "reviewer@example.com", "X-Actor-Role": "reviewer"}
 
