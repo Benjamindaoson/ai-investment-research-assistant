@@ -52,6 +52,26 @@ def patch_research_engine(engine_cls: type[Any]) -> None:
     original_build_memo = engine_cls._build_memo
     original_resolve_tool_attempt = engine_cls.resolve_tool_attempt
 
+    def list_runnable_runs(self: Any) -> list[Any]:
+        """Return runs that workers should attempt without relying on the last event.
+
+        Queue intent is append-only.  A later lease/acquisition/diagnostic event must
+        not erase the fact that a CREATED or PARTIAL run was already queued. VERIFYING
+        runs are also runnable because synthesis/claim-verification recovery is
+        idempotent and may need to move the run into BLOCKED.
+        """
+        runnable: list[Any] = []
+        for payload in self.store.list_runs():
+            run_id = payload["id"]
+            state = payload.get("state")
+            if state in {"RUNNING", "VERIFYING"}:
+                runnable.append(self.get_run(run_id))
+            elif state in {"CREATED", "PARTIAL"}:
+                events = self.store.events(run_id)
+                if any(event["event_type"] == "RUN_ENQUEUED" for event in events):
+                    runnable.append(self.get_run(run_id))
+        return runnable
+
     def _execute(
         self: Any,
         run_id: str,
@@ -235,6 +255,7 @@ def patch_research_engine(engine_cls: type[Any]) -> None:
         self._persist(run, event_type, {"attempt_id": attempt.id, "action": action})
         return run
 
+    engine_cls.list_runnable_runs = list_runnable_runs
     engine_cls._execute = _execute
     engine_cls._build_memo = _build_memo
     engine_cls._persist = _persist
