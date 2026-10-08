@@ -31,9 +31,15 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-deepresearch}:${POSTGRES_PASSWORD:-deepresearch}@postgres:5432/${POSTGRES_DB:-deepresearch}
       RESEARCH_RUNTIME_REDIS_URL: redis://redis:6379/0
+      RESEARCH_RUNTIME_LEASE_SECONDS: ${RESEARCH_RUNTIME_LEASE_SECONDS:-300}
+      RESEARCH_RUNTIME_CORS_ORIGINS: ${RESEARCH_RUNTIME_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+      DEEPRESEARCH_PLANNER: ${DEEPRESEARCH_PLANNER:-deterministic}
+      DEEPRESEARCH_SYNTHESIZER: ${DEEPRESEARCH_SYNTHESIZER:-deterministic}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-}
       FIN_EVIDENCE_BASE_URL: ${FIN_EVIDENCE_BASE_URL:-}
       FIN_EVIDENCE_TIMEOUT_SECONDS: ${FIN_EVIDENCE_TIMEOUT_SECONDS:-120}
-      RESEARCH_RUNTIME_CORS_ORIGINS: ${RESEARCH_RUNTIME_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
     ports:
       - "${RUNTIME_PORT:-8011}:8000"
     depends_on:
@@ -42,7 +48,7 @@ services:
       redis:
         condition: service_healthy
     healthcheck:
-      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"]
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/ready')"]
       interval: 5s
       timeout: 5s
       retries: 12
@@ -53,6 +59,12 @@ services:
     environment:
       DATABASE_URL: postgresql://${POSTGRES_USER:-deepresearch}:${POSTGRES_PASSWORD:-deepresearch}@postgres:5432/${POSTGRES_DB:-deepresearch}
       RESEARCH_RUNTIME_REDIS_URL: redis://redis:6379/0
+      RESEARCH_RUNTIME_LEASE_SECONDS: ${RESEARCH_RUNTIME_LEASE_SECONDS:-300}
+      DEEPRESEARCH_PLANNER: ${DEEPRESEARCH_PLANNER:-deterministic}
+      DEEPRESEARCH_SYNTHESIZER: ${DEEPRESEARCH_SYNTHESIZER:-deterministic}
+      DEEPSEEK_API_KEY: ${DEEPSEEK_API_KEY:-}
+      DEEPSEEK_BASE_URL: ${DEEPSEEK_BASE_URL:-}
+      DEEPSEEK_MODEL: ${DEEPSEEK_MODEL:-}
       FIN_EVIDENCE_BASE_URL: ${FIN_EVIDENCE_BASE_URL:-}
       FIN_EVIDENCE_TIMEOUT_SECONDS: ${FIN_EVIDENCE_TIMEOUT_SECONDS:-120}
     command:
