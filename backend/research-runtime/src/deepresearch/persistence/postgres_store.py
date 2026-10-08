@@ -294,6 +294,91 @@ class PostgresStore(SQLiteStore):
             ).fetchone()
         return row is not None
 
+    def save_run_event_memory(
+        self,
+        run_payload: dict[str, Any],
+        event_type: str,
+        event_payload: dict[str, Any],
+        memory_payload: dict[str, Any],
+    ) -> None:
+        occurred_at = datetime.now(UTC)
+        with self._transaction() as connection:
+            connection.execute(
+                """
+                INSERT INTO runs(id, case_id, payload) VALUES (%s, %s, %s::jsonb)
+                ON CONFLICT(id) DO UPDATE SET case_id = EXCLUDED.case_id, payload = EXCLUDED.payload
+                """,
+                (run_payload["id"], run_payload["case_id"], json.dumps(run_payload)),
+            )
+            connection.execute(
+                """
+                INSERT INTO events(run_id, event_type, payload, occurred_at)
+                VALUES (%s, %s, %s::jsonb, %s)
+                """,
+                (run_payload["id"], event_type, json.dumps(event_payload), occurred_at),
+            )
+            connection.execute(
+                """
+                INSERT INTO investment_memory(target, payload, updated_at) VALUES (%s, %s::jsonb, %s)
+                ON CONFLICT(target) DO UPDATE SET payload = EXCLUDED.payload, updated_at = EXCLUDED.updated_at
+                """,
+                (memory_payload["target"], json.dumps(memory_payload), memory_payload["updated_at"]),
+            )
+
+    def save_run_event_memory_owned(
+        self,
+        run_payload: dict[str, Any],
+        lease_id: str,
+        event_type: str,
+        event_payload: dict[str, Any],
+        memory_payload: dict[str, Any],
+    ) -> bool:
+        now = time.time()
+        occurred_at = datetime.now(UTC)
+        with self._transaction() as connection:
+            current = connection.execute(
+                "SELECT payload FROM runs WHERE id = %s",
+                (run_payload["id"],),
+            ).fetchone()
+            if current is not None:
+                current_payload = _payload(current["payload"])
+                if current_payload.get("state") == "CANCELLED" and run_payload.get("state") != "CANCELLED":
+                    return False
+            cursor = connection.execute(
+                """
+                UPDATE runs SET case_id = %s, payload = %s::jsonb
+                WHERE id = %s AND EXISTS (
+                    SELECT 1 FROM run_leases
+                    WHERE run_id = %s AND lease_id = %s AND expires_at > %s
+                )
+                """,
+                (
+                    run_payload["case_id"],
+                    json.dumps(run_payload),
+                    run_payload["id"],
+                    run_payload["id"],
+                    lease_id,
+                    now,
+                ),
+            )
+            if cursor.rowcount != 1:
+                return False
+            connection.execute(
+                """
+                INSERT INTO events(run_id, event_type, payload, occurred_at)
+                VALUES (%s, %s, %s::jsonb, %s)
+                """,
+                (run_payload["id"], event_type, json.dumps(event_payload), occurred_at),
+            )
+            connection.execute(
+                """
+                INSERT INTO investment_memory(target, payload, updated_at) VALUES (%s, %s::jsonb, %s)
+                ON CONFLICT(target) DO UPDATE SET payload = EXCLUDED.payload, updated_at = EXCLUDED.updated_at
+                """,
+                (memory_payload["target"], json.dumps(memory_payload), memory_payload["updated_at"]),
+            )
+        return True
+
     def events(self, run_id: str) -> list[dict[str, Any]]:
         with self._transaction() as connection:
             rows = connection.execute(
