@@ -23,9 +23,9 @@ def _counter_evidence_id(run: dict) -> str:
     )
 
 
-def _review_payload(evidence_id: str) -> dict:
+def _review_payload(evidence_id: str, reviewer: str = "reviewer@example.com") -> dict:
     return {
-        "reviewer": "reviewer@example.com",
+        "reviewer": reviewer,
         "challenge": "The thesis may underweight downside evidence.",
         "evidence_ids": [evidence_id],
         "outcome": "SUPPORTED",
@@ -33,9 +33,9 @@ def _review_payload(evidence_id: str) -> dict:
     }
 
 
-def _decision_payload(thesis_id: str) -> dict:
+def _decision_payload(thesis_id: str, actor: str = "chair@example.com") -> dict:
     return {
-        "actor": "chair@example.com",
+        "actor": actor,
         "action": "APPROVE_THESIS",
         "target_id": thesis_id,
         "rationale": "Approved after human review.",
@@ -74,13 +74,31 @@ def test_reviewer_can_write_review_but_not_decision(tmp_path) -> None:
     )
     decision = client.post(
         f"/api/v1/research-runs/{run_id}/decisions",
-        json=_decision_payload(thesis_id),
+        json=_decision_payload(thesis_id, actor="reviewer@example.com"),
         headers=reviewer_headers,
     )
 
     assert review.status_code == 200
     assert decision.status_code == 403
     assert "not allowed" in decision.json()["detail"]
+
+
+def test_reviewer_body_identity_must_match_actor_header(tmp_path) -> None:
+    app = create_app(SQLiteStore(tmp_path / "runtime.sqlite3"))
+    install_access_control(app)
+    client = TestClient(app)
+    run_id, run = _completed_run(client)
+    evidence_id = _counter_evidence_id(run)
+
+    response = client.post(
+        f"/api/v1/research-runs/{run_id}/red-team-reviews",
+        json=_review_payload(evidence_id, reviewer="someone-else@example.com"),
+        headers={"X-Actor": "reviewer@example.com", "X-Actor-Role": "reviewer"},
+    )
+
+    assert response.status_code == 403
+    assert "reviewer" in response.json()["detail"]
+    assert "X-Actor" in response.json()["detail"]
 
 
 def test_chair_can_write_decision(tmp_path) -> None:
@@ -98,3 +116,21 @@ def test_chair_can_write_decision(tmp_path) -> None:
 
     assert response.status_code == 200
     assert response.json()["decisions"][-1]["actor"] == "chair@example.com"
+
+
+def test_decision_body_identity_must_match_actor_header(tmp_path) -> None:
+    app = create_app(SQLiteStore(tmp_path / "runtime.sqlite3"))
+    install_access_control(app)
+    client = TestClient(app)
+    run_id, run = _completed_run(client)
+    thesis_id = run["thesis"]["id"]
+
+    response = client.post(
+        f"/api/v1/research-runs/{run_id}/decisions",
+        json=_decision_payload(thesis_id, actor="other-chair@example.com"),
+        headers={"X-Actor": "chair@example.com", "X-Actor-Role": "chair"},
+    )
+
+    assert response.status_code == 403
+    assert "actor" in response.json()["detail"]
+    assert "X-Actor" in response.json()["detail"]
