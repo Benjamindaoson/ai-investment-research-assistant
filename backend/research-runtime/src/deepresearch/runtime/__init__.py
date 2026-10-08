@@ -1,5 +1,4 @@
 from deepresearch.runtime.engine import ResearchEngine, validate_task_dag
-from deepresearch.runtime.reliability import patch_research_engine
 from deepresearch.runtime.evidence import (
     DeterministicEvidenceProvider,
     EvidenceProvider,
@@ -15,6 +14,7 @@ from deepresearch.runtime.planner import (
     ResearchPlanner,
     create_configured_research_planner,
 )
+from deepresearch.runtime.reliability import patch_research_engine
 from deepresearch.runtime.tools import ResearchToolRegistry
 
 patch_research_engine(ResearchEngine)
