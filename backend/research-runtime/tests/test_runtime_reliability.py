@@ -79,8 +79,8 @@ def test_replan_invalidates_completed_task_when_prior_input_hash_drifted(tmp_pat
     old_task = _task()
     run = engine.create_run(case, tasks=[old_task])
     run.tasks[0].state = "COMPLETED"
-    run.state = "PARTIAL"
     run.completed_at = datetime.now(UTC)
+    run.state = "PARTIAL"
     run.evidence = [_qualified_record(old_task)]
     run.tool_executions = [
         ToolExecution(
