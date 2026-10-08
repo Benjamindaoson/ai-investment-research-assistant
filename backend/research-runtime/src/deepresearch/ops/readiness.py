@@ -50,7 +50,7 @@ def readiness_snapshot(app: FastAPI) -> tuple[int, dict[str, Any]]:
         checks["queue"] = _failed(error)
 
     try:
-        tool_names = sorted(getattr(engine.tool_registry, "names"))
+        tool_names = sorted(engine.tool_registry.names)
         if not tool_names:
             raise RuntimeError("tool registry is empty")
         checks["tools"] = _ok(tool_names)
