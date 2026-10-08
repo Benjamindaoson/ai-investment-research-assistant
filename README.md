@@ -2,7 +2,7 @@
 
 Financial DeepResearch Agent is an evidence-first research operating system for investment analysts. It turns an investment question into a bounded research plan, executes typed research tasks, qualifies evidence, preserves counter-evidence, synthesizes claims and theses, and routes the result through human review before an investment memo is approved.
 
-The active product line is now intentionally narrow:
+The active product line is intentionally narrow:
 
 | Area | Active path | Role |
 | --- | --- | --- |
@@ -45,8 +45,10 @@ Run the Research Runtime from `backend/research-runtime`:
 python -m venv .venv
 . .venv/bin/activate
 python -m pip install -e ".[dev]"
-python -m uvicorn deepresearch.api:app --reload --port 8010
+python -m uvicorn deepresearch.asgi:app --reload --port 8010
 ```
+
+Use `/api/v1/health` for liveness and `/api/v1/ready` for deployment readiness. Readiness checks the engine, store, queue, tools, planner, synthesizer, and runtime reliability layer.
 
 Start the frontend against the runtime:
 
@@ -55,6 +57,18 @@ NEXT_PUBLIC_RESEARCH_RUNTIME_URL=http://127.0.0.1:8010 pnpm dev
 ```
 
 Open `http://localhost:3000/new-research` or `/runtime` for the canonical live workflow.
+
+## Docker Compose
+
+Copy `.env.example` to `.env`, then run:
+
+```bash
+docker compose up --build
+```
+
+Compose starts PostgreSQL, Redis, the runtime, and a worker. The runtime container healthcheck uses `/api/v1/ready`, so it will not be marked healthy if the store, queue, tools, planner, synthesizer, or reliability layer are unavailable.
+
+Use fixture mode by leaving `FIN_EVIDENCE_BASE_URL` blank. Configure `FIN_EVIDENCE_BASE_URL` to connect an external FinEvidence-compatible service.
 
 ## Verification
 
@@ -71,22 +85,33 @@ Backend:
 
 ```bash
 cd backend/research-runtime
-python -m pytest -q
-python -m deepresearch.evaluation
+python -m ruff check src tests
+python -m mypy src
+python -m pytest -q -m "not integration"
 ```
 
 External-provider, PostgreSQL, Redis, browser E2E, and real LLM checks require separately configured services.
 
-## Current limitations
+## Reliability status
 
-The runtime has useful durable-execution foundations, but several correctness areas still require hardening before the project should be presented as a production-grade investment analyst system:
+Already implemented:
 
-- cancellation and in-flight worker race handling;
-- replanning invalidation when a task's semantic contract changes;
-- VERIFYING-stage recovery;
-- atomic run/event/memory writes;
+- CI for backend ruff, mypy, pytest and frontend lint, typecheck, tests, build.
+- Provider evidence IDs separated from runtime evidence IDs.
+- External verifier ID canonicalization.
+- Financial fact currency and unit-scale guards.
+- Frontend runtime cache invalidation after write operations.
+- BLOCKED recovery entry points for unknown-effect tool attempts.
+- Worker lease-loss isolation.
+- Cancelled-run write protection in SQLite and PostgreSQL stores.
+- VERIFYING run recovery and claim-verification UNKNOWN_EFFECT blocking.
+- Replan invalidation when completed task input hashes drift.
+- Atomic final run/event/memory writes for completed and partial runs.
+- Readiness endpoint and Docker healthcheck based on deployment readiness.
+
+Still not production-complete:
+
 - fact-level numeric verification from source evidence;
 - identity and access control for multi-user review;
-- CI covering backend, frontend, and key runtime regressions.
-
-Recent remediation already added separate provider evidence IDs, external-verifier ID canonicalization, financial fact currency/unit guards, and frontend runtime-flow cache fixes. Continue the modernization by fixing state-machine durability before adding new agent roles or dashboards.
+- full browser E2E over the live runtime;
+- complete removal of inactive historical enterprise analytics directories, currently retained only as historical artifacts until deletion can be safely applied.
