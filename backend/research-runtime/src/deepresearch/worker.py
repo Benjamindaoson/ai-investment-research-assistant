@@ -12,10 +12,26 @@ from deepresearch.runtime.engine import ResearchEngine, RunLeaseConflictError, R
 from deepresearch.runtime.queue import RedisRunQueue, RunQueue
 
 
+def _verifying_runs(engine: ResearchEngine):
+    """Return runs stranded after task completion but before final synthesis.
+
+    `ResearchEngine.list_runnable_runs` intentionally stays conservative for
+    queued execution. The worker additionally recovers VERIFYING runs because
+    that phase is after all task side effects and can be replayed from persisted
+    evidence, claims, and tool receipts.
+    """
+    known = {run.id for run in engine.list_runnable_runs()}
+    for payload in engine.store.list_runs():
+        if payload.get("state") == "VERIFYING" and payload.get("id") not in known:
+            yield engine.get_run(str(payload["id"]))
+
+
 def run_once(engine: ResearchEngine, queue: RunQueue | None = None) -> int:
     attempted = 0
     dispatched_id = queue.dequeue() if queue is not None else None
     runnable = engine.list_runnable_runs()
+    runnable_ids = {run.id for run in runnable}
+    runnable.extend(run for run in _verifying_runs(engine) if run.id not in runnable_ids)
     if dispatched_id is not None:
         dispatched = next((run for run in runnable if run.id == dispatched_id), None)
         if dispatched is not None:
