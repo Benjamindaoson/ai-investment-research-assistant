@@ -202,6 +202,14 @@ class PostgresStore(SQLiteStore):
     def save_run_owned(self, payload: dict[str, Any], lease_id: str) -> bool:
         now = time.time()
         with self._transaction() as connection:
+            current = connection.execute(
+                "SELECT payload FROM runs WHERE id = %s",
+                (payload["id"],),
+            ).fetchone()
+            if current is not None:
+                current_payload = _payload(current["payload"])
+                if current_payload.get("state") == "CANCELLED" and payload.get("state") != "CANCELLED":
+                    return False
             cursor = connection.execute(
                 """
                 UPDATE runs SET case_id = %s, payload = %s::jsonb
