@@ -2,7 +2,7 @@ from fastapi.testclient import TestClient
 
 from deepresearch.api import create_app
 from deepresearch.persistence.store import SQLiteStore
-from deepresearch.runtime.engine import ResearchEngine
+from deepresearch.runtime.engine import ResearchEngine, RunLeaseLostError
 from deepresearch.worker import run_once
 
 
@@ -55,6 +55,32 @@ def test_worker_leaves_a_leased_run_untouched(tmp_path) -> None:
 
     assert run_once(app.state.research_engine) == 1
     assert client.get(f"/api/v1/research-runs/{run_id}").json()["state"] == "CREATED"
+
+
+def test_worker_continues_after_a_single_run_loses_its_lease(tmp_path, monkeypatch) -> None:
+    store = SQLiteStore(tmp_path / "runtime.sqlite3")
+    app = create_app(store)
+    client = TestClient(app)
+    first = client.post("/api/v1/research-cases", json={"question": "Assess ACME durability", "target": "ACME"}).json()["run_id"]
+    second = client.post("/api/v1/research-cases", json={"question": "Assess BETA durability", "target": "BETA"}).json()["run_id"]
+    assert client.post(f"/api/v1/research-runs/{first}/enqueue").status_code == 202
+    assert client.post(f"/api/v1/research-runs/{second}/enqueue").status_code == 202
+    engine: ResearchEngine = app.state.research_engine
+    real_execute = engine.execute
+    seen: list[str] = []
+
+    def execute_with_single_lost_lease(run_id: str):
+        seen.append(run_id)
+        if run_id == first:
+            raise RunLeaseLostError("lease lost during persist")
+        return real_execute(run_id)
+
+    monkeypatch.setattr(engine, "execute", execute_with_single_lost_lease)
+
+    assert run_once(engine) == 2
+    assert seen == [first, second]
+    assert client.get(f"/api/v1/research-runs/{first}").json()["state"] == "CREATED"
+    assert client.get(f"/api/v1/research-runs/{second}").json()["state"] == "COMPLETED"
 
 
 def test_worker_does_not_execute_an_unqueued_run(tmp_path) -> None:
