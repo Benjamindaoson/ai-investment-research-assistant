@@ -4,15 +4,17 @@ from __future__ import annotations
 
 import argparse
 import time
+from collections.abc import Iterator
 from pathlib import Path
 
 from deepresearch.api import create_app
+from deepresearch.domain.models import ResearchRun
 from deepresearch.persistence.store import SQLiteStore
 from deepresearch.runtime.engine import ResearchEngine, RunLeaseConflictError, RunLeaseLostError
 from deepresearch.runtime.queue import RedisRunQueue, RunQueue
 
 
-def _verifying_runs(engine: ResearchEngine):
+def _verifying_runs(engine: ResearchEngine) -> Iterator[ResearchRun]:
     """Return runs stranded after task completion but before final synthesis.
 
     `ResearchEngine.list_runnable_runs` intentionally stays conservative for
