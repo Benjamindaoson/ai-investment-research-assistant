@@ -5,6 +5,7 @@ import { useState } from "react";
 import { AppShell } from "@/components/shell/app-shell";
 import { FinancialAnalysisForm } from "@/components/runtime/financial-analysis-form";
 import { RedTeamReviewForm } from "@/components/runtime/red-team-review-form";
+import { RuntimeBlockedRecovery } from "@/components/runtime/runtime-blocked-recovery";
 import { RuntimeDecisionForm } from "@/components/runtime/runtime-decision-form";
 import { RuntimeEvidenceTrace } from "@/components/runtime/runtime-evidence-trace";
 import { RuntimeClaimTrace } from "@/components/runtime/runtime-claim-trace";
@@ -48,6 +49,14 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
   const needsReview = run.evidence.filter((item) => item.qualification === "NEEDS_REVIEW").length;
   const counter = run.evidence.filter((item) => item.stance === "COUNTER" || item.stance === "CONFLICTING").length;
   const canRedTeam = Boolean(run.thesis) && counter > 0 && writable;
+  const refreshRuntimeViews = () => {
+    void query.refetch();
+    void traceQuery.refetch();
+    void eventsQuery.refetch();
+    void evaluationQuery.refetch();
+    void caseRunsQuery.refetch();
+    if (run.memo) void memoryQuery.refetch();
+  };
   function createRerun() {
     void rerun.mutateAsync().then((result) => router.push(`/runtime/${encodeURIComponent(result.run_id)}`), () => undefined);
   }
@@ -56,7 +65,7 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
     <AppShell context={<><div className="context-heading"><b>Runtime run</b><span>{run.state}</span></div><div className="context-summary"><small>TASKS</small><b>{run.tasks.length}</b><small>EVIDENCE</small><b>{run.evidence.length}</b><small>MEMO</small><b>{run.memo?.status ?? "pending"}</b></div></>}>
       <div className="page-title"><div><p>LIVE RUNTIME · {run.id}</p><h1>Research execution</h1><span>Backend-driven state, evidence coverage, and review-gated output.</span></div><span className={`thesis-state ${run.state.toLowerCase()}`}>{run.state}</span></div>
       <section className="decision-panel">
-        <header><div><small>RUN CONTROL</small><h2>Execution state</h2></div><div className="form-actions compact"><button type="button" className="outline" onClick={() => { void query.refetch(); void traceQuery.refetch(); void eventsQuery.refetch(); void evaluationQuery.refetch(); }}>Refresh</button>{run.state === "CREATED" && <button type="button" className="blue-button" disabled={execute.isPending} onClick={() => execute.mutate()}>{execute.isPending ? "Executing…" : "Start research"}</button>}{run.state === "PARTIAL" && <button type="button" className="blue-button" disabled={replan.isPending} onClick={() => replan.mutate()}>{replan.isPending ? "Replanning…" : "Replan missing evidence"}</button>}{(run.state === "CREATED" || run.state === "PARTIAL") && <button type="button" className="outline" disabled={enqueue.isPending} onClick={() => enqueue.mutate()}>{enqueue.isPending ? "Queueing…" : "Queue for worker"}</button>}</div></header>
+        <header><div><small>RUN CONTROL</small><h2>Execution state</h2></div><div className="form-actions compact"><button type="button" className="outline" onClick={refreshRuntimeViews}>Refresh</button>{run.state === "CREATED" && <button type="button" className="blue-button" disabled={execute.isPending} onClick={() => execute.mutate()}>{execute.isPending ? "Executing…" : "Start research"}</button>}{run.state === "PARTIAL" && <button type="button" className="blue-button" disabled={replan.isPending} onClick={() => replan.mutate()}>{replan.isPending ? "Replanning…" : "Replan missing evidence"}</button>}{(run.state === "CREATED" || run.state === "PARTIAL") && <button type="button" className="outline" disabled={enqueue.isPending} onClick={() => enqueue.mutate()}>{enqueue.isPending ? "Queueing…" : "Queue for worker"}</button>}</div></header>
         {!terminal && <p className="form-note" role="status">Live refresh every 2 seconds while this run is active.</p>}
         {enqueue.isSuccess && <p className="form-note" role="status">Durable queue request persisted; returned state: {enqueue.data.state}. You can queue again after a replan if the run returns to CREATED.</p>}
         {!terminal && <div className="form-actions"><input className="text-control" value={reason} onChange={(event) => setReason(event.target.value)} aria-label="Cancellation reason" /><button type="button" className="outline" disabled={cancel.isPending || reason.trim().length < 3} onClick={() => cancel.mutate(reason)}>{cancel.isPending ? "Cancelling…" : "Cancel run"}</button></div>}
@@ -68,7 +77,7 @@ export function RuntimeRunWorkspace({ runId }: { runId: string }) {
       <RuntimeCaseHistory runs={caseRunsQuery.data} activeRunId={run.id} isPending={caseRunsQuery.isPending} error={caseRunsQuery.error} onCreateRerun={createRerun} isRerunPending={rerun.isPending} rerunError={rerun.error} />
       <RuntimeTaskContract tasks={run.tasks} traceTasks={traceQuery.data?.tasks} />
       <RuntimeToolTrace executions={run.tool_executions} />
-      {run.state === "BLOCKED" && <section className="decision-panel"><header><div><small>RECOVERY REQUIRED · UNKNOWN TOOL EFFECT</small><h2>Manual recovery needed</h2></div><span>{run.tool_executions.filter((item) => item.status === "UNKNOWN_EFFECT").length} unresolved attempts</span></header><p className="form-note">This run is blocked because a tool attempt may have had an unknown external effect. Use the API recovery endpoint for now: <code>/api/v1/research-runs/{run.id}/tool-attempts/&lt;attempt_id&gt;/resolve</code>. The next UI pass should add per-attempt Retry and Mark failed buttons here.</p></section>}
+      <RuntimeBlockedRecovery run={run} onResolved={refreshRuntimeViews} />
       <RuntimeEventTrace events={eventsQuery.data} isPending={eventsQuery.isPending} error={eventsQuery.error} />
       <RuntimeEvidenceTrace evidence={run.evidence} />
       <RuntimeClaimTrace claims={run.claims} evidence={run.evidence} />
