@@ -18,7 +18,7 @@ export function NavigationRail({ onNavigate }: { onNavigate?: () => void }) {
   const pathname = usePathname();
   return (
     <div className="navigation-rail-inner">
-      <div className="atlas-brand">◇ Atlas Research</div>
+      <div className="atlas-brand">◇ DeepResearch</div>
       <Link className="atlas-new" href="/new-research" onClick={onNavigate}>
         <Plus size={17} />New research<ChevronDown size={15} aria-hidden="true" />
       </Link>

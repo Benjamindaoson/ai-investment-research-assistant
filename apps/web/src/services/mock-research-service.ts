@@ -40,7 +40,7 @@ export class MockResearchService implements ResearchService {
     this.researchCase.run.status = "queued";
     this.researchCase.run.stage = "planning";
     this.researchCase.evidenceCoverage = 0;
-    return { caseId: "case-value-pools", runId: "run-value-pools-01" };
+    return { caseId: "case-margin-durability", runId: "run-margin-durability-01" };
   }
   async getResearchCase(caseId: string) {
     await Promise.resolve();

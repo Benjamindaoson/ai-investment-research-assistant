@@ -2,22 +2,21 @@ import type { TodayData } from "@/domain/research";
 
 // MOCK FIXTURE DATA: deliberately static and never presented as live research.
 const companies = [
-  ["nvidia", "NVIDIA", "NVDA"], ["figure", "Figure", "FIGURE"], ["tesla", "Tesla Optimus", "TSLA"],
-  ["physical-intelligence", "Physical Intelligence", "PI"], ["agibot", "智元机器人", "AGIBOT"],
-  ["unitree", "Unitree", "UNITREE"], ["openai", "OpenAI", "OPENAI"], ["anthropic", "Anthropic", "ANTHROPIC"],
-  ["boston-dynamics", "Boston Dynamics", "BD"], ["agility", "Agility Robotics", "AGILITY"],
-  ["sanctuary", "Sanctuary AI", "SANCTUARY"], ["apptronik", "Apptronik", "APPTRONIK"],
+  ["northstar", "Northstar Analytics", "NSTAR"], ["nvidia", "NVIDIA", "NVDA"], ["microsoft", "Microsoft", "MSFT"],
+  ["amazon", "Amazon", "AMZN"], ["alphabet", "Alphabet", "GOOGL"], ["oracle", "Oracle", "ORCL"],
+  ["snowflake", "Snowflake", "SNOW"], ["palantir", "Palantir", "PLTR"], ["servicenow", "ServiceNow", "NOW"],
+  ["datadog", "Datadog", "DDOG"], ["crowdstrike", "CrowdStrike", "CRWD"], ["adobe", "Adobe", "ADBE"],
 ] as const;
 
 const questions = [
-  "Robotics compute demand and capex signal", "Humanoid deployment and enterprise pilots", "Manufacturing learning curve and dexterity",
-  "Foundation models for robot control", "China supply-chain and rollout momentum", "Cost-down path and developer ecosystem",
-  "Model roadmap for embodied agents", "Reliable-agent infrastructure signals", "Commercial deployment readiness",
-  "Warehouse automation economics", "Task reliability and labor economics", "Manufacturing scale-up and partnerships",
+  "AI infrastructure margin durability", "Accelerator demand and capital intensity", "Cloud backlog conversion and pricing",
+  "Enterprise software expansion efficiency", "Data-center power constraints and returns", "AI monetization beyond pilot revenue",
+  "Recurring revenue quality and retention", "Competitive concentration in observability", "Security platform consolidation signals",
+  "Free cash flow durability through the cycle", "Valuation sensitivity to growth normalization", "Management capital allocation discipline",
 ] as const;
 
 export const mockTodayData: TodayData = {
-  fixtureNotice: "Mock research data — for product demonstration only",
+  fixtureNotice: "Synthetic research data — product demonstration only; not investment advice",
   items: companies.map(([id, name, ticker], index) => ({
     id: `case-${id}`,
     companyId: id,
@@ -25,10 +24,10 @@ export const mockTodayData: TodayData = {
     question: questions[index],
     status: index < 5 ? "needs-review" : index < 9 ? "in-research" : "awaiting-review",
     priority: index === 0 || index === 2 ? "high" : "medium",
-    openQuestion: "What changes the thesis?",
-    completedWork: "Source scan · evidence extraction",
+    openQuestion: "What would invalidate the thesis?",
+    completedWork: "Source mapping · evidence qualification",
     updatedAt: "2026-08-30T09:30:00.000Z",
-    company: { id, name, ticker, sector: "AI & embodied intelligence" },
+    company: { id, name, ticker, sector: "AI infrastructure & software" },
   })),
   overview: {
     updatedAtLabel: "Updated 09:30",
@@ -36,17 +35,17 @@ export const mockTodayData: TodayData = {
       { label: "Fast research", value: 12, kind: "research" }, { label: "In progress", value: 4, kind: "progress" },
       { label: "Awaiting review", value: 3, kind: "review" }, { label: "Completed", value: 8, kind: "completed" },
     ],
-    coverage: [["Humanoid robotics", 74], ["Agent infrastructure", 52], ["Foundation models", 47], ["Industrial AI", 36], ["Compute", 28]].map(([label, value]) => ({ label: String(label), value: Number(value) })),
-    triggers: [["Deployment signal", 72], ["Capital / funding", 49], ["Technical release", 38], ["Policy / regulation", 20], ["Competition", 17]].map(([label, value]) => ({ label: String(label), value: Number(value) })),
+    coverage: [["Cloud infrastructure", 74], ["Enterprise software", 62], ["AI applications", 51], ["Cybersecurity", 43], ["Semiconductors", 38]].map(([label, value]) => ({ label: String(label), value: Number(value) })),
+    triggers: [["Earnings / guidance", 72], ["Capital expenditure", 49], ["Product release", 38], ["Policy / regulation", 20], ["Competition", 17]].map(([label, value]) => ({ label: String(label), value: Number(value) })),
     changes: [
-      { id: "change-figure", label: "Figure", summary: "Mock deployment partnership expanded to a second workflow.", materiality: "high" },
-      { id: "change-vla", label: "VLA models", summary: "New paper reports improved synthetic-to-real transfer with material limitations.", materiality: "medium" },
-      { id: "change-hiring", label: "Robot data", summary: "Data operations and evaluation hiring increased across representative companies.", materiality: "medium" },
+      { id: "change-northstar", label: "Northstar Analytics", summary: "Synthetic earnings update shows improving gross margin with slower enterprise expansion.", materiality: "high" },
+      { id: "change-capex", label: "AI infrastructure", summary: "Capital spending remains elevated; return-on-invested-capital evidence needs review.", materiality: "medium" },
+      { id: "change-pricing", label: "Cloud pricing", summary: "Public pricing actions create a counter-case to durable software margin expansion.", materiality: "medium" },
     ],
     recent: [
-      { id: "case-value-pools", title: "Embodied intelligence value pools", status: "awaiting-review", updatedAtLabel: "Updated 2m ago" },
-      { id: "case-figure-tesla", title: "Figure vs Tesla Optimus", status: "in-research", updatedAtLabel: "Updated 18m ago" },
-      { id: "case-agent-infra", title: "Agent infrastructure platform layers", status: "completed", updatedAtLabel: "Completed yesterday" },
+      { id: "case-margin-durability", title: "AI infrastructure margin durability", status: "awaiting-review", updatedAtLabel: "Updated 2m ago" },
+      { id: "case-nvidia", title: "Accelerator demand and capital intensity", status: "in-research", updatedAtLabel: "Updated 18m ago" },
+      { id: "case-agent-infra", title: "Enterprise software platform layers", status: "completed", updatedAtLabel: "Completed yesterday" },
     ],
   },
 };

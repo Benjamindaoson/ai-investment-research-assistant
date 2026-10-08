@@ -17,7 +17,7 @@ export function TopBar({ commandTriggerRef }: { commandTriggerRef: React.RefObje
         <button className="icon-action" type="button" aria-label="Help"><CircleHelp size={19} /></button>
         <button className="icon-action bell" type="button" aria-label="Notifications, 3 unread"><Bell size={19} /><i>3</i></button>
         <b className="user" aria-hidden="true">YZ</b>
-        <span className="user-name">Yvonne Zhang<small>Research · AI &amp; Robotics</small></span>
+        <span className="user-name">Yvonne Zhang<small>Financial DeepResearch</small></span>
         <ChevronDown size={14} aria-hidden="true" />
         <button className="mobile-shell-action context-drawer-trigger" type="button" aria-label="Open Today overview" onClick={() => openContext(true)}><PanelRight size={19} /></button>
       </div>

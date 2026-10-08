@@ -1,6 +1,6 @@
 import { expect, test } from "@playwright/test";
 
-test("completes the mock P0 research path", async ({ page }) => {
+test("completes the synthetic P0 research path", async ({ page }) => {
   await page.goto("/");
   await expect(page.getByRole("heading", { name: "Today" })).toBeVisible();
   await page.getByLabel("Ask a research question").fill("Which agent infrastructure layers can become durable platforms over three years?");
@@ -9,13 +9,13 @@ test("completes the mock P0 research path", async ({ page }) => {
   await page.getByRole("button", { name: "Continue to research plan" }).click();
   await expect(page.getByRole("heading", { name: "Review the research plan" })).toBeVisible();
   await page.getByRole("button", { name: "Start Research" }).click();
-  await expect(page).toHaveURL(/\/research\/case-value-pools/);
+  await expect(page).toHaveURL(/\/research\/case-margin-durability/);
   await expect(page.getByText("Structured findings before prose")).toBeVisible();
 
   await page.goto("/evidence");
   await expect(page.getByText("Supporting Evidence")).toBeVisible();
   await expect(page.getByText("Counter Evidence")).toBeVisible();
-  await page.goto("/companies/figure");
+  await page.goto("/companies/northstar");
   await expect(page.getByText("Material company signals")).toBeVisible();
   await page.goto("/thesis");
   await expect(page.getByText("When the thesis is wrong")).toBeVisible();

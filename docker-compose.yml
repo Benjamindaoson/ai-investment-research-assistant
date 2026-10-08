@@ -1,0 +1,73 @@
+services:
+  postgres:
+    image: postgres:16-alpine
+    environment:
+      POSTGRES_DB: ${POSTGRES_DB:-deepresearch}
+      POSTGRES_USER: ${POSTGRES_USER:-deepresearch}
+      POSTGRES_PASSWORD: ${POSTGRES_PASSWORD:-deepresearch}
+    ports:
+      - "${POSTGRES_PORT:-5432}:5432"
+    volumes:
+      - deepresearch-postgres:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U $${POSTGRES_USER} -d $${POSTGRES_DB}"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  redis:
+    image: redis:7-alpine
+    ports:
+      - "${REDIS_PORT:-6379}:6379"
+    healthcheck:
+      test: ["CMD", "redis-cli", "ping"]
+      interval: 5s
+      timeout: 3s
+      retries: 12
+
+  runtime:
+    build:
+      context: ./backend/research-runtime
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-deepresearch}:${POSTGRES_PASSWORD:-deepresearch}@postgres:5432/${POSTGRES_DB:-deepresearch}
+      RESEARCH_RUNTIME_REDIS_URL: redis://redis:6379/0
+      FIN_EVIDENCE_BASE_URL: ${FIN_EVIDENCE_BASE_URL:-}
+      FIN_EVIDENCE_TIMEOUT_SECONDS: ${FIN_EVIDENCE_TIMEOUT_SECONDS:-120}
+      RESEARCH_RUNTIME_CORS_ORIGINS: ${RESEARCH_RUNTIME_CORS_ORIGINS:-http://localhost:3000,http://127.0.0.1:3000}
+    ports:
+      - "${RUNTIME_PORT:-8011}:8000"
+    depends_on:
+      postgres:
+        condition: service_healthy
+      redis:
+        condition: service_healthy
+    healthcheck:
+      test: ["CMD", "python", "-c", "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/api/v1/health')"]
+      interval: 5s
+      timeout: 5s
+      retries: 12
+
+  worker:
+    build:
+      context: ./backend/research-runtime
+    environment:
+      DATABASE_URL: postgresql://${POSTGRES_USER:-deepresearch}:${POSTGRES_PASSWORD:-deepresearch}@postgres:5432/${POSTGRES_DB:-deepresearch}
+      RESEARCH_RUNTIME_REDIS_URL: redis://redis:6379/0
+      FIN_EVIDENCE_BASE_URL: ${FIN_EVIDENCE_BASE_URL:-}
+      FIN_EVIDENCE_TIMEOUT_SECONDS: ${FIN_EVIDENCE_TIMEOUT_SECONDS:-120}
+    command:
+      - python
+      - -m
+      - deepresearch.worker
+      - --database-url
+      - postgresql://${POSTGRES_USER:-deepresearch}:${POSTGRES_PASSWORD:-deepresearch}@postgres:5432/${POSTGRES_DB:-deepresearch}
+      - --redis-url
+      - redis://redis:6379/0
+      - --poll-seconds
+      - "2"
+    depends_on:
+      runtime:
+        condition: service_healthy
+
+volumes:
+  deepresearch-postgres:

@@ -1,0 +1,71 @@
+{
+  "baseline": {
+    "metrics": {
+      "counter_requirement_count": 1,
+      "dependency_edge_count": 2,
+      "evidence_requirement_count": 3,
+      "task_count": 3
+    },
+    "planner": "deterministic-financial-planner",
+    "score": {
+      "case_hash": "dff975a441ea03e8c914c74357c8688cb203070110c54fcdf00ac4c03dc03e41",
+      "case_id": "PL-001",
+      "checks": [
+        {
+          "detail": "missing=[], observed=3, minimum=3",
+          "name": "task_coverage",
+          "status": "PASS"
+        },
+        {
+          "detail": "observed={'market': [], 'fundamentals': [], 'risk': ['fundamentals', 'market']}, expected={'market': [], 'fundamentals': [], 'risk': ['fundamentals', 'market']}",
+          "name": "dependency_edges",
+          "status": "PASS"
+        },
+        {
+          "detail": "missing_task_ids=[]",
+          "name": "evidence_requirements",
+          "status": "PASS"
+        },
+        {
+          "detail": "missing_task_ids=[]",
+          "name": "counter_evidence",
+          "status": "PASS"
+        },
+        {
+          "detail": "observed=3, maximum=5",
+          "name": "task_ceiling",
+          "status": "PASS"
+        },
+        {
+          "detail": "duplicate_titles=[]",
+          "name": "duplicate_tasks",
+          "status": "PASS"
+        }
+      ],
+      "evaluated_at": "2026-09-14T09:35:26.589771Z",
+      "evaluator": "deterministic-plan-scorer-v1",
+      "id": "evaluation-f12d52d839564c5cadc37c9309cc3d5c",
+      "passed": true,
+      "run_id": null
+    },
+    "version": "v1"
+  },
+  "configuration": {
+    "finevidence_base_url": "http://127.0.0.1:8000",
+    "llm_api_key_present": true,
+    "llm_base_url": "https://api.jingziai.club/v1",
+    "llm_model": "claude-opus-4-8",
+    "planner_mode": "llm"
+  },
+  "failure": {
+    "message": "planner response contract invalid: 8 validation errors for LLMPlannerDraft\ntasks.0.evidence_requirements.1.criticality\n  Input should be 'CRITICAL', 'SUPPORTING' or 'OPTIONAL' [type=literal_error, input_value='HIGH', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\ntasks.0.evidence_requirements.1.evidence_role\n  Input should be 'VALUE_SUPPORT', 'COMPARISON_SUPPORT', 'DERIVATION_INPUT', 'EXPLANATION_SUPPORT' or 'CONTEXT_SUPPORT' [type=literal_error, input_value='RISK_SIGNAL', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\ntasks.1.evidence_requirements.1.criticality\n  Input should be 'CRITICAL', 'SUPPORTING' or 'OPTIONAL' [type=literal_error, input_value='HIGH', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\ntasks.1.evidence_requirements.1.evidence_role\n  Input should be 'VALUE_SUPPORT', 'COMPARISON_SUPPORT', 'DERIVATION_INPUT', 'EXPLANATION_SUPPORT' or 'CONTEXT_SUPPORT' [type=literal_error, input_value='RISK_SIGNAL', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\ntasks.2.evidence_requirements.1.criticality\n  Input should be 'CRITICAL', 'SUPPORTING' or 'OPTIONAL' [type=literal_error, input_value='HIGH', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\ntasks.2.evidence_requirements.1.evidence_role\n  Input should be 'VALUE_SUPPORT', 'COMPARISON_SUPPORT', 'DERIVATION_INPUT', 'EXPLANATION_SUPPORT' or 'CONTEXT_SUPPORT' [type=literal_error, input_value='RISK_SIGNAL', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\ntasks.3.evidence_requirements.0.evidence_role\n  Input should be 'VALUE_SUPPORT', 'COMPARISON_SUPPORT', 'DERIVATION_INPUT', 'EXPLANATION_SUPPORT' or 'CONTEXT_SUPPORT' [type=literal_error, input_value='RISK_SIGNAL', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error\ntasks.3.evidence_requirements.1.criticality\n  Input should be 'CRITICAL', 'SUPPORTING' or 'OPTIONAL' [type=literal_error, input_value='HIGH', input_type=str]\n    For further information visit https://errors.pydantic.dev/2.13/v/literal_error",
+    "type": "PlannerProviderError"
+  },
+  "gates": {
+    "configuration": "PASS",
+    "runtime": "FAIL"
+  },
+  "generated_at": "2026-09-14T09:35:26.588772+00:00",
+  "schema": "llm-planner-regression-v1",
+  "status": "FAIL"
+}

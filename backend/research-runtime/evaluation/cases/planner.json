@@ -1,0 +1,14 @@
+{
+  "case_id": "PL-001",
+  "title": "AI infrastructure margin durability planning contract",
+  "required_task_ids": ["market", "fundamentals", "risk"],
+  "required_evidence_task_ids": ["market", "fundamentals", "risk"],
+  "required_counter_evidence_task_ids": ["risk"],
+  "expected_dependencies": {
+    "market": [],
+    "fundamentals": [],
+    "risk": ["market", "fundamentals"]
+  },
+  "minimum_task_count": 3,
+  "maximum_task_count": 5
+}

@@ -1,0 +1,245 @@
+{
+  "catalog_observation": {
+    "catalog_size": 984,
+    "endpoint": "http://127.0.0.1:8000",
+    "same_endpoint_for_both_runs": true,
+    "status": "ok"
+  },
+  "comparison": {
+    "deterministic_planner": {
+      "evaluation": {
+        "case_hash": "e7052c226353c2e8f351f409161bfc84b44455411871b6d3bc5faf256ec997ad",
+        "case_id": "LLM-PLANNER-REGRESSION-001",
+        "checks": [
+          {
+            "detail": "observed=FAILED, expected=COMPLETED",
+            "name": "terminal_state",
+            "status": "FAIL"
+          },
+          {
+            "detail": "observed=30, minimum=1",
+            "name": "qualified_evidence",
+            "status": "PASS"
+          },
+          {
+            "detail": "at least one claim must link to evidence",
+            "name": "evidence_linked_claim",
+            "status": "FAIL"
+          }
+        ],
+        "evaluated_at": "2026-09-14T10:01:03.656938Z",
+        "evaluator": "deterministic-run-scorer-v1",
+        "id": "evaluation-df8d64f653eb44eb991efc3779a24f5f",
+        "passed": false,
+        "run_id": "run-88f34cb0882e4d0887e3c515e0ee0dc3"
+      },
+      "metrics": {
+        "claim_count": 0,
+        "claim_verification_receipt_count": 0,
+        "claim_verification_support_rate": null,
+        "counter_evidence_coverage_rate": 1.0,
+        "evidence_count": 30,
+        "memo_ready": false,
+        "memo_section_count": 0,
+        "memo_status": null,
+        "qualified_evidence_rate": 1.0,
+        "state": "FAILED",
+        "unresolved_requirement_rate": 0.0
+      },
+      "plan_score": {
+        "case_hash": "cea76544efa2835a8e0eb70cfd96ab7ab3b2b5671a3c3c78852c0d31fb5670cf",
+        "case_id": "LLM-PLANNER-REGRESSION-001",
+        "checks": [
+          {
+            "detail": "missing=[], observed=3, minimum=3",
+            "name": "task_coverage",
+            "status": "PASS"
+          },
+          {
+            "detail": "observed={'market': [], 'fundamentals': [], 'risk': ['fundamentals', 'market']}, expected={}",
+            "name": "dependency_edges",
+            "status": "PASS"
+          },
+          {
+            "detail": "missing_task_ids=[]",
+            "name": "evidence_requirements",
+            "status": "PASS"
+          },
+          {
+            "detail": "missing_task_ids=[]",
+            "name": "counter_evidence",
+            "status": "PASS"
+          },
+          {
+            "detail": "missing_task_ids=[]",
+            "name": "all_tasks_have_evidence_requirements",
+            "status": "PASS"
+          },
+          {
+            "detail": "observed_task_ids=['risk']",
+            "name": "counter_evidence_anywhere",
+            "status": "PASS"
+          },
+          {
+            "detail": "invalid_tools=[], allowed=['deterministic-research', 'evidence.search', 'external-evidence', 'financial-table', 'research']",
+            "name": "tool_contract",
+            "status": "PASS"
+          },
+          {
+            "detail": "observed=3, maximum=5",
+            "name": "task_ceiling",
+            "status": "PASS"
+          },
+          {
+            "detail": "duplicate_titles=[]",
+            "name": "duplicate_tasks",
+            "status": "PASS"
+          }
+        ],
+        "evaluated_at": "2026-09-14T10:01:03.669480Z",
+        "evaluator": "deterministic-plan-scorer-v1",
+        "id": "evaluation-b98c6b9ee3ae4d889b267ec14ef46173",
+        "passed": true,
+        "run_id": null
+      },
+      "planner": "deterministic-financial-planner",
+      "run_id": "run-88f34cb0882e4d0887e3c515e0ee0dc3"
+    },
+    "llm_generated_plan_replay": {
+      "evaluation": {
+        "case_hash": "e7052c226353c2e8f351f409161bfc84b44455411871b6d3bc5faf256ec997ad",
+        "case_id": "LLM-PLANNER-REGRESSION-001",
+        "checks": [
+          {
+            "detail": "observed=PARTIAL, expected=COMPLETED",
+            "name": "terminal_state",
+            "status": "FAIL"
+          },
+          {
+            "detail": "observed=90, minimum=1",
+            "name": "qualified_evidence",
+            "status": "PASS"
+          },
+          {
+            "detail": "at least one claim must link to evidence",
+            "name": "evidence_linked_claim",
+            "status": "PASS"
+          },
+          {
+            "detail": "missing=[], duplicates=[], empty=[]",
+            "name": "memo_sections",
+            "status": "PASS"
+          },
+          {
+            "detail": "dangling_claims=[], dangling_evidence=[], dangling_requirements=[]",
+            "name": "memo_artifact_links",
+            "status": "PASS"
+          },
+          {
+            "detail": "missing=[], unqualified=[]",
+            "name": "financial_artifact_links",
+            "status": "PASS"
+          },
+          {
+            "detail": "missing=[], unqualified=[]",
+            "name": "valuation_artifact_links",
+            "status": "PASS"
+          },
+          {
+            "detail": "invalid_reviews=[], dangling_evidence=[], invalid_stance=[]",
+            "name": "red_team_links",
+            "status": "PASS"
+          },
+          {
+            "detail": "dangling_memo=[], dangling_decisions=[], invalid_reviews=[]",
+            "name": "ic_review_links",
+            "status": "PASS"
+          }
+        ],
+        "evaluated_at": "2026-09-14T10:02:59.410962Z",
+        "evaluator": "deterministic-run-scorer-v1",
+        "id": "evaluation-c27ccb01b5414ac990215efc48d5ea93",
+        "passed": false,
+        "run_id": "run-a119b56c733f477185ed2d88680a3ab2"
+      },
+      "metrics": {
+        "claim_count": 4,
+        "claim_verification_receipt_count": 4,
+        "claim_verification_support_rate": 0.0,
+        "counter_evidence_coverage_rate": 1.0,
+        "evidence_count": 90,
+        "memo_ready": false,
+        "memo_section_count": 5,
+        "memo_status": "DRAFT",
+        "qualified_evidence_rate": 1.0,
+        "state": "PARTIAL",
+        "unresolved_requirement_rate": 0.0
+      },
+      "plan_score": {
+        "case_hash": "cea76544efa2835a8e0eb70cfd96ab7ab3b2b5671a3c3c78852c0d31fb5670cf",
+        "case_id": "LLM-PLANNER-REGRESSION-001",
+        "checks": [
+          {
+            "detail": "missing=[], observed=4, minimum=3",
+            "name": "task_coverage",
+            "status": "PASS"
+          },
+          {
+            "detail": "observed={'task-1': [], 'task-2': [], 'task-3': [], 'task-4': ['task-1', 'task-2', 'task-3']}, expected={}",
+            "name": "dependency_edges",
+            "status": "PASS"
+          },
+          {
+            "detail": "missing_task_ids=[]",
+            "name": "evidence_requirements",
+            "status": "PASS"
+          },
+          {
+            "detail": "missing_task_ids=[]",
+            "name": "counter_evidence",
+            "status": "PASS"
+          },
+          {
+            "detail": "missing_task_ids=[]",
+            "name": "all_tasks_have_evidence_requirements",
+            "status": "PASS"
+          },
+          {
+            "detail": "observed_task_ids=['task-1', 'task-2', 'task-3', 'task-4']",
+            "name": "counter_evidence_anywhere",
+            "status": "PASS"
+          },
+          {
+            "detail": "invalid_tools=[], allowed=['deterministic-research', 'evidence.search', 'external-evidence', 'financial-table', 'research']",
+            "name": "tool_contract",
+            "status": "PASS"
+          },
+          {
+            "detail": "observed=4, maximum=5",
+            "name": "task_ceiling",
+            "status": "PASS"
+          },
+          {
+            "detail": "duplicate_titles=[]",
+            "name": "duplicate_tasks",
+            "status": "PASS"
+          }
+        ],
+        "evaluated_at": "2026-09-14T10:02:59.428486Z",
+        "evaluator": "deterministic-plan-scorer-v1",
+        "id": "evaluation-971ea9dfb4e3497ab12f6b64bfa39181",
+        "passed": true,
+        "run_id": null
+      },
+      "planner": "llm:claude-opus-4-8",
+      "run_id": "run-a119b56c733f477185ed2d88680a3ab2"
+    }
+  },
+  "generated_at": "2026-09-14T10:02:59.434296+00:00",
+  "interpretation": {
+    "claim_verification_is_external_gate": true,
+    "llm_run_is_plan_replay": true,
+    "memo_ready_requires_completed_run_and_ready_for_review": true
+  },
+  "schema": "finevidence-planner-comparison-v1"
+}

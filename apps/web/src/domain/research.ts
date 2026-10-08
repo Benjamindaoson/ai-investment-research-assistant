@@ -110,7 +110,7 @@ export const todayOverviewSchema = z.object({
 export type TodayOverview = z.infer<typeof todayOverviewSchema>;
 
 export const todayDataSchema = z.object({
-  fixtureNotice: z.literal("Mock research data — for product demonstration only"),
+  fixtureNotice: z.literal("Synthetic research data — product demonstration only; not investment advice"),
   items: z.array(todayResearchItemSchema),
   overview: todayOverviewSchema,
 });
@@ -131,9 +131,9 @@ export const researchSourceTypeSchema = z.enum([
   "official",
   "research-papers",
   "news",
-  "github",
-  "patents",
-  "hiring",
+  "filings",
+  "transcripts",
+  "industry-reports",
   "uploaded-documents",
 ]);
 export type ResearchSourceType = z.infer<typeof researchSourceTypeSchema>;
@@ -176,7 +176,7 @@ export const researchPlanSchema = z.object({
 export type ResearchPlan = z.infer<typeof researchPlanSchema>;
 
 export const researchSetupOptionsSchema = z.object({
-  fixtureNotice: z.literal("Mock research data — for product demonstration only"),
+  fixtureNotice: z.literal("Synthetic research data — product demonstration only; not investment advice"),
   targets: z.array(researchTargetSchema),
   recommendedSourceTypes: z.array(researchSourceTypeSchema),
 });
@@ -213,7 +213,7 @@ export const researchTimelineEventSchema = z.object({
 export type ResearchTimelineEvent = z.infer<typeof researchTimelineEventSchema>;
 
 export const researchCaseWorkspaceSchema = z.object({
-  fixtureNotice: z.literal("Mock research data — for product demonstration only"),
+  fixtureNotice: z.literal("Synthetic research data — product demonstration only; not investment advice"),
   case: researchCaseSchema,
   researchGoal: z.string(),
   scope: researchScopeSchema,
@@ -236,7 +236,7 @@ export const updateFindingInputSchema = z.object({ caseId: z.string(), finding: 
 export type UpdateFindingInput = z.infer<typeof updateFindingInputSchema>;
 
 export const evidenceWorkspaceSchema = z.object({
-  fixtureNotice: z.literal("Mock research data — for product demonstration only"),
+  fixtureNotice: z.literal("Synthetic research data — product demonstration only; not investment advice"),
   caseId: z.string(),
   claims: z.array(claimSchema),
   evidence: z.array(evidenceSchema),
@@ -293,7 +293,7 @@ export const decisionItemSchema = z.object({
 export type DecisionItem = z.infer<typeof decisionItemSchema>;
 
 export const decisionWorkspaceSchema = z.object({
-  fixtureNotice: z.literal("Mock research data — for product demonstration only"),
+  fixtureNotice: z.literal("Synthetic research data — product demonstration only; not investment advice"),
   company: companySchema,
   currentThesis: structuredThesisSchema,
   whatChanged: z.array(z.object({ id: z.string(), date: z.string(), kind: z.enum(["partnership", "product", "hiring", "technology", "funding"]), summary: z.string(), materiality: z.enum(["high", "medium", "low"]) })),
@@ -330,7 +330,7 @@ export type BriefVersion = z.infer<typeof briefVersionSchema>;
 export const libraryItemSchema = z.object({ id: z.string(), title: z.string(), kind: z.enum(["uploaded-file", "report", "paper", "company-document", "evidence", "saved-source"]), company: z.string().optional(), industry: z.string(), sourceType: z.string(), tags: z.array(z.string()), date: z.string(), status: z.enum(["verified", "needs-review", "saved"]) });
 export type LibraryItem = z.infer<typeof libraryItemSchema>;
 
-export const outputWorkspaceSchema = z.object({ fixtureNotice: z.literal("Mock research data — for product demonstration only"), reviewQueue: z.array(reviewQueueItemSchema), reviewAudit: z.array(reviewAuditSchema), brief: livingBriefSchema, versions: z.array(briefVersionSchema), library: z.array(libraryItemSchema) });
+export const outputWorkspaceSchema = z.object({ fixtureNotice: z.literal("Synthetic research data — product demonstration only; not investment advice"), reviewQueue: z.array(reviewQueueItemSchema), reviewAudit: z.array(reviewAuditSchema), brief: livingBriefSchema, versions: z.array(briefVersionSchema), library: z.array(libraryItemSchema) });
 export type OutputWorkspace = z.infer<typeof outputWorkspaceSchema>;
 export const performReviewInputSchema = z.object({ targetId: z.string(), action: z.enum(["approved", "rejected", "changes-requested", "note-added", "brief-approved"]), note: z.string().optional() });
 export type PerformReviewInput = z.infer<typeof performReviewInputSchema>;

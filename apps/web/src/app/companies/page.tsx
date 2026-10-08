@@ -1,2 +1,2 @@
 import { redirect } from "next/navigation";
-export default function CompaniesPage() { redirect("/companies/figure"); }
+export default function CompaniesPage() { redirect("/companies/northstar"); }
