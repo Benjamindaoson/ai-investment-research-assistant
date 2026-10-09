@@ -11,6 +11,8 @@ from typing import Any
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse, Response
 
+from deepresearch.ops.identity import RuntimeIdentity, bearer_token, signed_identity_required, verify_identity_token
+
 ActorRole = str
 
 _ALLOWED_ROLES: set[ActorRole] = {"analyst", "reviewer", "chair", "admin"}
@@ -75,14 +77,38 @@ async def _identity_matches_request_body(request: Request, actor: str, identity_
     return str(supplied).strip() == actor
 
 
+def _signed_identity(request: Request) -> RuntimeIdentity | None | JSONResponse:
+    if not signed_identity_required():
+        return None
+    token = bearer_token(request.headers)
+    if not token:
+        return _deny(status.HTTP_401_UNAUTHORIZED, "signed actor identity token is required")
+    try:
+        return verify_identity_token(token)
+    except ValueError as error:
+        return _deny(status.HTTP_403_FORBIDDEN, str(error))
+
+
+def _header_identity(request: Request) -> RuntimeIdentity | JSONResponse:
+    actor = request.headers.get("x-actor", "").strip()
+    role = request.headers.get("x-actor-role", "").strip().lower()
+    if not actor or not role:
+        return _deny(status.HTTP_401_UNAUTHORIZED, "X-Actor and X-Actor-Role are required")
+    return RuntimeIdentity(actor=actor, role=role)
+
+
 def install_access_control(app: FastAPI) -> None:
-    """Install lightweight API-key and actor-role controls.
+    """Install API-key, signed-identity and actor-role controls.
 
     API-key enforcement is opt-in. When `DEEPRESEARCH_API_KEYS`,
     `DEEPRESEARCH_API_KEY`, or `DEEPRESEARCH_API_KEY_SHA256S` is set, every
-    non-health `/api/v1/*` route requires `X-API-Key`. Review and decision
-    write routes additionally require `X-Actor` and `X-Actor-Role` and validate
-    request-body identity fields.
+    non-health `/api/v1/*` route requires `X-API-Key`.
+
+    Review and decision write routes additionally require an actor identity.
+    Local/demo deployments can use `X-Actor` and `X-Actor-Role`. Production-like
+    deployments should set `DEEPRESEARCH_IDENTITY_SIGNING_SECRET`; then write
+    routes require a signed `Authorization: Bearer <token>` or `X-Actor-Token`
+    and client-supplied actor headers are ignored.
     """
 
     @app.middleware("http")
@@ -104,17 +130,23 @@ def install_access_control(app: FastAPI) -> None:
             return await call_next(request)
         required_roles, identity_field = policy
 
-        actor = request.headers.get("x-actor", "").strip()
-        role = request.headers.get("x-actor-role", "").strip().lower()
-        if not actor or not role:
-            return _deny(status.HTTP_401_UNAUTHORIZED, "X-Actor and X-Actor-Role are required")
+        identity_or_error = _signed_identity(request) if signed_identity_required() else _header_identity(request)
+        if isinstance(identity_or_error, JSONResponse):
+            return identity_or_error
+        if identity_or_error is None:
+            return _deny(status.HTTP_401_UNAUTHORIZED, "actor identity is required")
+        actor = identity_or_error.actor
+        role = identity_or_error.role
         if role not in _ALLOWED_ROLES:
             return _deny(status.HTTP_403_FORBIDDEN, f"unsupported actor role: {role}")
         if role not in required_roles:
             return _deny(status.HTTP_403_FORBIDDEN, f"role {role} is not allowed for this action")
         if not await _identity_matches_request_body(request, actor, identity_field):
-            return _deny(status.HTTP_403_FORBIDDEN, f"request field {identity_field} must match X-Actor")
+            return _deny(status.HTTP_403_FORBIDDEN, f"request field {identity_field} must match signed actor")
 
         request.state.actor = actor
         request.state.actor_role = role
+        request.state.actor_subject = identity_or_error.subject
+        request.state.organization_id = identity_or_error.organization_id
+        request.state.workspace_id = identity_or_error.workspace_id
         return await call_next(request)
