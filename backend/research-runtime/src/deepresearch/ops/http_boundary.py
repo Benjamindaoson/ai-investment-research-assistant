@@ -57,6 +57,11 @@ def _json_log(payload: dict[str, object]) -> None:
     logger.info(json.dumps(payload, sort_keys=True, separators=(",", ":")))
 
 
+def _set_default_header(response: Response, name: str, value: str) -> None:
+    if name not in response.headers:
+        response.headers[name] = value
+
+
 def install_http_boundary(app: FastAPI) -> None:
     """Attach request id, security headers, size limits, and optional rate limits."""
 
@@ -88,9 +93,9 @@ def install_http_boundary(app: FastAPI) -> None:
 
         elapsed_ms = round((time.perf_counter() - started) * 1000, 2)
         response.headers["X-Request-ID"] = request_id
-        response.headers.setdefault("X-Content-Type-Options", "nosniff")
-        response.headers.setdefault("Referrer-Policy", "no-referrer")
-        response.headers.setdefault("X-Frame-Options", "DENY")
+        _set_default_header(response, "X-Content-Type-Options", "nosniff")
+        _set_default_header(response, "Referrer-Policy", "no-referrer")
+        _set_default_header(response, "X-Frame-Options", "DENY")
         _json_log(
             {
                 "event": "http_request",
