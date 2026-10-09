@@ -16,6 +16,7 @@ const mockMutation = vi.hoisted(() => ({
 vi.mock("@/queries/use-runtime-run", () => ({ useCreateRedTeamReviewMutation: () => mockMutation }));
 afterEach(cleanup);
 beforeEach(() => {
+  window.localStorage.clear();
   mockMutation.mutate.mockReset();
   mockMutation.isPending = false;
   mockMutation.isError = false;
@@ -49,7 +50,7 @@ describe("RedTeamReviewForm", () => {
     await user.click(screen.getByRole("button", { name: "Save red-team review" }));
 
     expect(mockMutation.mutate).toHaveBeenCalledWith({
-      reviewer: "Investment analyst",
+      reviewer: "reviewer@example.com",
       challenge: "Demand may soften.",
       rationale: "The counter signal is material.",
       outcome: "REQUIRES_RESEARCH",
