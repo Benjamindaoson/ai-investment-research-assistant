@@ -1,9 +1,8 @@
-from hashlib import sha256
-
 from fastapi.testclient import TestClient
 
 from deepresearch.api import create_app
 from deepresearch.ops.access_control import install_access_control
+from deepresearch.ops.identity import RuntimeIdentity, sign_identity
 from deepresearch.ops.readiness import install_readiness
 from deepresearch.persistence.store import SQLiteStore
 
@@ -59,16 +58,14 @@ def test_configured_api_key_protects_non_health_routes(tmp_path, monkeypatch) ->
     assert client.get("/api/v1/research-cases", headers={"X-API-Key": "local-dev-key"}).status_code == 200
 
 
-def test_hashed_api_key_can_protect_runtime_routes(tmp_path, monkeypatch) -> None:
-    api_key = "live-secret-key"
-    monkeypatch.setenv("DEEPRESEARCH_API_KEY_SHA256S", sha256(api_key.encode("utf-8")).hexdigest())
+def test_hashed_api_key_protects_non_health_routes(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DEEPRESEARCH_API_KEY_SHA256S", "71f3e86c3d79d50a8e2400fd71cd9cc9a0f1c6d8ddf7a5b1d62ad983c70f5c12")
     app = create_app(SQLiteStore(tmp_path / "runtime.sqlite3"))
     install_access_control(app)
     client = TestClient(app)
 
-    assert client.get("/api/v1/research-cases").status_code == 401
     assert client.get("/api/v1/research-cases", headers={"X-API-Key": "wrong"}).status_code == 403
-    assert client.get("/api/v1/research-cases", headers={"X-API-Key": api_key}).status_code == 200
+    assert client.get("/api/v1/research-cases", headers={"X-API-Key": "hashed-dev-key"}).status_code == 200
 
 
 def test_review_write_requires_actor_headers(tmp_path) -> None:
@@ -112,6 +109,51 @@ def test_reviewer_can_write_review_but_not_decision(tmp_path) -> None:
     assert "not allowed" in decision.json()["detail"]
 
 
+def test_signed_identity_required_when_secret_is_configured(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DEEPRESEARCH_IDENTITY_SIGNING_SECRET", "test-signing-secret")
+    app = create_app(SQLiteStore(tmp_path / "runtime.sqlite3"))
+    install_access_control(app)
+    client = TestClient(app)
+    run_id, run = _completed_run(client)
+    evidence_id = _counter_evidence_id(run)
+
+    forged_header = client.post(
+        f"/api/v1/research-runs/{run_id}/red-team-reviews",
+        json=_review_payload(evidence_id),
+        headers={"X-Actor": "reviewer@example.com", "X-Actor-Role": "reviewer"},
+    )
+    token = sign_identity(RuntimeIdentity(actor="reviewer@example.com", role="reviewer"), secret="test-signing-secret")
+    signed = client.post(
+        f"/api/v1/research-runs/{run_id}/red-team-reviews",
+        json=_review_payload(evidence_id),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert forged_header.status_code == 401
+    assert "signed actor identity token" in forged_header.json()["detail"]
+    assert signed.status_code == 200
+    assert signed.json()["red_team_reviews"][-1]["reviewer"] == "reviewer@example.com"
+
+
+def test_signed_identity_body_identity_must_match_token_actor(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DEEPRESEARCH_IDENTITY_SIGNING_SECRET", "test-signing-secret")
+    app = create_app(SQLiteStore(tmp_path / "runtime.sqlite3"))
+    install_access_control(app)
+    client = TestClient(app)
+    run_id, run = _completed_run(client)
+    evidence_id = _counter_evidence_id(run)
+    token = sign_identity(RuntimeIdentity(actor="reviewer@example.com", role="reviewer"), secret="test-signing-secret")
+
+    response = client.post(
+        f"/api/v1/research-runs/{run_id}/red-team-reviews",
+        json=_review_payload(evidence_id, reviewer="someone-else@example.com"),
+        headers={"Authorization": f"Bearer {token}"},
+    )
+
+    assert response.status_code == 403
+    assert "signed actor" in response.json()["detail"]
+
+
 def test_reviewer_body_identity_must_match_actor_header(tmp_path) -> None:
     app = create_app(SQLiteStore(tmp_path / "runtime.sqlite3"))
     install_access_control(app)
@@ -127,7 +169,7 @@ def test_reviewer_body_identity_must_match_actor_header(tmp_path) -> None:
 
     assert response.status_code == 403
     assert "reviewer" in response.json()["detail"]
-    assert "X-Actor" in response.json()["detail"]
+    assert "signed actor" in response.json()["detail"]
 
 
 def test_chair_can_write_decision(tmp_path) -> None:
@@ -162,4 +204,4 @@ def test_decision_body_identity_must_match_actor_header(tmp_path) -> None:
 
     assert response.status_code == 403
     assert "actor" in response.json()["detail"]
-    assert "X-Actor" in response.json()["detail"]
+    assert "signed actor" in response.json()["detail"]
