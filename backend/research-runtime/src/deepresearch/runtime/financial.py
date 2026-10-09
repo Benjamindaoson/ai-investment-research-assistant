@@ -2,12 +2,15 @@
 
 from __future__ import annotations
 
+from collections.abc import Iterable
 from decimal import Decimal
 from hashlib import sha256
 
 from deepresearch.domain.models import (
     CalculationLedgerEntry,
+    EvidenceRecord,
     FinancialAnalysisResult,
+    FinancialFact,
     FinancialFactSet,
     FinancialSnapshot,
     ScenarioAssumption,
@@ -15,6 +18,81 @@ from deepresearch.domain.models import (
     ScenarioValuationResult,
     ValuationScenariosResult,
 )
+
+
+def _normalize_text(value: str) -> str:
+    return " ".join(value.casefold().replace("_", " ").replace("-", " ").split())
+
+
+def _decimal_variants(value: Decimal) -> set[str]:
+    normalized = value.normalize()
+    variants = {format(value, "f"), format(normalized, "f")}
+    if value == value.to_integral_value():
+        variants.add(str(int(value)))
+    return {item.casefold() for item in variants if item}
+
+
+def _unit_aliases(unit: str) -> set[str]:
+    normalized = _normalize_text(unit)
+    aliases = {normalized}
+    if "mm" in normalized or "million" in normalized or "mn" in normalized:
+        aliases.update({"million", "millions", "mm", "mn"})
+    if "bn" in normalized or "billion" in normalized:
+        aliases.update({"billion", "billions", "bn"})
+    if "thousand" in normalized or " k" in f" {normalized}" or normalized.endswith("k"):
+        aliases.update({"thousand", "thousands", "k"})
+    return aliases
+
+
+def _currency_aliases(currency: str) -> set[str]:
+    normalized = _normalize_text(currency)
+    aliases = {normalized}
+    if normalized == "usd":
+        aliases.update({"$", "dollar", "dollars", "u s dollar", "u s dollars", "us dollar", "us dollars"})
+    return aliases
+
+
+def _evidence_text(records: Iterable[EvidenceRecord]) -> str:
+    return _normalize_text(" ".join(f"{record.source_title} {record.excerpt}" for record in records))
+
+
+def _contains_any(text: str, candidates: Iterable[str]) -> bool:
+    return any(_normalize_text(candidate) in text for candidate in candidates if candidate)
+
+
+def _supports_fact(text: str, fact: FinancialFact) -> bool:
+    field = fact.field.replace("_", " ")
+    return (
+        _normalize_text(field) in text
+        and _normalize_text(fact.period) in text
+        and _contains_any(text, _decimal_variants(fact.value))
+        and _contains_any(text, _currency_aliases(fact.currency))
+        and _contains_any(text, _unit_aliases(fact.unit))
+    )
+
+
+def validate_financial_fact_evidence(fact_set: FinancialFactSet, evidence: Iterable[EvidenceRecord]) -> None:
+    """Require each explicit financial fact to be visible in linked evidence text.
+
+    This remains intentionally conservative: it does not infer values from the
+    excerpt. The value, period, currency, unit scale, and metric name must all be
+    directly present in at least one linked evidence record.
+    """
+
+    records = {record.id: record for record in evidence}
+    for fact in fact_set.facts:
+        linked = [records[evidence_id] for evidence_id in fact.evidence_ids if evidence_id in records]
+        missing = sorted(set(fact.evidence_ids) - records.keys())
+        if missing:
+            raise ValueError(f"financial evidence not found for {fact.field}: {missing}")
+        if not linked:
+            raise ValueError(f"financial fact {fact.field} requires linked evidence")
+        text = _evidence_text(linked)
+        if not _supports_fact(text, fact):
+            raise ValueError(
+                "financial fact is not supported by linked evidence text: "
+                f"{fact.field}={fact.value} {fact.currency} {fact.unit} {fact.period}"
+            )
 
 
 def financial_snapshot_from_facts(fact_set: FinancialFactSet) -> tuple[FinancialSnapshot, dict[str, list[str]]]:
