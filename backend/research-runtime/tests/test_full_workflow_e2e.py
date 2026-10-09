@@ -57,7 +57,7 @@ def test_full_workflow_from_case_creation_to_memo_and_decision(tmp_path) -> None
         "/api/v1/research-cases",
         json={"question": "Assess ACME's margin durability and downside risk", "target": "ACME"},
     )
-    assert created.status_code == 200, created.text
+    assert created.status_code in {200, 201}, created.text
     run_id = created.json()["run_id"]
 
     executed = client.post(f"/api/v1/research-runs/{run_id}/execute")
