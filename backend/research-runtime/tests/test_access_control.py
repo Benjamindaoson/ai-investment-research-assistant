@@ -42,6 +42,19 @@ def _decision_payload(thesis_id: str, actor: str = "chair@example.com") -> dict:
     }
 
 
+def test_configured_api_key_protects_non_health_routes(tmp_path, monkeypatch) -> None:
+    monkeypatch.setenv("DEEPRESEARCH_API_KEYS", "local-dev-key,backup-key")
+    app = create_app(SQLiteStore(tmp_path / "runtime.sqlite3"))
+    install_access_control(app)
+    client = TestClient(app)
+
+    assert client.get("/api/v1/health").status_code == 200
+    assert client.get("/api/v1/ready").status_code == 200
+    assert client.get("/api/v1/research-cases").status_code == 401
+    assert client.get("/api/v1/research-cases", headers={"X-API-Key": "wrong"}).status_code == 403
+    assert client.get("/api/v1/research-cases", headers={"X-API-Key": "local-dev-key"}).status_code == 200
+
+
 def test_review_write_requires_actor_headers(tmp_path) -> None:
     app = create_app(SQLiteStore(tmp_path / "runtime.sqlite3"))
     install_access_control(app)
