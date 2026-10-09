@@ -59,7 +59,7 @@ def test_configured_api_key_protects_non_health_routes(tmp_path, monkeypatch) ->
 
 
 def test_hashed_api_key_protects_non_health_routes(tmp_path, monkeypatch) -> None:
-    monkeypatch.setenv("DEEPRESEARCH_API_KEY_SHA256S", "71f3e86c3d79d50a8e2400fd71cd9cc9a0f1c6d8ddf7a5b1d62ad983c70f5c12")
+    monkeypatch.setenv("DEEPRESEARCH_API_KEY_SHA256S", "829675537d0fe84c9e1ad3f9a23c466367f833ac738f304d9bdddf494d81236e")
     app = create_app(SQLiteStore(tmp_path / "runtime.sqlite3"))
     install_access_control(app)
     client = TestClient(app)
