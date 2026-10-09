@@ -20,11 +20,10 @@ def _placeholder(store: object) -> str:
     return "%s" if _is_postgres_store(store) else "?"
 
 
-def ensure_audit_log(store: object) -> None:
+def ensure_audit_log(store: Any) -> None:
     """Create the audit table using store transaction semantics."""
 
-    transaction = getattr(store, "_transaction")
-    with transaction() as connection:
+    with store._transaction() as connection:
         connection.execute(
             """
             CREATE TABLE IF NOT EXISTS audit_events (
@@ -44,15 +43,14 @@ def ensure_audit_log(store: object) -> None:
         )
 
 
-def record_audit_event(store: object, event: dict[str, Any]) -> None:
+def record_audit_event(store: Any, event: dict[str, Any]) -> None:
     ensure_audit_log(store)
     p = _placeholder(store)
     sql = (
         "INSERT INTO audit_events(id, occurred_at, request_id, actor, actor_role, method, path, action, "
         f"resource_id, status_code, detail) VALUES ({p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p}, {p})"
     )
-    transaction = getattr(store, "_transaction")
-    with transaction() as connection:
+    with store._transaction() as connection:
         connection.execute(
             sql,
             (
@@ -71,11 +69,10 @@ def record_audit_event(store: object, event: dict[str, Any]) -> None:
         )
 
 
-def list_audit_events(store: object, limit: int = 100) -> list[dict[str, Any]]:
+def list_audit_events(store: Any, limit: int = 100) -> list[dict[str, Any]]:
     ensure_audit_log(store)
     p = _placeholder(store)
-    transaction = getattr(store, "_transaction")
-    with transaction() as connection:
+    with store._transaction() as connection:
         rows = connection.execute(
             f"SELECT * FROM audit_events ORDER BY occurred_at DESC LIMIT {p}",
             (max(1, min(limit, 500)),),
