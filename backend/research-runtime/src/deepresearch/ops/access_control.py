@@ -4,6 +4,7 @@ from __future__ import annotations
 
 import os
 from collections.abc import Awaitable, Callable
+from hashlib import sha256
 from hmac import compare_digest
 from typing import Any
 
@@ -18,17 +19,28 @@ _DECISION_ROLES: set[ActorRole] = {"chair", "admin"}
 _PUBLIC_PATHS = {"/api/v1/health", "/api/v1/ready"}
 
 
+def _csv_env(name: str) -> tuple[str, ...]:
+    raw = os.environ.get(name) or ""
+    return tuple(item.strip() for item in raw.split(",") if item.strip())
+
+
 def _configured_api_keys() -> tuple[str, ...]:
-    raw = os.environ.get("DEEPRESEARCH_API_KEYS") or os.environ.get("DEEPRESEARCH_API_KEY") or ""
-    return tuple(key.strip() for key in raw.split(",") if key.strip())
+    return _csv_env("DEEPRESEARCH_API_KEYS") or _csv_env("DEEPRESEARCH_API_KEY")
+
+
+def _configured_api_key_hashes() -> tuple[str, ...]:
+    return tuple(item.casefold() for item in _csv_env("DEEPRESEARCH_API_KEY_SHA256S"))
 
 
 def _api_path_requires_key(path: str) -> bool:
     return path.startswith("/api/v1/") and path not in _PUBLIC_PATHS
 
 
-def _valid_api_key(provided: str, allowed: tuple[str, ...]) -> bool:
-    return any(compare_digest(provided, expected) for expected in allowed)
+def _valid_api_key(provided: str, allowed: tuple[str, ...], allowed_hashes: tuple[str, ...]) -> bool:
+    provided_hash = sha256(provided.encode("utf-8")).hexdigest()
+    return any(compare_digest(provided, expected) for expected in allowed) or any(
+        compare_digest(provided_hash, expected_hash) for expected_hash in allowed_hashes
+    )
 
 
 def _policy(path: str, method: str) -> tuple[set[ActorRole], str] | None:
@@ -66,10 +78,11 @@ async def _identity_matches_request_body(request: Request, actor: str, identity_
 def install_access_control(app: FastAPI) -> None:
     """Install lightweight API-key and actor-role controls.
 
-    API-key enforcement is opt-in. When `DEEPRESEARCH_API_KEYS` or
-    `DEEPRESEARCH_API_KEY` is set, every non-health `/api/v1/*` route requires
-    `X-API-Key`. Review and decision write routes additionally require
-    `X-Actor` and `X-Actor-Role` and validate request-body identity fields.
+    API-key enforcement is opt-in. When `DEEPRESEARCH_API_KEYS`,
+    `DEEPRESEARCH_API_KEY`, or `DEEPRESEARCH_API_KEY_SHA256S` is set, every
+    non-health `/api/v1/*` route requires `X-API-Key`. Review and decision
+    write routes additionally require `X-Actor` and `X-Actor-Role` and validate
+    request-body identity fields.
     """
 
     @app.middleware("http")
@@ -78,11 +91,12 @@ def install_access_control(app: FastAPI) -> None:
         call_next: Callable[[Request], Awaitable[Response]],
     ) -> Response:
         allowed_api_keys = _configured_api_keys()
-        if allowed_api_keys and _api_path_requires_key(request.url.path):
+        allowed_api_key_hashes = _configured_api_key_hashes()
+        if (allowed_api_keys or allowed_api_key_hashes) and _api_path_requires_key(request.url.path):
             provided_key = request.headers.get("x-api-key", "").strip()
             if not provided_key:
                 return _deny(status.HTTP_401_UNAUTHORIZED, "X-API-Key is required")
-            if not _valid_api_key(provided_key, allowed_api_keys):
+            if not _valid_api_key(provided_key, allowed_api_keys, allowed_api_key_hashes):
                 return _deny(status.HTTP_403_FORBIDDEN, "invalid X-API-Key")
 
         policy = _policy(request.url.path, request.method)
