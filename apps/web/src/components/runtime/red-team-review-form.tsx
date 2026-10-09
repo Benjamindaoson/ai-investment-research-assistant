@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { RuntimeActorSelector } from "@/components/runtime/runtime-actor-selector";
 import { useCreateRedTeamReviewMutation } from "@/queries/use-runtime-run";
+import { loadRuntimeActor, type RuntimeActor } from "@/services/runtime-actor";
 import type { RuntimeRun } from "@/services/research-runtime-service";
 
 const outcomes = [
@@ -14,11 +16,20 @@ const outcomes = [
 export function RedTeamReviewForm({ run }: { run: RuntimeRun }) {
   const mutation = useCreateRedTeamReviewMutation(run.id);
   const disconfirmingEvidence = run.evidence.filter((item) => item.stance === "COUNTER" || item.stance === "CONFLICTING");
-  const [reviewer, setReviewer] = useState("Investment analyst");
+  const [reviewer, setReviewer] = useState(() => loadRuntimeActor("reviewer").actor);
   const [challenge, setChallenge] = useState("");
   const [rationale, setRationale] = useState("");
   const [outcome, setOutcome] = useState<(typeof outcomes)[number][0]>("REQUIRES_RESEARCH");
   const [evidenceIds, setEvidenceIds] = useState<string[]>([]);
+
+  useEffect(() => {
+    function onActorChange(event: Event) {
+      const detail = event instanceof CustomEvent ? event.detail as RuntimeActor : null;
+      if (detail?.actor) setReviewer(detail.actor);
+    }
+    window.addEventListener("deepresearch-runtime-actor-change", onActorChange);
+    return () => window.removeEventListener("deepresearch-runtime-actor-change", onActorChange);
+  }, []);
 
   if (!run.thesis || disconfirmingEvidence.length === 0) return null;
 
@@ -33,6 +44,7 @@ export function RedTeamReviewForm({ run }: { run: RuntimeRun }) {
 
   return <section className="decision-panel red-team-review-form">
     <header><div><small>RED-TEAM REVIEW</small><h2>Challenge the thesis</h2></div><span>{disconfirmingEvidence.length} disconfirming evidence</span></header>
+    <RuntimeActorSelector />
     <form onSubmit={submit}>
       <div className="red-team-grid">
         <label htmlFor="runtime-reviewer">Reviewer<input id="runtime-reviewer" className="text-control" value={reviewer} onChange={(event) => setReviewer(event.target.value)} required /></label>
