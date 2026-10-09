@@ -9,6 +9,7 @@ const mockMutation = vi.hoisted(() => ({ mutate: vi.fn(), isPending: false, isEr
 vi.mock("@/queries/use-runtime-run", () => ({ useCreateInvestmentCommitteeReviewMutation: () => mockMutation }));
 afterEach(cleanup);
 beforeEach(() => {
+  window.localStorage.clear();
   mockMutation.mutate.mockReset();
   mockMutation.isPending = false;
   mockMutation.isError = false;
@@ -35,7 +36,7 @@ describe("RuntimeIcReview", () => {
     await user.click(screen.getByRole("button", { name: "Save IC review" }));
 
     expect(mockMutation.mutate).toHaveBeenCalledWith({
-      role: "BULL", reviewer: "Investment committee reviewer", position: "MIXED", recommendation: "HOLD",
+      role: "BULL", reviewer: "reviewer@example.com", position: "MIXED", recommendation: "HOLD",
       rationale: "Financial evidence supports the thesis for now.", evidence_ids: ["evidence-1"],
     });
   });
