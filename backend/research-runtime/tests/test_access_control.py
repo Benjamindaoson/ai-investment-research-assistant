@@ -1,3 +1,5 @@
+from hashlib import sha256
+
 from fastapi.testclient import TestClient
 
 from deepresearch.api import create_app
@@ -55,6 +57,18 @@ def test_configured_api_key_protects_non_health_routes(tmp_path, monkeypatch) ->
     assert client.get("/api/v1/research-cases").status_code == 401
     assert client.get("/api/v1/research-cases", headers={"X-API-Key": "wrong"}).status_code == 403
     assert client.get("/api/v1/research-cases", headers={"X-API-Key": "local-dev-key"}).status_code == 200
+
+
+def test_hashed_api_key_can_protect_runtime_routes(tmp_path, monkeypatch) -> None:
+    api_key = "live-secret-key"
+    monkeypatch.setenv("DEEPRESEARCH_API_KEY_SHA256S", sha256(api_key.encode("utf-8")).hexdigest())
+    app = create_app(SQLiteStore(tmp_path / "runtime.sqlite3"))
+    install_access_control(app)
+    client = TestClient(app)
+
+    assert client.get("/api/v1/research-cases").status_code == 401
+    assert client.get("/api/v1/research-cases", headers={"X-API-Key": "wrong"}).status_code == 403
+    assert client.get("/api/v1/research-cases", headers={"X-API-Key": api_key}).status_code == 200
 
 
 def test_review_write_requires_actor_headers(tmp_path) -> None:
