@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { RuntimeActorSelector } from "@/components/runtime/runtime-actor-selector";
 import { useRecordRuntimeDecisionMutation } from "@/queries/use-runtime-run";
+import { loadRuntimeActor, type RuntimeActor } from "@/services/runtime-actor";
 import type { DecisionRecordInput, RuntimeRun } from "@/services/research-runtime-service";
 
 const actions: Array<[DecisionRecordInput["action"], string]> = [
@@ -12,11 +14,21 @@ const actions: Array<[DecisionRecordInput["action"], string]> = [
 
 export function RuntimeDecisionForm({ run }: { run: RuntimeRun }) {
   const mutation = useRecordRuntimeDecisionMutation(run.id);
-  const [actor, setActor] = useState("Analyst");
+  const [actor, setActor] = useState(() => loadRuntimeActor("chair").actor);
   const [action, setAction] = useState<DecisionRecordInput["action"]>("APPROVE_THESIS");
   const [rationale, setRationale] = useState("");
   const [reviewIds, setReviewIds] = useState<string[]>([]);
   const thesis = run.thesis;
+
+  useEffect(() => {
+    function onActorChange(event: Event) {
+      const detail = event instanceof CustomEvent ? event.detail as RuntimeActor : null;
+      if (detail?.actor) setActor(detail.actor);
+    }
+    window.addEventListener("deepresearch-runtime-actor-change", onActorChange);
+    return () => window.removeEventListener("deepresearch-runtime-actor-change", onActorChange);
+  }, []);
+
   if (!thesis) return null;
   const thesisId = thesis.id;
 
@@ -33,9 +45,10 @@ export function RuntimeDecisionForm({ run }: { run: RuntimeRun }) {
     <section className="decision-panel runtime-decision-form">
       <header><div><small>HUMAN REVIEW · WRITE-ONCE DECISION</small><h2>Review thesis</h2></div><span>{thesis.review_status}</span></header>
       <p className="form-note">This decision targets thesis <b>{thesisId}</b>. Backend rules remain authoritative.</p>
+      <RuntimeActorSelector />
       <form onSubmit={submit}>
         <div className="runtime-decision-grid">
-          <label htmlFor="runtime-decision-actor">Analyst<input id="runtime-decision-actor" className="text-control" value={actor} onChange={(event) => setActor(event.target.value)} required /></label>
+          <label htmlFor="runtime-decision-actor">Actor<input id="runtime-decision-actor" className="text-control" value={actor} onChange={(event) => setActor(event.target.value)} required /></label>
           <label htmlFor="runtime-decision-action">Action<select id="runtime-decision-action" className="text-control" value={action} onChange={(event) => setAction(event.target.value as DecisionRecordInput["action"])}>{actions.map(([value, label]) => <option value={value} key={value} disabled={value === "APPROVE_THESIS" && run.state !== "COMPLETED"}>{label}</option>)}</select></label>
           {run.ic_reviews.length > 0 && <label htmlFor="runtime-decision-reviews">IC reviews considered<select id="runtime-decision-reviews" className="text-control red-team-evidence-select" multiple size={Math.min(4, run.ic_reviews.length)} value={reviewIds} onChange={(event) => setReviewIds(Array.from(event.target.selectedOptions, (option) => option.value))}><option value="" disabled>Select reviews</option>{run.ic_reviews.map((review) => <option key={review.id} value={review.id}>{review.role} · {review.recommendation} · {review.reviewer}</option>)}</select><small>Optional for compatibility; selecting records makes the decision basis explicit.</small></label>}
           <label htmlFor="runtime-decision-rationale">Rationale<textarea id="runtime-decision-rationale" className="text-control" rows={4} value={rationale} onChange={(event) => setRationale(event.target.value)} placeholder="Record the reasoning that should remain in the audit trail." required /></label>
