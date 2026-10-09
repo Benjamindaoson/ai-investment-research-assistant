@@ -16,6 +16,7 @@ const mockMutation = vi.hoisted(() => ({
 vi.mock("@/queries/use-runtime-run", () => ({ useRecordRuntimeDecisionMutation: () => mockMutation }));
 afterEach(cleanup);
 beforeEach(() => {
+  window.localStorage.clear();
   mockMutation.mutate.mockReset();
   mockMutation.isPending = false;
   mockMutation.isError = false;
@@ -39,7 +40,7 @@ describe("RuntimeDecisionForm", () => {
     await user.click(screen.getByRole("button", { name: "Record decision" }));
 
     expect(mockMutation.mutate).toHaveBeenCalledWith({
-      actor: "Analyst",
+      actor: "chair@example.com",
       action: "REQUEST_RESEARCH",
       target_id: "thesis-1",
       rationale: "Validate churn assumptions before approval.",
