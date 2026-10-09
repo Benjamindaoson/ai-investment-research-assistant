@@ -11,7 +11,12 @@ from typing import Any
 from fastapi import FastAPI, Request, status
 from fastapi.responses import JSONResponse, Response
 
-from deepresearch.ops.identity import RuntimeIdentity, bearer_token, signed_identity_required, verify_identity_token
+from deepresearch.ops.identity import (
+    RuntimeIdentity,
+    bearer_token,
+    signed_identity_required,
+    verify_identity_token,
+)
 
 ActorRole = str
 
