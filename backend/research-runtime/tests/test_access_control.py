@@ -2,6 +2,7 @@ from fastapi.testclient import TestClient
 
 from deepresearch.api import create_app
 from deepresearch.ops.access_control import install_access_control
+from deepresearch.ops.readiness import install_readiness
 from deepresearch.persistence.store import SQLiteStore
 
 
@@ -46,6 +47,7 @@ def test_configured_api_key_protects_non_health_routes(tmp_path, monkeypatch) ->
     monkeypatch.setenv("DEEPRESEARCH_API_KEYS", "local-dev-key,backup-key")
     app = create_app(SQLiteStore(tmp_path / "runtime.sqlite3"))
     install_access_control(app)
+    install_readiness(app)
     client = TestClient(app)
 
     assert client.get("/api/v1/health").status_code == 200
