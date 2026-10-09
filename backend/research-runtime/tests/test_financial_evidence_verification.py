@@ -14,7 +14,7 @@ def _evidence(excerpt: str, *, evidence_id: str = "evidence-1", fixture: bool = 
         stance="SUPPORTING",
         qualification="QUALIFIED",
         source_id="source-1",
-        source_title="ACME FY2025 filing",
+        source_title="ACME filing",
         excerpt=excerpt,
         provider="unit-test",
         provenance={"fixture": fixture},
