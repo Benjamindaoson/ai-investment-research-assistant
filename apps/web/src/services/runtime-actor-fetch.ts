@@ -1,8 +1,10 @@
+import { loadRuntimeActor } from "./runtime-actor";
 import type { FetchLike } from "./research-runtime-service";
+import type { RuntimeActorRole } from "./runtime-actor";
 
 type ActorHeaders = {
   actor: string;
-  role: "reviewer" | "chair";
+  role: Extract<RuntimeActorRole, "reviewer" | "chair" | "admin">;
 };
 
 function pathFromInput(input: Parameters<FetchLike>[0]): string {
@@ -35,6 +37,16 @@ function parseJsonBody(body: BodyInit | null | undefined): Record<string, unknow
   }
 }
 
+function selectedReviewRole(): ActorHeaders["role"] {
+  const selected = loadRuntimeActor("reviewer").role;
+  return selected === "chair" || selected === "admin" ? selected : "reviewer";
+}
+
+function selectedDecisionRole(): ActorHeaders["role"] {
+  const selected = loadRuntimeActor("chair").role;
+  return selected === "admin" ? "admin" : "chair";
+}
+
 function actorHeadersFor(path: string, body: BodyInit | null | undefined): ActorHeaders | null {
   const parsed = parseJsonBody(body);
   if (!parsed) {
@@ -42,11 +54,11 @@ function actorHeadersFor(path: string, body: BodyInit | null | undefined): Actor
   }
   if (path.endsWith("/red-team-reviews") || path.endsWith("/ic-reviews")) {
     const reviewer = typeof parsed.reviewer === "string" ? parsed.reviewer.trim() : "";
-    return reviewer ? { actor: reviewer, role: "reviewer" } : null;
+    return reviewer ? { actor: reviewer, role: selectedReviewRole() } : null;
   }
   if (path.endsWith("/decisions")) {
     const actor = typeof parsed.actor === "string" ? parsed.actor.trim() : "";
-    return actor ? { actor, role: "chair" } : null;
+    return actor ? { actor, role: selectedDecisionRole() } : null;
   }
   return null;
 }
