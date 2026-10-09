@@ -8,7 +8,8 @@ import os
 import time
 from dataclasses import dataclass
 from hashlib import sha256
-from hmac import compare_digest, new as hmac_new
+from hmac import compare_digest
+from hmac import new as hmac_new
 from typing import Any
 
 _ALLOWED_ROLES = {"analyst", "reviewer", "chair", "admin"}
