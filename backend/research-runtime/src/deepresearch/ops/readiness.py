@@ -7,6 +7,8 @@ from typing import Any
 from fastapi import FastAPI, status
 from fastapi.responses import JSONResponse
 
+from deepresearch.ops.migrations import ensure_schema_version
+
 
 def _ok(detail: object | None = None) -> dict[str, object]:
     payload: dict[str, object] = {"status": "ok"}
@@ -43,6 +45,14 @@ def readiness_snapshot(app: FastAPI) -> tuple[int, dict[str, Any]]:
         checks["store"] = _ok(type(engine.store).__name__)
     except Exception as error:  # pragma: no cover - exact backend depends on deployment
         checks["store"] = _failed(error)
+
+    try:
+        migration_status = ensure_schema_version(engine.store)
+        if not migration_status["current"]:
+            raise RuntimeError("current schema version is not applied")
+        checks["schema_migrations"] = _ok(migration_status)
+    except Exception as error:  # pragma: no cover - exact backend depends on deployment
+        checks["schema_migrations"] = _failed(error)
 
     try:
         checks["queue"] = _queue_check(getattr(engine, "run_queue", None))
