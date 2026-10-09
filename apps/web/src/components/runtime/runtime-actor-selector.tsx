@@ -11,10 +11,9 @@ const roles: Array<[RuntimeActorRole, string]> = [
 ];
 
 export function RuntimeActorSelector() {
-  const [identity, setIdentity] = useState<RuntimeActor>(() => defaultRuntimeActor("reviewer"));
+  const [identity, setIdentity] = useState<RuntimeActor>(() => loadRuntimeActor("reviewer"));
 
   useEffect(() => {
-    setIdentity(loadRuntimeActor("reviewer"));
     function onActorChange(event: Event) {
       const detail = event instanceof CustomEvent ? event.detail as RuntimeActor : null;
       if (detail?.actor && isRuntimeActorRole(detail.role)) setIdentity(detail);
