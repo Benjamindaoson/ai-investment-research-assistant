@@ -1,7 +1,9 @@
 "use client";
 
-import { useState } from "react";
+import { useEffect, useState } from "react";
+import { RuntimeActorSelector } from "@/components/runtime/runtime-actor-selector";
 import { useCreateInvestmentCommitteeReviewMutation } from "@/queries/use-runtime-run";
+import { loadRuntimeActor, type RuntimeActor } from "@/services/runtime-actor";
 import type { InvestmentCommitteeReviewInput, RuntimeRun } from "@/services/research-runtime-service";
 
 const roles: Array<[InvestmentCommitteeReviewInput["role"], string]> = [
@@ -15,13 +17,22 @@ const roles: Array<[InvestmentCommitteeReviewInput["role"], string]> = [
 export function RuntimeIcReview({ run }: { run: RuntimeRun }) {
   const mutation = useCreateInvestmentCommitteeReviewMutation(run.id);
   const [role, setRole] = useState<InvestmentCommitteeReviewInput["role"]>("BULL");
-  const [reviewer, setReviewer] = useState("Investment committee reviewer");
+  const [reviewer, setReviewer] = useState(() => loadRuntimeActor("reviewer").actor);
   const [position, setPosition] = useState<InvestmentCommitteeReviewInput["position"]>("MIXED");
   const [recommendation, setRecommendation] = useState<InvestmentCommitteeReviewInput["recommendation"]>("HOLD");
   const [rationale, setRationale] = useState("");
   const [evidenceIds, setEvidenceIds] = useState<string[]>([]);
   const reviewedRoles = new Set(run.ic_reviews.map((review) => review.role));
   const canSubmit = reviewer.trim().length > 0 && rationale.trim().length >= 3 && evidenceIds.length > 0;
+
+  useEffect(() => {
+    function onActorChange(event: Event) {
+      const detail = event instanceof CustomEvent ? event.detail as RuntimeActor : null;
+      if (detail?.actor) setReviewer(detail.actor);
+    }
+    window.addEventListener("deepresearch-runtime-actor-change", onActorChange);
+    return () => window.removeEventListener("deepresearch-runtime-actor-change", onActorChange);
+  }, []);
 
   function submit(event: React.FormEvent<HTMLFormElement>) {
     event.preventDefault();
@@ -32,6 +43,7 @@ export function RuntimeIcReview({ run }: { run: RuntimeRun }) {
   return <section className="decision-panel runtime-ic-review">
     <header><div><small>IC REVIEW PANEL</small><h2>Record structured review</h2></div><span>{reviewedRoles.size}/5 roles covered</span></header>
     <p className="form-note">Missing roles are intentionally blank until a reviewer records an evidence-linked view.</p>
+    <RuntimeActorSelector />
     <div className="runtime-review-coverage">{roles.map(([value, label]) => <span key={value} className={reviewedRoles.has(value) ? "review-role covered" : "review-role"}>{label}: {reviewedRoles.has(value) ? "recorded" : "not reviewed"}</span>)}</div>
     <form onSubmit={submit}>
       <div className="red-team-grid">
